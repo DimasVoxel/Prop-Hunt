@@ -390,14 +390,14 @@ function hudDrawScore2Teams(team1Color, team1Score, team2Color, team2Score, alph
 	UiPush()
 	UiFont(FONT_BOLD, FONT_SIZE_32)
 
-	local width = 95
+	local width = 150
 	local height = 44
 	
 	UiAlign("center middle")
 	UiTranslate(UiCenter(), 40 + 26)
 	
 	UiPush()
-	UiTranslate(-(138/2+width/2+10), 0)
+	UiTranslate(-(160/2+width/2+10), 0)
 	UiColor(team1Color[1], team1Color[2], team1Color[3], a)
 	UiRoundedRect(width, height, 8)
 	UiColor(COLOR_WHITE[1], COLOR_WHITE[2], COLOR_WHITE[3], COLOR_WHITE[4] * a)
@@ -405,7 +405,7 @@ function hudDrawScore2Teams(team1Color, team1Score, team2Color, team2Score, alph
 	UiPop()
 	
 	UiPush()
-	UiTranslate(138/2+width/2+10, 0)
+	UiTranslate(160/2+width/2+10, 0)
 	UiColor(team2Color[1], team2Color[2], team2Color[3], a)
 	UiRoundedRect(width, height, 8)
 	UiColor(COLOR_WHITE[1], COLOR_WHITE[2], COLOR_WHITE[3], COLOR_WHITE[4] * a)

@@ -1,6 +1,6 @@
 name = Prop Hunt
 author = DimasVoxel
-description = A prop hunt mod
+description = A prop hunt mod[noupload]
 tags = 
 version = 2
 

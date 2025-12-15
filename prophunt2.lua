@@ -19,6 +19,7 @@ shared.hiders = {}
 shared.game = {}
 shared.game.time = 0
 shared.game.hunterFreed = false
+shared.game.nextHint = 0
 
 shared.stats = {}
 shared.stats.hiders = {}
@@ -34,6 +35,7 @@ server.game.hunterPipeBombTimer = 0
 server.game.bluetideTimer = 0
 server.game.hunterPIpeBombEnabled = true
 server.game.hunterFreed = false
+server.game.hunterHintTimer = 0
 
 server.hunters = {}
 server.hunters.hunter = {}
@@ -43,10 +45,21 @@ server.hiders = {}
 client.game = {}
 client.game.hider = {}
 client.game.hider.lookAtShape = -1
+client.game.hider.hiderOutline = {}
 
+client.hint = {}
+client.hint.closestPlayerHint = {}
+client.hint.closestPlayerHint.distance = 0
+client.hint.closestPlayerHint.timer = 0
 
+client.hint.closestPlayerArrowHint = {}
+client.hint.closestPlayerArrowHint.transform = Transform()
+client.hint.closestPlayerArrowHint.timer = 0
+client.hint.closestPlayerArrowHint.player = 0
 
 function server.init()
+	RegisterTool("taunt", "taunt", "", 1)
+	
 	hudInit(true)
 	hudAddUnstuckButton()
 	teamsInit(2)
@@ -57,7 +70,7 @@ function server.init()
 
 	spawnInit()
 	toolsSetDropToolsOnDeath(false)
-	spawnSetDefaultLoadoutForTeam(1, { {} })                  -- Hiders
+	spawnSetDefaultLoadoutForTeam(1, { {"taunt", 1} })                  -- Hiders
 	spawnSetDefaultLoadoutForTeam(2, {{ "gun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }}) -- Hunters
 
 	spawnSetRespawnTime (10)
@@ -75,6 +88,9 @@ function server.start(settings)
 	server.lobbySettings.hunterBulletTimer = settings.bulletTimer
 	server.lobbySettings.pipeBombTimer = settings.pipeBombTimer
 	server.lobbySettings.bluetideTimer = settings.bluetideTimer
+	server.lobbySettings.hunterHinttimer = settings.hunterHinttimer
+
+	server.game.hunterHintTimer = settings.hunterHinttimer
 	--server.lobbySettings.joinHunters = settings.joinHunters
 
 	if settings.pipeBombTimer == -1 then 
@@ -104,7 +120,7 @@ function server.deadTick()
 			local health = GetPlayerHealth(id)
 			if health == 0 and server.game.hunterFreed then 
 
-				eventlogPostMessage({ "loc@EVENT_GLHF" })
+				eventlogPostMessage({id, " Was found"  })
 				shared.hiders[id].dead = true
 				Delete(shared.hiders[id].propBody)
 				Delete(shared.hiders[id].propBackupShape)
@@ -113,6 +129,10 @@ function server.deadTick()
 
 				teamsAssignToTeam(id, 2)
 				shared.stats.wasHider[#shared.stats.wasHider+1] = {id, math.floor(server.lobbySettings.roundLength - server.game.time)}
+
+				SetPlayerParam("healthRegeneration", true, id)
+				SetPlayerParam("collisionMask", 1, id)
+				SetPlayerParam("walkingSpeed", 1, id)
 			end
 		end
 	end
@@ -193,7 +213,7 @@ function server.hunterTick(id)
 		local count = GetEventCount("countdownFinished")
 		local data, finished = GetEvent("countdownFinished", 1)
 		local hunters = teamsGetTeamPlayers(2)
-		
+
 		if data == "hidersHiding" and finished then
 			for i = 1, #hunters do
 				spawnRespawnPlayer(hunters[i])
@@ -207,16 +227,17 @@ function server.hunterTick(id)
 			for i = 1, #hunters do
 				SetPlayerTransform(Transform(Vec(0, 10000, 0)), hunters[i])
 				SetPlayerVelocity(Vec(0, 0, 0), hunters[i])
+				DisablePlayer(id)
 			end
-
 			return
 		end
 	else
-
 		local dt = GetTimeStep()
 		server.game.hunterBulletTimer = server.game.hunterBulletTimer - dt
 		server.game.hunterPipeBombTimer = server.game.hunterPipeBombTimer - dt
 		server.game.bluetideTimer = server.game.bluetideTimer - dt
+		server.game.hunterHintTimer = server.game.hunterHintTimer - dt
+
 
 		if server.game.hunterBulletTimer < 0 then
 			server.game.hunterBulletTimer = server.lobbySettings.hunterBulletTimer
@@ -233,8 +254,78 @@ function server.hunterTick(id)
 			server.game.bluetideTimer = server.lobbySettings.bluetideTimer
 			SetToolAmmo("steroid", math.min(GetToolAmmo("steroid", id) + 1, 3), id)
 		end
+
+		if server.game.hunterHintTimer < 0 and server.game.hunterHintTimer then
+			server.game.hunterHintTimer = server.lobbySettings.hunterHinttimer
+			server.TriggerHint()
+		end
 	end
 end
+
+function server.TriggerHint()
+	-- Only trigger in first 20% of round time
+	--if server.game.time > (server.lobbySettings.roundLength * 0.2) then
+	--	return
+	--end
+
+	for myId in Players() do
+		local closestDist = math.huge
+		local cloestTransform = Transform()
+		local closestPlayer = 0
+
+		-- Get my transform depending on team
+		local myTransform
+		if teamsGetTeamId(myId) == 1 then
+			-- Hider
+			local myBody = shared.hiders[myId].propBody ~= -1
+			if myBody then
+				myTransform = GetBodyTransform(shared.hiders[myId].propBody)
+			else
+				myTransform = GetPlayerTransform(myId)
+			end
+		else
+			-- Hunter
+			myTransform = GetPlayerTransform(myId)
+		end
+
+		if myTransform then
+			for otherId in Players() do
+				if myId ~= otherId and teamsGetTeamId(myId) ~= teamsGetTeamId(otherId) then
+					-- Get other player transform
+					local otherTransform
+					if teamsGetTeamId(otherId) == 1 then
+						local otherBody = shared.hiders[myId].propBody ~= -1
+						if otherBody then
+							otherTransform = GetBodyTransform(otherBody)
+						else
+							otherTransform = GetPlayerTransform(otherId)
+						end
+					else
+						otherTransform = GetPlayerTransform(otherId)
+					end
+
+					if otherTransform then
+						local dist = VecLength(VecSub(myTransform.pos, otherTransform.pos))
+						if dist < closestDist then
+							closestDist = dist
+							cloestTransform = otherTransform
+							closestPlayer = otherId
+						end
+					end
+				end
+			end
+		end
+
+		if closestDist < math.huge then
+			ClientCall(myId, "client.hintShowCloestPlayer", math.floor(closestDist * 10) / 10, 5)
+		end
+
+		if server.game.time <= 60 and closestDist > 50 then
+			ClientCall(myId, "client.hintShowArrow", cloestTransform, closestPlayer, 5)
+		end
+	end
+end
+
 
 function server.hiderTick(id)
 	if teamsIsSetup() then
@@ -253,7 +344,14 @@ function server.hiderTick(id)
 				SetPlayerHealth(GetPlayerHealth(id) - 0.33, id)
 				server.propRegenerate(id, shared.hiders[id].propBackupShape)
 				shared.hiders[id].isPropPlaced = false
+				ClientCall(0, "client.highlightPlayer", shared.hiders[id].propBody)
 			end
+
+			if IsPointInBoundaries(GetPlayerTransform(id).pos) then
+				
+			end
+
+
 		end
 	end
 end
@@ -268,6 +366,11 @@ function disableBodyCollission(body, bool)
 			SetShapeCollisionFilter(shapes[i], 128, 1)
 		end
 	end
+end
+
+function server.taunt(pos)
+	DebugPrint("taunt")
+	ClientCall(0, "client.playTaunt", pos)
 end
 
 function server.update()
@@ -474,9 +577,34 @@ end
 
 -- Client Functions
 
+function client.init()
+	client.arrow = LoadSprite("assets/arrow.png")
+	taunt = LoadSound('assets/taunt.ogg')
+end
+
 function client.tick()
 	SetBool("game.disablemap", true)
 	SetLowHealthBlurThreshold(0.01)
+
+	local matchEnded = shared.game.time <= 0.0
+	
+	if not matchEnded then
+		for i = 1, #client.game.hider.hiderOutline do 
+			if client.game.hider.hiderOutline[i].timer > 0 then 
+				client.game.hider.hiderOutline[i].timer = client.game.hider.hiderOutline[i].timer - GetTimeStep()
+				DrawBodyHighlight(client.game.hider.hiderOutline[i].body, client.game.hider.hiderOutline[i].timer)
+				DrawBodyOutline(client.game.hider.hiderOutline[i].body,1,0,0, client.game.hider.hiderOutline[i].timer/4)
+			end
+		end
+
+		for i = 1, #client.game.hider.hiderOutline do 
+			if client.game.hider.hiderOutline[i].timer < 0 then 
+				table.remove(client.game.hider.hiderOutline, i)
+			end
+		end
+	end
+
+	
 
 	if teamsGetTeamId(GetLocalPlayer()) == 1 and teamsIsSetup() then
 		local body = shared.hiders[GetLocalPlayer()].propBody
@@ -491,7 +619,7 @@ function client.tick()
 			AttachCameraTo(body, true)
 			SetCameraOffsetTransform(Transform(Vec(localCenter[1],0,localCenter[3])), true)
 			SetCameraOffsetTransform(Transform(Vec(0, y/10 + 2 + y/5, z / 10 + 3 + z/5)),true)
-			
+
 		end
 
 		-- Hider Logic
@@ -508,6 +636,12 @@ end
 function client.update()
 	if teamsGetTeamId(GetLocalPlayer()) == 1 and teamsIsSetup() then
 		client.sendHideRequest()
+
+
+		if GetString("game.player.tool", GetLocalPlayer()) == "taunt" and InputPressed("usetool") then
+		
+			ServerCall("server.taunt", GetPlayerTransform(GetLocalPlayer()).pos)
+		end
 	end
 end
 
@@ -516,7 +650,7 @@ function client.enableThirdPerson(value)
 end
 
 function client.sendHideRequest()
-    if InputPressed("f") then 
+    if InputPressed("flashlight") then 
 		local playerID = GetLocalPlayer()
         if not shared.hiders[playerID].isPropClipping and shared.hiders[playerID].propBody ~= -1 then
             ServerCall("server.clientHideRequest", playerID)
@@ -532,6 +666,11 @@ function client.SelectProp()
 			ServerCall("server.PropSpawnRequest", GetLocalPlayer(), client.game.hider.lookAtShape, GetCameraTransform())
 		end
 	end
+end
+
+function client.playTaunt(pos)
+	DebugPrint("bla")
+	PlaySound(taunt,pos,10,true,1)
 end
 
 function client.HighlightDynamicBodies()
@@ -561,9 +700,10 @@ function client.HighlightDynamicBodies()
 			if #shapes == 1 then
 				local shape = shapes[1]
 				local x, y, z = GetShapeSize(shape)
+				local voxelCount = GetShapeVoxelCount(shape)
 
 				local unqualified = false
-				if x > 70 or y > 70 or z > 70 then
+				if x > 70 or y > 70 or z > 70 or voxelCount < 200 then
 					unqualified = true
 				else
 					DrawBodyOutline(body, 1, 1, 1, 1)
@@ -589,9 +729,60 @@ function client.highlightClippingProps()
     end
 end
 
+function client.hintShowCloestPlayer(dist, timer)
+	client.hint.closestPlayerHint = {}
+	client.hint.closestPlayerHint.distance = dist
+	client.hint.closestPlayerHint.timer = timer
+end
+
+function client.hintShowArrow(transform, player, timer)
+	client.hint.closestPlayerArrowHint = {}
+	client.hint.closestPlayerArrowHint.transform = transform
+	client.hint.closestPlayerArrowHint.player = player
+	client.hint.closestPlayerArrowHint.timer = timer
+end
+
+function client.showHint()
+	if client.hint.closestPlayerHint.timer > 0 then
+		if teamsGetTeamId(GetLocalPlayer()) == 1 then
+			hudDrawInformationMessage("The closest hunter is " .. client.hint.closestPlayerHint.distance .. " meters away", 1)
+		else
+			hudDrawInformationMessage("The closest hider is " .. client.hint.closestPlayerHint.distance .. " meters away", 1)
+		end
+
+		client.hint.closestPlayerHint.timer = client.hint.closestPlayerHint.timer - GetTimeStep()
+	end
+
+	--if client.hint.closestPlayerArrowHint.timer > 0 then
+	--	local pos
+	--	if teamsGetTeamId(GetLocalPlayer()) == 1 then
+	--		pos = TransformToParentPoint(GetPlayerTransform(client.hint.closestPlayerArrowHint.player), Vec(0,1, -2))
+	--	else
+	--		pos = TransformToParentPoint(GetPlayerTransform(GetLocalPlayer()), Vec(0,1, -2))
+	--	end
+--
+	--	cPos = Vec()
+--
+	--	cPos[1] = client.hint.closestPlayerArrowHint.transform.pos[1] + math.sin(GetTime() * VecLength(GetPlayerVelocity(GetLocalPlayer()))* 20)
+	--	cPos[3] = client.hint.closestPlayerArrowHint.transform.pos[3] + math.cos(GetTime() * VecLength(GetPlayerVelocity(GetLocalPlayer()))*10)
+	--	cPos[2] = client.hint.closestPlayerArrowHint.transform.pos[2] + math.sin(GetTime() * VecLength(GetPlayerVelocity(GetLocalPlayer()))*10)
+--
+	--	local rot = QuatAlignXZ(VecNormalize(VecSub(pos, cPos)), VecNormalize(VecSub(pos, GetCameraTransform().pos)))
+	--	DrawSprite(client.arrow, Transform(pos, rot), 0.7, 0.7, 0.7 ,0.7,1,1,1,false,false,false)
+	--	client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer 
+--
+--
+	--	if VecLength(VecSub(pos, client.hint.closestPlayerArrowHint.transform.pos)) < 50  then
+	--		client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()*10
+	--	end
+--
+	--	client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()/2
+	--end
+end
+
 function client.draw(dt)
 	-- during countdown, display the title of the game mode.
-
+	
 	hudDrawTitle(dt, "Prophunt!")
 	hudDrawBanner(dt)
 
@@ -599,19 +790,26 @@ function client.draw(dt)
 
 	if not client.SetupScreen(dt) then return end -- If Setup not complete dont proceed
 
+	if teamsGetTeamId(GetLocalPlayer()) == 2 and not matchEnded and not shared.game.hunterFreed then
+		UiImageBox("assets/placeholder.png", UiWidth(), UiHeight(), 0,0)
+	end
+
 	if shared.countdownName == "hidersHiding" then
-		countdownDraw("Hiders are Hiding!")
+		countdownDraw("Hiding Time!")
 	end
 
 	if not matchEnded then
 		if teamsGetTeamId(GetLocalPlayer()) == 1 then
 			hudDrawGameModeHelpText("You are a Hider", "Search a prop and press ( E ) to transform. And press ( F ) to hide.")
 		elseif teamsGetTeamId(GetLocalPlayer()) == 2 then
-			hudDrawGameModeHelpText("You are a Hunter", "Search players before the time runs out.")
+			hudDrawGameModeHelpText("You are a Hunter", "Search players! Shoot at props, if you find a hider make sure to kill them.")
 		end
 
 		if shared.game.hunterFreed then
 			hudDrawTimer(shared.game.time, 1)
+			hudDrawScore2Teams(teamsGetColor(1), "Hiders ".. #teamsGetTeamPlayers(1), teamsGetColor(2), #teamsGetTeamPlayers(2) .. " Hunters", 1)
+
+			client.showHint()
 		end
 
 		if not matchEnded and teamsGetTeamId(GetLocalPlayer()) == 2 then
@@ -686,6 +884,12 @@ function client.draw(dt)
 	eventlogDraw(dt, teamsGetPlayerColorsList())
 end
 
+function client.highlightPlayer(body)
+	client.game.hider.hiderOutline[#client.game.hider.hiderOutline+1] = { }
+	client.game.hider.hiderOutline[#client.game.hider.hiderOutline].body = body
+	client.game.hider.hiderOutline[#client.game.hider.hiderOutline].timer = 1
+end
+
 function client.DrawTransformPrompt()
 	if client.game.hider.lookAtShape ~= -1 then
 		
@@ -712,15 +916,15 @@ function client.SetupScreen(dt)
 					items = {
 						{
 							key = "savegame.mod.settings.time",
-							label = "Round Lenth",
+							label = "Round Length",
 							info = "How long one round lasts",
-							options = { { label = "05:00", value = 5 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 3 * 60 } }
+							options = { { label = "05:00", value = 5 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 90 } }
 						},
 						{
 							key = "savegame.mod.settings.hideTime",
 							label = "Hide Time",
 							info = "How much time hiders have to hide",
-							options = { { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 }, { label = "00:30", value = 3 }, { label = "00:45", value = 45 } }
+							options = {{ label = "00:30", value = 30}, { label = "00:45", value = 45 }, { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 },  }
 						},
 						--{
 						--	key = "savegame.mod.settings.joinHunters",
@@ -750,19 +954,26 @@ function client.SetupScreen(dt)
 							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
+							key = "savegame.mod.settings.hintTimer",
+							label = "Hunter Hints",
+							info = "Timer when Hunters get a hint",
+							"How quickly hunters get new PipeBombs.",
+							options = {    { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -1}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30}, { label = "45 Seconds", value = 45}}
+						},
+						{
 							key = "savegame.mod.settings.bulletTimer",
 							label = "Bullet Reload",
 							info =
 							"How quickly hunters get new bullets.",
 							options = {  { label = "5 Seconds", value = 5},  { label = "6 Seconds", value = 6}, { label = "7 Seconds", value = 7}, { label = "8 Seconds", value = 8}, { label = "9 Seconds", value = 9}, { label = "10 Seconds", value = 10}, { label = "1 Second", value = 1}, { label = "2 Seconds", value = 2}, { label = "3 Seconds", value = 3}, { label = "4 Seconds", value = 4} }
 						},
-												{
+						{
 							key = "savegame.mod.settings.pipeBombTimer",
 							label = "Bullet Reload",
 							info =
 							"How quickly hunters get new PipeBombs.",
-							options = {  { label = "30 Seconds", value = 30}, { label = "40 Seconds", value = 40}, { label = "50 Seconds", value = 50}, { label = "60 Seconds", value = 60}, { label = "Disable PipeBombs", value = -1}, { label = "10 Seconds", value = 10},  { label = "20 Seconds", value = 20},  }
-						},						
+							options = {  { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "40 Seconds", value = 40}, { label = "50 Seconds", value = 50}, { label = "60 Seconds", value = 60}, { label = "Disable PipeBombs", value = -1}, { label = "10 Seconds", value = 10}  }
+						},
 						{
 							key = "savegame.mod.settings.blueTide",
 							label = "Bluetide Reload",
@@ -785,6 +996,7 @@ function client.SetupScreen(dt)
 					bulletTimer = GetInt("savegame.mod.settings.bulletTimer"),
 					pipeBombTimer = GetInt("savegame.mod.settings.pipeBombTimer"),
 					bluetideTimer = GetInt("savegame.mod.settings.blueTide"),
+					hunterHinttimer = GetInt("savegame.mod.settings.hintTimer"),
 				--joinHunters = GetInt("savegame.mod.settings.joinHunters")
 				})
 			end
