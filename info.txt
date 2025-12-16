@@ -1,7 +1,7 @@
 name = Prop Hunt
 author = DimasVoxel
 description = A prop hunt mod[noupload]
-tags = 
+tags = gameplay
 version = 2
 
 # If description contains [noupload] the description on Steam workshop will not be overwritten.

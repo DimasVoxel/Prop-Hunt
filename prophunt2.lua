@@ -15,17 +15,6 @@ server.lobbySettings.hunterBulletTimer = 0
 server.lobbySettings.pipeBombTimer = 0
 server.lobbySettings.bluetideTimer = 0
 
-shared.hiders = {}
-shared.game = {}
-shared.game.time = 0
-shared.game.hunterFreed = false
-shared.game.nextHint = 0
-
-shared.stats = {}
-shared.stats.hiders = {}
-shared.stats.OriginalHunters = {}
-shared.stats.wasHider = {}
-
 server.game = {}
 server.game.time = 0
 
@@ -36,11 +25,22 @@ server.game.bluetideTimer = 0
 server.game.hunterPIpeBombEnabled = true
 server.game.hunterFreed = false
 server.game.hunterHintTimer = 0
+server.game.tauntSnd = 0
 
 server.hunters = {}
 server.hunters.hunter = {}
-
 server.hiders = {}
+
+shared.hiders = {}
+shared.game = {}
+shared.game.time = 0
+shared.game.hunterFreed = false
+shared.game.nextHint = 0
+
+shared.stats = {}
+shared.stats.hiders = {}
+shared.stats.OriginalHunters = {}
+shared.stats.wasHider = {}
 
 client.game = {}
 client.game.hider = {}
@@ -59,7 +59,7 @@ client.hint.closestPlayerArrowHint.player = 0
 
 function server.init()
 	RegisterTool("taunt", "taunt", "", 1)
-	taunt = LoadSound('assets/taunt')
+	server.game.tauntSnd = LoadSound('MOD/assets/taunt0.ogg')
 
 	hudInit(true)
 	hudAddUnstuckButton()
@@ -148,6 +148,7 @@ end
 
 function server.tick(dt)
 	-- AutoInspectWatch(shared, " ", 3, " ", false)
+	
 	if teamsTick(dt) then
 		spawnRespawnAllPlayers()
 
@@ -172,15 +173,52 @@ function server.tick(dt)
 		return
 	end
 
-	if #teamsGetTeamPlayers(1) == 0 and teamsIsSetup() and server.game.hunterFreed then
+	if #teamsGetTeamPlayers(1) == 0 and teamsIsSetup() and server.game.hunterFreed or GetPlayerCount() == 1 then
 		server.game.time = 0
+	end
+
+	if #teamsGetTeamPlayers(2) == 0 and teamsIsSetup() then
+		local id = teamsGetTeamPlayers(1)[#teamsGetTeamPlayers(1)]
+
+		eventlogPostMessage({id, " Was moved to Hunter because all hunters left"  })
+		shared.hiders[id].dead = false
+		Delete(shared.hiders[id].propBody)
+		Delete(shared.hiders[id].propBackupShape)
+		shared.hiders[id] = {}
+		server.game.respawnQueue[id] = true
+
+		teamsAssignToTeam(id, 2)
+		spawnRespawnPlayer(id)
+		
+		SetPlayerParam("healthRegeneration", true, id)
+		SetPlayerParam("collisionMask", 1, id)
+		SetPlayerParam("walkingSpeed", 1, id)
 	end
 
 	server.deadTick()
 	spawnTick(dt, teamsGetPlayerTeamsList())
 	eventlogTick(dt)
 
+	for id in Players() do
+		if server.game.hunterFreed == false and teamsGetTeamId(id) == 2 then
+			local count = GetEventCount("countdownFinished")
+			local data, finished = GetEvent("countdownFinished", 1)
 
+			if data == "hidersHiding" and finished then
+
+				spawnRespawnPlayer(id)
+
+				server.game.hunterFreed = true
+				shared.game.hunterFreed = true
+
+				eventlogPostMessage({ "loc@EVENT_GLHF" })
+			else
+				SetPlayerTransform(Transform(Vec(0, 10000, 0)), id)
+				SetPlayerVelocity(Vec(0, 0, 0), id)
+				DisablePlayer(id)
+			end
+		end
+	end
 
 	for id in Players() do
 		if teamsGetTeamId(id) == 1 then
@@ -209,36 +247,12 @@ function newPlayerJoinRoutine()
 end
 
 function server.hunterTick(id)
-	if not server.game.hunterFreed then
-
-		local count = GetEventCount("countdownFinished")
-		local data, finished = GetEvent("countdownFinished", 1)
-		local hunters = teamsGetTeamPlayers(2)
-
-		if data == "hidersHiding" and finished then
-			for i = 1, #hunters do
-				spawnRespawnPlayer(hunters[i])
-			end
-
-			server.game.hunterFreed = true
-			shared.game.hunterFreed = true
-
-			eventlogPostMessage({ "loc@EVENT_GLHF" })
-		else
-			for i = 1, #hunters do
-				SetPlayerTransform(Transform(Vec(0, 10000, 0)), hunters[i])
-				SetPlayerVelocity(Vec(0, 0, 0), hunters[i])
-				DisablePlayer(id)
-			end
-			return
-		end
-	else
+	if server.game.hunterFreed then
 		local dt = GetTimeStep()
 		server.game.hunterBulletTimer = server.game.hunterBulletTimer - dt
 		server.game.hunterPipeBombTimer = server.game.hunterPipeBombTimer - dt
 		server.game.bluetideTimer = server.game.bluetideTimer - dt
 		server.game.hunterHintTimer = server.game.hunterHintTimer - dt
-
 
 		if server.game.hunterBulletTimer < 0 then
 			server.game.hunterBulletTimer = server.lobbySettings.hunterBulletTimer
@@ -321,7 +335,7 @@ function server.TriggerHint()
 			ClientCall(myId, "client.hintShowCloestPlayer", math.floor(closestDist * 10) / 10, 5)
 		end
 
-		if server.game.time < (server.lobbySettings.roundLength * 0.65) and closestDist > 50 then
+		if server.game.time < (server.lobbySettings.roundLength * 0.7) and closestDist > 50 then
 			ClientCall(myId, "client.hintShowArrow", cloestTransform, closestPlayer, 5)
 		end
 	end
@@ -330,9 +344,8 @@ end
 
 function server.hiderTick(id)
 	if teamsIsSetup() then
+		SetPlayerParam("healthRegeneration", false, id)
 		if shared.hiders[id].propBody ~= -1 then
-
-			SetPlayerParam("healthRegeneration", false, id)
 			SetPlayerHidden(id)
 			if not shared.hiders[id].isPropPlaced then
 				SetPlayerParam("collisionMask", 255 - 4, id)
@@ -346,7 +359,9 @@ function server.hiderTick(id)
 				server.propRegenerate(id, shared.hiders[id].propBackupShape)
 				shared.hiders[id].isPropPlaced = false
 				ClientCall(0, "client.highlightPlayer", shared.hiders[id].propBody)
-				SetPlayerTransform(Transform(center,GetPlayerCameraTransform(id).rot), id)
+				local aa,bb = GetBodyBounds(shared.hiders[id].propBody)
+				local center = VecLerp(aa, bb, 0.5)
+				SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
 			end
 
 			if IsPointInBoundaries(GetPlayerTransform(id).pos) then
@@ -369,9 +384,9 @@ function disableBodyCollission(body, bool)
 end
 
 function server.taunt(pos)
-	DebugPrint("taunt")
-	ClientCall(0, "client.playTaunt", pos)
-	PlaySound(taunt,pos,10,true,1)
+	--ClientCall(0, "client.playTaunt", pos)
+
+	PlaySound(server.game.tauntSnd,pos,2,true,1)
 end
 
 function server.update()
@@ -405,7 +420,7 @@ function server.hiderUpdate(id)
 			local center = VecLerp(aa, bb, 0.5)
 			if IsPointInWater(center) or InputDown('down', id) or InputDown('up', id) or InputDown('left', id) or InputDown('right', id) or InputDown('jump', id) then
 				shared.hiders[id].isPropPlaced = false
-				SetPlayerTransform(Transform(center,GetPlayerCameraTransform(id).rot), id)
+				SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.2, 0)),GetPlayerCameraTransform(id).rot), id)
 			end
 		end
 
@@ -580,7 +595,6 @@ end
 
 function client.init()
 	client.arrow = LoadSprite("assets/arrow.png")
-	taunt = LoadSound('assets/taunt')
 end
 
 function client.tick()
@@ -601,6 +615,7 @@ function client.tick()
 		for i = 1, #client.game.hider.hiderOutline do
 			if client.game.hider.hiderOutline[i].timer < 0 then
 				table.remove(client.game.hider.hiderOutline, i)
+				break
 			end
 		end
 	end
@@ -637,17 +652,14 @@ end
 function client.update()
 	if teamsGetTeamId(GetLocalPlayer()) == 1 and teamsIsSetup() then
 		client.sendHideRequest()
-
-
-		if GetString("game.player.tool", GetLocalPlayer()) == "taunt" and InputPressed("usetool") then
-
+		if GetString("game.player.tool", GetLocalPlayer()) == "taunt" and InputPressed("usetool", GetLocalPlayer()) then
 			ServerCall("server.taunt", GetPlayerTransform(GetLocalPlayer()).pos)
 		end
 	end
 end
 
 function client.enableThirdPerson(value)
-	DebugPrint(value)
+
 end
 
 function client.sendHideRequest()
@@ -670,8 +682,11 @@ function client.SelectProp()
 end
 
 function client.playTaunt(pos)
-	DebugPrint("bla")
-	PlaySound(taunt,pos,10,true,1)
+--	DebugPrint("bla")
+--	DebugPrint(HasFile('assets/taunt1.ogg'))
+--	taunt = LoadSound('MOD/assets/taunt0.ogg', 5)
+--	DebugPrint(taunt)
+--	PlaySound(taunt,GetPlayerTransform().pos,10,true,1)
 end
 
 function client.HighlightDynamicBodies()
@@ -704,7 +719,7 @@ function client.HighlightDynamicBodies()
 				local voxelCount = GetShapeVoxelCount(shape)
 
 				local unqualified = false
-				if x > 70 or y > 70 or z > 70 or voxelCount < 200 then
+				if x > 70 or y > 70 or z > 70 or voxelCount < 150 then
 					unqualified = true
 				else
 					DrawBodyOutline(body, 1, 1, 1, 1)
@@ -729,8 +744,6 @@ function client.highlightClippingProps()
         end
     end
 end
-
-
 
 function client.hintShowCloestPlayer(dist, timer)
 	client.hint.closestPlayerHint = {}
@@ -815,61 +828,10 @@ function client.draw(dt)
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
 	end
 
+	hudDrawScoreboard(InputDown("shift") and not matchEnded, "", {{name="Time Survived", width=160, align="center"}}, getPlayerStats())
+
 	if matchEnded then
-
-		local stats
-
-		local hunterTable = {}
-		local hiderTable = {}
-		for i = 1, #shared.stats.OriginalHunters do
-			hunterTable[#hunterTable+1] = {
-				player = shared.stats.OriginalHunters[i],
-				columns = { "Hunter" }
-			}
-		end
-
-		for id in Players() do
-			if teamsGetTeamId(id) == 1 then
-				hiderTable[#hiderTable+1] = {
-					player = id,
-					columns = { "Survived"}
-				}
-			end
-		end
-		for i = 1, #shared.stats.wasHider do
-			hiderTable[#hiderTable+1] = {
-				player = shared.stats.wasHider[i][1],
-				columns = { shared.stats.wasHider[i][2] .. " seconds" }
-			}
-		end
-
-		if #teamsGetTeamPlayers(1) == 0 then
-			stats = {{
-					name = "Hunters Win",
-					color = teamsGetColor(2),
-					rows = hunterTable
-				},
-				{
-					name = "Hiders Lost",
-					color = teamsGetColor(1),
-					rows = hiderTable
-				}
-			}
-		else
-			stats = {{
-					name = "Hiders Win",
-					color = teamsGetColor(1),
-					rows = hiderTable
-				},
-				{
-					name = "Hunters Lost",
-					color = teamsGetColor(2),
-					rows = hunterTable
-				}
-			}
-		end
-
-		hudDrawResults("Game Ended!", {1, 1, 1, 0.75}, "loc@RESULTS_TITLE_TEAM_DEATHMATCH", {{name="Time Survived", width=160, align="center"}}, stats)
+		hudDrawResults("Game Ended!", {1, 1, 1, 0.75}, "loc@RESULTS_TITLE_TEAM_DEATHMATCH", {{name="Time Survived", width=160, align="center"}}, getEndResults())
 	end
 
 	if teamsGetTeamId(GetLocalPlayer()) == 1 then
@@ -964,7 +926,7 @@ function client.SetupScreen(dt)
 						},
 						{
 							key = "savegame.mod.settings.pipeBombTimer",
-							label = "Bullet Reload",
+							label = "Pipebomb Reload",
 							info =
 							"How quickly hunters get new PipeBombs.",
 							options = {  { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "40 Seconds", value = 40}, { label = "50 Seconds", value = 50}, { label = "60 Seconds", value = 60}, { label = "Disable PipeBombs", value = -1}, { label = "10 Seconds", value = 10}  }
@@ -1037,4 +999,105 @@ function makePlayerInvisible(bool)
             end
         end
     end
+end
+
+function getPlayerStats()
+	local stats
+	local hunterTable = {}
+	local hiderTable = {}
+
+	for id in Players() do
+		if teamsGetTeamId(id) == 2 then
+			hunterTable[#hunterTable+1] = {
+				player = id,
+				columns = { "Hunter" }
+			}
+		end
+
+		if teamsGetTeamId(id) == 1 then
+			hiderTable[#hiderTable+1] = {
+				player = id,
+				columns = { "Not Found"}
+			}
+		end
+	end
+
+	for i = 1, #shared.stats.wasHider do
+		hiderTable[#hiderTable+1] = {
+			player = shared.stats.wasHider[i][1],
+			columns = { shared.stats.wasHider[i][2] .. " seconds" }
+		}
+	end
+
+
+	stats = {
+		{
+			name = "Hiders",
+			color = teamsGetColor(1),
+			rows = hiderTable
+		},
+		{
+			name = "Hunters",
+			color = teamsGetColor(2),
+			rows = hunterTable
+		}
+	}
+
+	return stats
+end
+
+function getEndResults()
+	local stats
+
+	local hunterTable = {}
+	local hiderTable = {}
+	for i = 1, #shared.stats.OriginalHunters do
+		hunterTable[#hunterTable+1] = {
+			player = shared.stats.OriginalHunters[i],
+			columns = { "Hunter" }
+		}
+	end
+
+	for id in Players() do
+		if teamsGetTeamId(id) == 1 then
+			hiderTable[#hiderTable+1] = {
+				player = id,
+				columns = { "Survived"}
+			}
+		end
+	end
+	for i = 1, #shared.stats.wasHider do
+		hiderTable[#hiderTable+1] = {
+			player = shared.stats.wasHider[i][1],
+			columns = { shared.stats.wasHider[i][2] .. " seconds" }
+		}
+	end
+
+	if #teamsGetTeamPlayers(1) == 0 then
+		stats = {{
+				name = "Hunters Win",
+				color = teamsGetColor(2),
+				rows = hunterTable
+			},
+			{
+				name = "Hiders Lost",
+				color = teamsGetColor(1),
+				rows = hiderTable
+			}
+		}
+	else
+		stats = {{
+				name = "Hiders Win",
+				color = teamsGetColor(1),
+				rows = hiderTable
+			},
+			{
+				name = "Hunters Lost",
+				color = teamsGetColor(2),
+				rows = hunterTable
+			}
+		}
+	end
+
+	return stats
 end
