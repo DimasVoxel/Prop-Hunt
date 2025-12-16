@@ -415,9 +415,6 @@ function server.hiderUpdate(id)
 
 
 	if teamsIsSetup() then
-		server.handlePlayerProp(id)
-		SetLightEnabled(GetFlashlight(id), false)
-
 		if shared.hiders[id].isPropPlaced then
 			local aa,bb = GetBodyBounds(shared.hiders[id].propBody)
 			local center = VecLerp(aa, bb, 0.5)
@@ -430,6 +427,9 @@ function server.hiderUpdate(id)
 		if IsPointInWater(GetPlayerTransform(id).pos) then
 			SetPlayerHealth(GetPlayerHealth(id) - GetTimeStep()/10, id)
 		end
+
+		server.handlePlayerProp(id)
+		SetLightEnabled(GetFlashlight(id), false)
 	end
 end
 
