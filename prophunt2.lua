@@ -14,6 +14,7 @@ server.lobbySettings.amountHunters = 1
 server.lobbySettings.hunterBulletTimer = 0
 server.lobbySettings.pipeBombTimer = 0
 server.lobbySettings.bluetideTimer = 0
+server.lobbySettings.tauntReload = 0
 
 server.game = {}
 server.game.time = 0
@@ -26,6 +27,8 @@ server.game.hunterPIpeBombEnabled = true
 server.game.hunterFreed = false
 server.game.hunterHintTimer = 0
 server.game.tauntSnd = 0
+server.game.tauntReloadTimer = 30
+
 
 server.hunters = {}
 server.hunters.hunter = {}
@@ -51,11 +54,30 @@ client.hint = {}
 client.hint.closestPlayerHint = {}
 client.hint.closestPlayerHint.distance = 0
 client.hint.closestPlayerHint.timer = 0
+client.hint.closestPlayerHint.detailed = false
 
 client.hint.closestPlayerArrowHint = {}
 client.hint.closestPlayerArrowHint.transform = Transform()
 client.hint.closestPlayerArrowHint.timer = 0
 client.hint.closestPlayerArrowHint.player = 0
+
+client.hint.meow = {}
+client.hint.meow.timer = 0
+client.hint.tauntCooldown = 0
+
+client.finalHint = 0
+client.finalHintLerpDelay = 3
+
+client.camera = {}
+client.camera = {}
+client.camera.Rotation = Vec() -- Using a Vec instead of a quat so it doesn't cause any roll by mistake.
+
+client.camera.SM = {
+        pos = AutoSM_Define(Vec(), 2, 0.8, 1),      -- Inital Value, Frequency, Dampening, Response
+        rot = AutoSM_DefineQuat(Quat(), 2, 0.8, 1), -- Inital Value, Frequency, Dampening, Response
+    }
+
+client.camera.dist = 8
 
 function server.init()
 	RegisterTool("taunt", "taunt", "", 1)
@@ -90,6 +112,7 @@ function server.start(settings)
 	server.lobbySettings.pipeBombTimer = settings.pipeBombTimer
 	server.lobbySettings.bluetideTimer = settings.bluetideTimer
 	server.lobbySettings.hunterHinttimer = settings.hunterHinttimer
+	server.lobbySettings.tauntReload = settings.tauntReload
 
 	server.game.hunterHintTimer = settings.hunterHinttimer
 	--server.lobbySettings.joinHunters = settings.joinHunters
@@ -173,14 +196,20 @@ function server.tick(dt)
 		return
 	end
 
-	if #teamsGetTeamPlayers(1) == 0 and teamsIsSetup() and server.game.hunterFreed or GetPlayerCount() == 1 then
+	if InputPressed("k") then 
+		server.game.time = 60
+	end
+
+	if #teamsGetTeamPlayers(1) == 0 and teamsIsSetup() or GetPlayerCount() == 1  then
 		server.game.time = 0
+		server.game.hunterFreed = true
+		shared.game.hunterFreed = true
 	end
 
 	if #teamsGetTeamPlayers(2) == 0 and teamsIsSetup() then
 		local id = teamsGetTeamPlayers(1)[#teamsGetTeamPlayers(1)]
 
-		eventlogPostMessage({id, " Was moved to Hunter because all hunters left"  })
+		eventlogPostMessage({id, "Was moved to Hunter because all hunters left"  })
 		shared.hiders[id].dead = false
 		Delete(shared.hiders[id].propBody)
 		Delete(shared.hiders[id].propBackupShape)
@@ -228,6 +257,14 @@ function server.tick(dt)
 		end
 	end
 
+	if server.game.hunterFreed then
+		server.game.hunterHintTimer = server.game.hunterHintTimer - dt
+		if server.game.hunterHintTimer < 0 then
+			server.game.hunterHintTimer = server.lobbySettings.hunterHinttimer
+			server.TriggerHint()
+		end
+	end
+
 	countdownTick(dt, 0, false)
 
 	if server.game.hunterFreed then
@@ -242,7 +279,7 @@ end
 
 function newPlayerJoinRoutine()
 	for id in PlayersAdded() do
-
+		RespawnPlayer(id)
 	end
 end
 
@@ -252,7 +289,7 @@ function server.hunterTick(id)
 		server.game.hunterBulletTimer = server.game.hunterBulletTimer - dt
 		server.game.hunterPipeBombTimer = server.game.hunterPipeBombTimer - dt
 		server.game.bluetideTimer = server.game.bluetideTimer - dt
-		server.game.hunterHintTimer = server.game.hunterHintTimer - dt
+		
 
 		if server.game.hunterBulletTimer < 0 then
 			server.game.hunterBulletTimer = server.lobbySettings.hunterBulletTimer
@@ -270,10 +307,6 @@ function server.hunterTick(id)
 			SetToolAmmo("steroid", math.min(GetToolAmmo("steroid", id) + 1, 3), id)
 		end
 
-		if server.game.hunterHintTimer < 0 then
-			server.game.hunterHintTimer = server.lobbySettings.hunterHinttimer
-			server.TriggerHint()
-		end
 	end
 end
 
@@ -331,8 +364,21 @@ function server.TriggerHint()
 			end
 		end
 
+		local detail = false
+		if server.game.time < (server.lobbySettings.roundLength * 0.7) then 
+			local myPos = GetPlayerTransform(myId).pos[2]
+			-- if closestransform within 3 meters on z pos its level if higher its higher if lower its lower
+			if cloestTransform.pos[2] < myPos + 2.5 and cloestTransform.pos[2] > myPos - 2.5 then
+				detail = "and is level with you."
+			elseif cloestTransform.pos[2] < myPos then
+				detail = "and is above you."
+			else
+				detail = "and is bellow you."
+			end
+		end
+
 		if closestDist < math.huge then
-			ClientCall(myId, "client.hintShowCloestPlayer", math.floor(closestDist * 10) / 10, 5)
+			ClientCall(myId, "client.hintShowCloestPlayer", math.floor(closestDist * 10) / 10, 5, detail)
 		end
 
 		if server.game.time < (server.lobbySettings.roundLength * 0.7) and closestDist > 50 then
@@ -346,6 +392,26 @@ function server.hiderTick(id)
 	if teamsIsSetup() then
 		SetPlayerParam("healthRegeneration", false, id)
 		SetPlayerVehicle(0, id)
+
+		local dt = GetTimeStep()
+		server.game.tauntReloadTimer = server.game.tauntReloadTimer - dt
+
+		if server.game.tauntReloadTimer < 0 then
+			if server.game.forcedTaunt then
+				server.game.forcedTaunt = false
+				server.taunt(GetPlayerTransform(id).pos, id)
+				SetToolAmmo("taunt", 6, id)
+			end
+
+			server.game.tauntReloadTimer = server.lobbySettings.tauntReload
+			SetToolAmmo("taunt", math.min(GetToolAmmo("taunt", id) + 1, 10), id)
+			if GetToolAmmo("taunt", id) == 10 then
+				server.game.forcedTaunt = true
+			else
+				server.game.forcedTaunt = false
+			end
+		end
+
 		if shared.hiders[id].propBody ~= -1 then
 			SetPlayerHidden(id)
 			if not shared.hiders[id].isPropPlaced then
@@ -386,9 +452,9 @@ function disableBodyCollission(body, bool)
 	end
 end
 
-function server.taunt(pos)
+function server.taunt(pos, id)
 	--ClientCall(0, "client.playTaunt", pos)
-
+	SetToolAmmo("taunt", math.max(GetToolAmmo("taunt", id) - 3 ,1), id)
 	PlaySound(server.game.tauntSnd,pos,2,true,1)
 end
 
@@ -450,7 +516,7 @@ function server.handlePlayerProp(id)
 			disableBodyCollission(shared.hiders[id].propBody, true)
 
 			local shape = GetBodyShapes(shared.hiders[id].propBody)[1]
-			local x, y, z = GetShapeSize(shape)
+
 
 			local playerTransform = GetPlayerTransform(id)
 			local playerBhnd = TransformToParentVec(playerTransform, Vec(0, 0.5, 0))
@@ -597,6 +663,7 @@ end
 
 function client.init()
 	client.arrow = LoadSprite("assets/arrow.png")
+	client.rect = LoadSprite("gfx/white.png")
 end
 
 function client.tick()
@@ -627,17 +694,41 @@ function client.tick()
 	if teamsGetTeamId(GetLocalPlayer()) == 1 and teamsIsSetup() then
 		local body = shared.hiders[GetLocalPlayer()].propBody
 		if body ~= -1 then
-			local bodyT = GetBodyTransform(body)
-			local aa,bb = GetBodyBounds(body)
-			local center = VecLerp(aa, bb, 0.5)
+			if shared.hiders[GetLocalPlayer()].isPropPlaced then
+				local body_center = AutoBodyCenter(body)
+				local dt = GetTimeStep()
+				do -- Camera Rotation
+					local mouse_rotation = Vec(-InputValue("cameray") * 50, -InputValue("camerax") * 50)
+					client.camera.Rotation = VecAdd(client.camera.Rotation, mouse_rotation)
+					client.camera.Rotation[1] = AutoClamp(client.camera.Rotation[1], -89, -3)
 
-			local localCenter = TransformToLocalPoint(bodyT, center)
+					client.camera.dist = AutoClamp(client.camera.dist + InputValue("mousewheel") / -2, 2, 10)
 
-			local x,y,z = GetShapeSize(GetBodyShapes(body))
-			AttachCameraTo(body, true)
-			SetCameraOffsetTransform(Transform(Vec(localCenter[1],0,localCenter[3])), true)
-			SetCameraOffsetTransform(Transform(Vec(0, y/10 + 2 + y/5, z / 10 + 3 + z/5)),true)
+				end
+				local camera_rotation_quat = QuatEuler(unpack(client.camera.Rotation))
 
+				local target_position = VecCopy(body_center)
+				local outwards = QuatRotateVec(camera_rotation_quat, Vec(0, 0, 1))
+
+				QueryRejectBody(body)
+				local dir = VecNormalize(VecSub(AutoSM_Get(client.camera.SM.pos), body_center))
+				local hit, dist = QueryRaycast(body_center, dir, client.camera.dist, 0.2, false)
+
+				if hit then
+					dist = dist - 0.2
+				else
+					dist = client.camera.dist
+				end
+
+
+				target_position = VecAdd(target_position, VecScale(outwards, dist))
+
+					AutoSM_Update(client.camera.SM.pos, target_position, dt)
+				AutoSM_Update(client.camera.SM.rot, camera_rotation_quat, dt)
+
+				local sm_transform = Transform(AutoSM_Get(client.camera.SM.pos), AutoSM_Get(client.camera.SM.rot))
+				SetCameraTransform(sm_transform)
+			end
 		end
 
 		-- Hider Logic
@@ -654,8 +745,13 @@ end
 function client.update()
 	if teamsGetTeamId(GetLocalPlayer()) == 1 and teamsIsSetup() then
 		client.sendHideRequest()
-		if GetString("game.player.tool", GetLocalPlayer()) == "taunt" and InputPressed("usetool", GetLocalPlayer()) then
-			ServerCall("server.taunt", GetPlayerTransform(GetLocalPlayer()).pos)
+		if client.hint.tauntCooldown == 0 and GetString("game.player.tool", GetLocalPlayer()) == "taunt" and InputPressed("usetool", GetLocalPlayer()) then
+			ServerCall("server.taunt", GetPlayerTransform(GetLocalPlayer()).pos, GetLocalPlayer())
+			client.hint.tauntCooldown = 5
+		end
+
+		if client.hint.tauntCooldown > 0 then
+			client.hint.tauntCooldown = math.max(0, client.hint.tauntCooldown - GetTimeStep())
 		end
 	end
 end
@@ -747,10 +843,11 @@ function client.highlightClippingProps()
     end
 end
 
-function client.hintShowCloestPlayer(dist, timer)
+function client.hintShowCloestPlayer(dist, timer, detailed)
 	client.hint.closestPlayerHint = {}
 	client.hint.closestPlayerHint.distance = dist
 	client.hint.closestPlayerHint.timer = timer
+	client.hint.closestPlayerHint.detailed = detailed
 end
 
 function client.hintShowArrow(transform, player, timer)
@@ -762,10 +859,15 @@ end
 
 function client.showHint()
 	if client.hint.closestPlayerHint.timer > 0 then
+
+		local detail = ""
+		if client.hint.closestPlayerHint.detailed then detail =  client.hint.closestPlayerHint.detailed end
+
+
 		if teamsGetTeamId(GetLocalPlayer()) == 1 then
-			hudDrawInformationMessage("The closest hunter is " .. client.hint.closestPlayerHint.distance .. " meters away", 1)
+			hudDrawInformationMessage("The closest hunter is " .. client.hint.closestPlayerHint.distance .. " meters away ".. detail, 1)
 		else
-			hudDrawInformationMessage("The closest hider is " .. client.hint.closestPlayerHint.distance .. " meters away", 1)
+			hudDrawInformationMessage("The closest hider is " .. client.hint.closestPlayerHint.distance .. " meters away " .. detail, 1)
 		end
 
 		client.hint.closestPlayerHint.timer = client.hint.closestPlayerHint.timer - GetTimeStep()
@@ -828,11 +930,38 @@ function client.draw(dt)
 
 		spectateDraw()
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
+
+		client.tauntForce()
 	end
 
 	hudDrawScoreboard(InputDown("shift") and not matchEnded, "", {{name="Time Survived", width=160, align="center"}}, getPlayerStats())
 
 	if matchEnded then
+
+		for id in Players() do
+			if teamsGetTeamId(id) == 1 then
+
+				local camPos = GetCameraTransform().pos
+				local playerPos = GetPlayerTransform(id).pos
+
+				local xAxis = Vec(0, 1 ,0)
+				local zAxis = VecNormalize(VecSub(playerPos, camPos))
+
+				local quat = QuatAlignXZ(xAxis, zAxis) 
+
+				DrawSprite(client.rect, Transform(playerPos,quat), client.finalHint ,1.5 , 1,1,1,0.7, true, true, false)
+			end
+		end
+
+
+		if client.finalHintLerpDelay > 0 then
+			client.finalHintLerpDelay = client.finalHintLerpDelay - GetTimeStep()
+		else
+			client.finalHint = 2000
+		end
+
+		
+
 		hudDrawResults("Game Ended!", {1, 1, 1, 0.75}, "loc@RESULTS_TITLE_TEAM_DEATHMATCH", {{name="Time Survived", width=160, align="center"}}, getEndResults())
 	end
 
@@ -877,7 +1006,7 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.time",
 							label = "Round Length",
 							info = "How long one round lasts",
-							options = { { label = "05:00", value = 5 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 90 } }
+							options = { { label = "05:00", value = 5 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 3*60 } }
 						},
 						{
 							key = "savegame.mod.settings.hideTime",
@@ -938,8 +1067,14 @@ function client.SetupScreen(dt)
 							label = "Bluetide Reload",
 							info =
 							"How quickly hunters get new Bluetides.",
-							options = { { label = "20 Seconds", value = 20},  { label = "30 Seconds", value = 30}, { label = "40 Seconds", value = 40}, { label = "50 Seconds", value = 50}, { label = "60 Seconds", value = 60}, { label = "Disable PipeBombs", value = -1}, { label = "10 Seconds", value = 10},   }
+							options = { { label = "20 Seconds", value = 20},  { label = "30 Seconds", value = 30}, { label = "40 Seconds", value = 40}, { label = "50 Seconds", value = 50}, { label = "60 Seconds", value = 60}, { label = "Disable BlueTide", value = -1}, { label = "10 Seconds", value = 10},   }
 						},
+						{
+							key = "savegame.mod.settings.tauntReload",
+							label = "Forced taunt",
+							info ="Players get a taunt every X seconds. After reaching 10 they will be forced to taunt. Configure how quickly a player Recieves a new taunt.",
+							options = { { label = "10 Seconds", value = 10},  { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "60 Seconds", value = 60}, { label = "Disable Forced Taunt", value = 1000000}   }
+						}
 					}
 				}
 			}
@@ -956,6 +1091,7 @@ function client.SetupScreen(dt)
 					pipeBombTimer = GetInt("savegame.mod.settings.pipeBombTimer"),
 					bluetideTimer = GetInt("savegame.mod.settings.blueTide"),
 					hunterHinttimer = GetInt("savegame.mod.settings.hintTimer"),
+					tauntReload = GetInt("savegame.mod.settings.tauntReload"),
 				--joinHunters = GetInt("savegame.mod.settings.joinHunters")
 				})
 			end
@@ -983,6 +1119,18 @@ function playerGetLookAtShape(dist, playerID, cameraT)
 	else
 		return -1
 	end
+end
+
+function client.tauntForce()
+	UiPush()
+	UiColor(1,1,1)
+	UiTranslate(UiWidth()/2, UiHeight()-120)
+	UiFont("bold.ttf",30)
+	UiAlign('center middle')
+	if GetToolAmmo("taunt", GetLocalPlayer()) >= 7 then
+		UiText("If you get 10 taunts, the game will taunt for you! Already " .. GetToolAmmo("taunt", GetLocalPlayer()) .. " taunts!")
+	end
+	UiPop()
 end
 
 function makePlayerInvisible(bool)
