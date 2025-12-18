@@ -196,15 +196,22 @@ function server.tick(dt)
 		return
 	end
 
-	if InputPressed("k") then 
-		server.game.time = 60
-	end
+	--if InputPressed("k") then 
+	--	server.game.time = 60
+	--end
+
+	spawnTick(dt, teamsGetPlayerTeamsList())
+	eventlogTick(dt)
+	countdownTick(dt, 0, false)
+
 
 	if #teamsGetTeamPlayers(1) == 0 and teamsIsSetup() or GetPlayerCount() == 1  then
 		server.game.time = 0
 		server.game.hunterFreed = true
 		shared.game.hunterFreed = true
+		return
 	end
+
 
 	if #teamsGetTeamPlayers(2) == 0 and teamsIsSetup() then
 		local id = teamsGetTeamPlayers(1)[#teamsGetTeamPlayers(1)]
@@ -225,26 +232,24 @@ function server.tick(dt)
 	end
 
 	server.deadTick()
-	spawnTick(dt, teamsGetPlayerTeamsList())
-	eventlogTick(dt)
 
-	for id in Players() do
-		if server.game.hunterFreed == false and teamsGetTeamId(id) == 2 then
-			local count = GetEventCount("countdownFinished")
-			local data, finished = GetEvent("countdownFinished", 1)
+	if server.game.hunterFreed == false then
+		local data, finished = GetEvent("countdownFinished", 1)
 
-			if data == "hidersHiding" and finished then
+		for id in Players() do
+			if teamsGetTeamId(id) == 2 then
+				if data == "hidersHiding" and finished then
+					spawnRespawnPlayer(id)
 
-				spawnRespawnPlayer(id)
+					server.game.hunterFreed = true
+					shared.game.hunterFreed = true
 
-				server.game.hunterFreed = true
-				shared.game.hunterFreed = true
-
-				eventlogPostMessage({ "loc@EVENT_GLHF" })
-			else
-				SetPlayerTransform(Transform(Vec(0, 10000, 0)), id)
-				SetPlayerVelocity(Vec(0, 0, 0), id)
-				DisablePlayer(id)
+					eventlogPostMessage({ "loc@EVENT_GLHF" })
+				else
+					SetPlayerTransform(Transform(Vec(0, 10000, 0)), id)
+					SetPlayerVelocity(Vec(0, 0, 0), id)
+					DisablePlayer(id)
+				end
 			end
 		end
 	end
@@ -265,7 +270,6 @@ function server.tick(dt)
 		end
 	end
 
-	countdownTick(dt, 0, false)
 
 	if server.game.hunterFreed then
 		server.game.time = server.game.time - dt  -- update time
@@ -278,8 +282,30 @@ function server.tick(dt)
 end
 
 function newPlayerJoinRoutine()
+	local loadout = {{ "gun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }}
 	for id in PlayersAdded() do
-		RespawnPlayer(id)
+		spawnRespawnPlayer(id)
+
+		if loadout ~= nil then
+			local tools = ListKeys("game.tool")
+			for ti=1, #tools do
+				local tool = tools[ti]
+				SetToolEnabled(tool, false, player)
+				SetToolAmmo(tool, 0, id)
+			end
+
+			for i=1,#loadout do
+				SetToolEnabled(loadout[i][1], true, id)
+				SetToolAmmo(loadout[i][1], loadout[i][2], id)
+			end
+
+			-- make the first tool in loadout the active tool
+			if #loadout > 0 then
+				SetPlayerTool(loadout[1][1], id)
+			else
+				SetPlayerTool("none", id)
+			end
+		end
 	end
 end
 
@@ -370,7 +396,7 @@ function server.TriggerHint()
 			-- if closestransform within 3 meters on z pos its level if higher its higher if lower its lower
 			if cloestTransform.pos[2] < myPos + 2.5 and cloestTransform.pos[2] > myPos - 2.5 then
 				detail = "and is level with you."
-			elseif cloestTransform.pos[2] < myPos then
+			elseif cloestTransform.pos[2] > myPos then
 				detail = "and is above you."
 			else
 				detail = "and is below you."
@@ -892,7 +918,7 @@ function client.showHint()
 			client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()*10
 		end
 
-    	client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()/2
+    	client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()
     end
 end
 
@@ -901,6 +927,7 @@ function client.draw(dt)
 
 	hudDrawTitle(dt, "Prophunt!")
 	hudDrawBanner(dt)
+	hudTick(dt)
 
 	local matchEnded = shared.game.time <= 0.0
 
@@ -919,6 +946,7 @@ function client.draw(dt)
 			hudDrawGameModeHelpText("You are a Hider", "Search a prop and press ( E ) to transform. And press ( F ) to hide.")
 		elseif teamsGetTeamId(GetLocalPlayer()) == 2 then
 			hudDrawGameModeHelpText("You are a Hunter", "Search players! Shoot at props, if you find a hider make sure to kill them.")
+			hudDrawPlayerWorldMarkers(teamsGetTeamPlayers(2), false, 100, teamsGetColor(2))
 		end
 
 		if shared.game.hunterFreed then
@@ -927,8 +955,6 @@ function client.draw(dt)
 
 			client.showHint()
 		end
-
-		hudDrawPlayerWorldMarkers(teamsGetTeamPlayers(2), false, 100, teamsGetColor(2))
 
 		spectateDraw()
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
@@ -1075,7 +1101,7 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.tauntReload",
 							label = "Forced taunt",
 							info ="Players get a taunt every X seconds. After reaching 10 they will be forced to taunt. Configure how quickly a player Recieves a new taunt.",
-							options = { { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "60 Seconds", value = 60}, { label = "Disable Forced Taunt", value = 1000000} ,{ label = "10 Seconds", value = 10},   }
+							options = { { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "60 Seconds", value = 60}, { label = "Disable Forced Taunt", value = 1000000} ,{ label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15}  }
 						}
 					}
 				}
