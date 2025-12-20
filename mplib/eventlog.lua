@@ -60,6 +60,7 @@ function eventlogPostMessage(items, time)
         local item = items[j]
         local itemType = type(item)
 
+
         if itemType == "number" then
             local playerId = item
             item = {playerId = playerId}
@@ -137,7 +138,7 @@ function eventlogDraw(dt, playerColors)
     for i=1, #client.messages do
         local alpha = 1.0
         local message = client.messages[i]
-        local r,g,b = 1,1,1
+        local r,g,b = 0.8,0.8,0.8
         if message.time < 0.5 then
             alpha = message.time * 2.0
         end
@@ -217,7 +218,11 @@ function _drawItem(item, margin, gap)
         UiColor(0, 0, 0, 0.75)
     end
 
-    UiRoundedRect(width, 32, 4)
+    if teamsGetTeamId(item.playerId) ~= 0 then 
+        UiRoundedRect(width, 32, 4)
+    end
+
+    
 
     UiTranslate(0, 16)
     UiAlign("left middle")
@@ -229,6 +234,7 @@ function _drawItem(item, margin, gap)
             UiColor(COLOR_WHITE)
         end
         UiTranslate(2, 0)
+
         _drawItemIcon(item.icon, 28, 28, 4)
         UiTranslate(30 + gap, 0)
     else
