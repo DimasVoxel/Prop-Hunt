@@ -42,7 +42,6 @@ shared.hiders = {}
 shared.game = {}
 shared.game.time = 0
 shared.game.hunterFreed = false
-shared.game.nextHint = 0
 shared.game.enableSizeLimits = true
 
 shared.stats = {}
@@ -122,7 +121,7 @@ function server.start(settings)
 	server.lobbySettings.tauntReload = settings.tauntReload
 	server.lobbySettings.midGameJoin = settings.midGameJoin
 	server.lobbySettings.hiderHunters = settings.hiderHunters
-	DebugPrint(settings.hiderHunters.. "what")
+
 	server.lobbySettings.hints = settings.hints
 	server.lobbySettings.enableSizeLimits = settings.enableSizeLimits
 
@@ -139,6 +138,9 @@ function server.start(settings)
 
 	teamsStart(false)
 
+	server.disableSandbox()
+	SetBool("level.sandbox.disabled", false, true)
+
 	for id in Players() do
 		shared.hiders[id] = {}
 		shared.hiders[id].propBody = -1
@@ -149,6 +151,15 @@ function server.start(settings)
 
 		server.hunters[id] = {}
 	end
+end
+
+function server.disableSandbox()
+	SetBool("level.sandbox", false, true)
+	SetBool("level.unlimitedammo", false, true)
+	SetBool("level.spawn", false, true)
+	SetBool("level.creative", false, true)
+
+	sandboxEnabled = false
 end
 
 function server.deadTick()
@@ -164,7 +175,6 @@ function server.deadTick()
 				shared.hiders[id] = {}
 				server.game.respawnQueue[id] = true
 
-				DebugPrint(server.lobbySettings.hiderHunters)
 				if server.lobbySettings.hiderHunters == 1 then
 					teamsAssignToTeam(id, 2)
 				else
@@ -293,28 +303,29 @@ function server.tick(dt)
 
 	for id in Players() do
 
-		-- build a quick lookup table for loadout tools
-		local loadout = {}
-		if teamsGetTeamId(id) == 1 then
-			loadout = { {"taunt", 1 } }
-		elseif teamsGetTeamId(id) == 2 then
-			loadout = { { "gun", 3 }, { "pipebomb", 0 }, { "steroid", 0 } }
-		end
-
-		local loadoutSet = {}
-		for i = 1, #loadout do
-			loadoutSet[loadout[i][1]] = true
-		end
-
-		local tools = ListKeys("game.tool") or {}
-		for ti = 1, #tools do
-			local tool = tools[ti]
-			-- only disable tools NOT in the loadout
-			if not loadoutSet[tool] then
-				SetToolEnabled(tool, false, id)
-				SetToolAmmo(tool, 0, id)
-			end
-		end
+		-- This seems to lag the game A LOT 
+		---- build a quick lookup table for loadout tools
+		--local loadout = {}
+		--if teamsGetTeamId(id) == 1 then
+		--	loadout = { {"taunt", 1 } }
+		--elseif teamsGetTeamId(id) == 2 then
+		--	loadout = { { "gun", 3 }, { "pipebomb", 0 }, { "steroid", 0 } }
+		--end
+--
+		--local loadoutSet = {}
+		--for i = 1, #loadout do
+		--	loadoutSet[loadout[i][1]] = true
+		--end
+--
+		--local tools = ListKeys("game.tool") or {}
+		--for ti = 1, #tools do
+		--	local tool = tools[ti]
+		--	-- only disable tools NOT in the loadout
+		--	if not loadoutSet[tool] then
+		--		SetToolEnabled(tool, false, id)
+		--		SetToolAmmo(tool, 0, id)
+		--	end
+		--end
 
 		if teamsGetTeamId(id) == 1 then
 			server.hiderTick(id)
@@ -344,7 +355,6 @@ end
 
 function newPlayerJoinRoutine()
 	for id in PlayersAdded() do
-		DebugPrint(id)
 		if teamsIsSetup() then
 			if server.lobbySettings.midGameJoin == 1 then
 				spawnRespawnPlayer(id)
@@ -534,6 +544,10 @@ function server.hiderTick(id)
 
 		if shared.hiders[id].propBody ~= -1 then
 			SetPlayerHidden(id)
+			if GetPlayerGrabBody() == shared.hiders[id].propBody then
+				ReleasePlayerGrab()
+			end
+			
 			if not shared.hiders[id].isPropPlaced then
 				SetPlayerParam("collisionMask", 255 - 4, id)
 			else
@@ -546,7 +560,10 @@ function server.hiderTick(id)
 
 				local aa,bb = GetBodyBounds(shared.hiders[id].propBody)
 				local center = VecLerp(aa, bb, 0.5)
-				SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
+
+				if VecLength(VecSub(GetPlayerTransform(id).pos, center)) > 2 then
+					SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
+				end
 
 				server.propRegenerate(id, shared.hiders[id].propBackupShape)
 				shared.hiders[id].isPropPlaced = false
@@ -1396,7 +1413,7 @@ function getPlayerStats()
 		{
 			name = "Spectators",
 			color = {0.8,0.8,0.8},
-			rows = "spectators"
+			rows = spectators
 		}
 	}
 
