@@ -142,7 +142,6 @@ function spectateTick(playerList)
 				and teamsGetTeamId(p) ~= 1
 				and teamsGetTeamId(p) ~= 3 -- Cant specatate other spectators
 			then
-				DebugPrint(i)
 				seen[p] = true
 				filtered[#filtered + 1] = p
 			end
@@ -205,7 +204,6 @@ function spectateDraw()
 
     if InputPressed("lmb") then
         _switchPlayer(true)
-		DebugPrint("switch")
     elseif InputPressed("rmb") then
         _switchPlayer(false)
     end
