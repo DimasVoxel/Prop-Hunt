@@ -31,6 +31,7 @@ server.game.hunterFreed = false
 server.game.hunterHintTimer = 0
 server.game.tauntSnd = 0
 server.game.tauntReloadTimer = 30
+server.game.lastHint = false
 
 server.hunters = {}
 server.hunters.hunter = {}
@@ -340,9 +341,12 @@ function server.tick(dt)
 		end
 	end
 
-	if server.game.hunterFreed then
+	if server.game.hunterFreed and server.lobbySettings.hints == 1 then
 		server.game.hunterHintTimer = server.game.hunterHintTimer - dt
-		if server.game.hunterHintTimer < 0 then
+		if server.game.hunterHintTimer < 0 or server.game.time < 30 and server.game.lastHint == false then
+			if server.game.time < 30 then
+				server.game.lastHint = true
+			end
 			server.game.hunterHintTimer = server.lobbySettings.hunterHinttimer
 			for id in Players() do 
 				if teamsGetTeamId(id) == 2 then 
@@ -439,7 +443,7 @@ function server.circleHint()
     if #hiders == 1 and timeLeft <= 60 then
         radius = 25 + #teamsGetTeamPlayers(2) * 2 
     elseif timeLeft > 120 then      -- between 3 and 2 minutes left
-        radius = 50
+        radius = 60
     elseif timeLeft > 60 then       -- between 2 and 1 minutes left
         radius = 35
     else                            -- last minute
@@ -1415,6 +1419,12 @@ function client.SetupScreen(dt)
 							options = {    { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -1}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30}, { label = "45 Seconds", value = 45}}
 						},
 						{
+							key = "savegame.mod.settings.hints",
+							label = "Hunter Hints",
+							info ="Enable or disable hints.",
+							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+						},
+						{
 							key = "savegame.mod.settings.bulletTimer",
 							label = "Bullet Reload",
 							info =
@@ -1440,12 +1450,6 @@ function client.SetupScreen(dt)
 							label = "Forced taunt",
 							info ="Players get a taunt every X seconds. After reaching 10 they will be forced to taunt. Configure how quickly a player Recieves a new taunt.",
 							options = { { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "60 Seconds", value = 60}, { label = "Disable Forced Taunt", value = 1000000} ,{ label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15}  }
-						},
-						{
-							key = "savegame.mod.settings.hints",
-							label = "Hunter Hints",
-							info ="Enable or disable hints.",
-							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
 							key = "savegame.mod.settings.enableSizeLimits",
