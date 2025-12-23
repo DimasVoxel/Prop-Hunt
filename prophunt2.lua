@@ -59,7 +59,6 @@ client.game.hider.lookAtShape = -1
 client.game.hider.hiderOutline = {}
 client.game.hider.triedHiding = false
 
-
 client.hint = {}
 client.hint.closestPlayerHint = {}
 client.hint.closestPlayerHint.distance = 0
@@ -70,7 +69,6 @@ client.hint.closestPlayerArrowHint = {}
 client.hint.closestPlayerArrowHint.transform = Transform()
 client.hint.closestPlayerArrowHint.timer = 0
 client.hint.closestPlayerArrowHint.player = 0
-
 
 client.hint.meow = {}
 client.hint.meow.timer = 0
@@ -358,11 +356,16 @@ function server.tick(dt)
 			server.circleHint()
 		end
 		
-		for i=1, #shared.game.hint.circleHint do
-			if shared.game.hint.circleHint[i].timer > 0 then
-				shared.game.hint.circleHint[i].timer = shared.game.hint.circleHint[i].timer - dt
-			else
-				table.remove(shared.game.hint.circleHint, i)
+		local hints = shared.game.hint.circleHint
+		for i = #hints, 1, -1 do
+			local hint = hints[i]
+			if hint and hint.timer then
+				local t = hint.timer - dt
+				if t <= 0 then
+					table.remove(hints, i)
+				else
+					hint.timer = t
+				end
 			end
 		end
 	end
@@ -472,11 +475,9 @@ function server.circleHint()
 			local offsetZ = (math.random() - math.random() - math.random()) * (maxOffset / 1.5) * 0.8
 
 
-			local _,bb = GetBodyBounds(GetWorldBody())
-
 			local hintPos = {
                 hiderTransform.pos[1] + offsetX,
-                bb[2],       -- Keep Y (height) the same
+                hiderTransform.pos[2] + 40 + math.random(-5,5),
                 hiderTransform.pos[3] + offsetZ
             }
 
@@ -489,7 +490,6 @@ function server.circleHint()
 		end
     end
 end
-
 
 
 
@@ -748,11 +748,12 @@ function server.hiderTick(id)
 				SetPlayerParam("walkingSpeed", 0, id)
 			end
 
+			local aa,bb = GetBodyBounds(shared.hiders[id].propBody)
+			local center = VecLerp(aa, bb, 0.5)
+
 			if IsBodyBroken(shared.hiders[id].propBody) then
 				SetPlayerHealth(GetPlayerHealth(id) - 0.33, id)
 
-				local aa,bb = GetBodyBounds(shared.hiders[id].propBody)
-				local center = VecLerp(aa, bb, 0.5)
 
 				if VecLength(VecSub(GetPlayerTransform(id).pos, center)) > 2 then
 					SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
@@ -763,8 +764,12 @@ function server.hiderTick(id)
 				ClientCall(0, "client.highlightPlayer", shared.hiders[id].propBody)
 			end
 
-			if IsPointInBoundaries(GetPlayerTransform(id).pos) then
+			if IsPointInBoundaries(center) == false then
+				shared.hiders[id].isPropPlaced = false
 
+				if VecLength(VecSub(GetPlayerTransform(id).pos, center)) > 2 then
+					SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
+				end
 			end
 		end
 	end
@@ -814,14 +819,16 @@ function server.hiderUpdate(id)
 		if shared.hiders[id].isPropPlaced then
 			local aa,bb = GetBodyBounds(shared.hiders[id].propBody)
 			local center = VecLerp(aa, bb, 0.5)
-			if IsPointInWater(center) or InputDown('down', id) or InputDown('up', id) or InputDown('left', id) or InputDown('right', id) or InputDown('jump', id) then
+			if (IsPointInWater(center) or InputDown('down', id) or InputDown('up', id) or InputDown('left', id) or InputDown('right', id) or InputDown('jump', id)) and shared.hiders[id].isPropPlaced == true then
 				shared.hiders[id].isPropPlaced = false
 				SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.2, 0)),GetPlayerCameraTransform(id).rot), id)
+
+				hudShowBanner("Water will damage you, get out as soon as you can.", {0,0,0})
 			end
 		end
 
 		if IsPointInWater(GetPlayerTransform(id).pos) then
-			SetPlayerHealth(GetPlayerHealth(id) - GetTimeStep()/10, id)
+			SetPlayerHealth(GetPlayerHealth(id) - GetTimeStep()/15, id)
 		end
 
 		server.handlePlayerProp(id)
@@ -1025,7 +1032,7 @@ function client.hiderTick()
 			if client.game.hider.hiderOutline[i].timer > 0 then
 				client.game.hider.hiderOutline[i].timer = client.game.hider.hiderOutline[i].timer - GetTimeStep()
 				DrawBodyHighlight(client.game.hider.hiderOutline[i].body, client.game.hider.hiderOutline[i].timer)
-				DrawBodyOutline(client.game.hider.hiderOutline[i].body,1,0,0, client.game.hider.hiderOutline[i].timer/4)
+				DrawBodyOutline(client.game.hider.hiderOutline[i].body,1,0,0, client.game.hider.hiderOutline[i].timer/2)
 			end
 		end
 
@@ -1279,11 +1286,11 @@ function client.draw(dt)
 	if not client.game.matchEnded then
 		if teamsGetTeamId(GetLocalPlayer()) == 1 then
 			client.clippingText()
-			hudDrawGameModeHelpText("You are a Hider", "Search a prop and press ( E ) to transform. And press ( F ) to hide.")
+			hudDrawGameModeHelpText("You are a Hider", "Search a prop and press ( E ) to transform. And press ( F ) to hide. Water will kill you!")
 		elseif teamsGetTeamId(GetLocalPlayer()) == 2 then
 			hudDrawGameModeHelpText("You are a Hunter", "Search players! Shoot at props, if you find a hider make sure to kill them.")
 			hudDrawPlayerWorldMarkers(teamsGetTeamPlayers(2), false, 100, teamsGetColor(2))
-		end
+		end 
 
 		if shared.game.hunterFreed then
 			hudDrawTimer(shared.game.time, 1)
