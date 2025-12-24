@@ -1,9 +1,175 @@
 function client.draw(dt)
-    -- In the beginning of the game draw Title and banner
+	hudTick(dt)
+	eventlogDraw(dt, teamsGetPlayerColorsList())
+
+    if not gameInit(dt) then return end -- Dont Proceed while game is not setup
+
+	if isGameEnded() then 
+		client.revealHiderSpots()
+		-- TODO: Game Ended should be replaced with a text who actually won or if everyone left something akin to "Hiders Left"
+		hudDrawResults("Game Ended!", {1, 1, 1, 0.75}, "loc@RESULTS_TITLE_TEAM_DEATHMATCH", {{name="Time Survived", width=160, align="center"}}, getEndResults())
+		return
+	end
+
+	hudDrawScoreboard(InputDown("shift") and not isGameEnded(), "", {{name="Time Survived", width=160, align="center"}}, getPlayerStats())
+
+	if shared.countdownName == "hidersHiding" then
+		countdownDraw("Hider are Hiding!")
+	end
+
+	if isPlayerHunter() then
+		client.hunterDraw()
+	elseif isPlayerHider() then
+		client.hiderDraw()
+	else
+		client.spectator()
+	end
+
+	if isHunterRelased() and not isGameEnded() then
+		hudDrawTimer(shared.game.time, 1)
+		hudDrawScore2Teams(teamsGetColor(1), "Hiders ".. #teamsGetTeamPlayers(1), teamsGetColor(2), #teamsGetTeamPlayers(2) .. " Hunters", 1)
+
+		client.showHint()
+		spectateDraw()
+	end
+end
+
+function gameInit(dt)
+	-- In the beginning of the game draw Title and banner
     hudDrawBanner(dt)
     hudDrawTitle(dt, "Prophunt!")
-    -- If Setup not complete dont proceed
-    if not client.SetupScreen(dt) then return end 
+
+	return client.SetupScreen(dt)
+end
+
+function client.hunterDraw()
+	-- Draws The Image While hunters Wait
+
+	if not isGameEnded() then
+		if isPlayerHunter() and not isHunterRelased() then
+			UiImageBox("assets/placeholder.png", UiWidth(), UiHeight(), 0,0)
+		end
+
+		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
+		hudDrawGameModeHelpText("You are a Hunter", "Search players! Shoot at props, if you find a hider make sure to kill them.")
+		hudDrawPlayerWorldMarkers(teamsGetTeamPlayers(2), false, 100, teamsGetColor(2))
+	end
+end
+
+function client.hiderDraw()
+	if not isGameEnded() then
+
+		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
+		hudDrawGameModeHelpText("You are a Hider", "Search a prop and press ( E ) to transform. And press ( F ) to hide. Water will kill you!")
+		client.clippingText()
+		client.tauntForce()
+
+		client.DrawTransformPrompt()
+	end
+end
+
+function client.DrawTransformPrompt()
+	if client.game.hider.lookAtShape ~= -1 then
+
+		local boundsAA, boundsBB = GetBodyBounds(GetShapeBody(client.game.hider.lookAtShape))
+		local middle = VecLerp(boundsAA, boundsBB, 0.5)
+		AutoTooltip("Transform Into Prop (E)", middle, false, 40, 1)
+	end
+end
+
+function client.tauntForce()
+	UiPush()
+	UiColor(1,1,1)
+	UiTranslate(UiWidth()/2, UiHeight()-120)
+	UiFont("bold.ttf",30)
+	UiAlign('center middle')
+	if GetToolAmmo("taunt", GetLocalPlayer()) >= 7 then
+		UiText("If you get 10 taunts, the game will taunt for you! Already " .. GetToolAmmo("taunt", GetLocalPlayer()) .. " taunts!")
+	end
+	UiPop()
+end
+
+function client.clippingText()
+	UiPush()
+	UiColor(1,1,1)
+	UiTranslate(UiWidth()/2, UiHeight()-160)
+	UiFont("bold.ttf",30)
+	UiAlign('center middle')
+	if client.game.hider.triedHiding then
+		UiText("You're clipping into " .. #checkPropClipping(GetLocalPlayer()) .. " shapes. Can't hide.")
+	end
+	UiPop()
+end
+
+function client.showHint()
+	if client.hint.closestPlayerHint.timer > 0 then
+		if client.hint.closestPlayerHint.detailed then detail =  client.hint.closestPlayerHint.detailed end
+		hudDrawInformationMessage(client.hint.closestPlayerHint.message)
+		client.hint.closestPlayerHint.timer = client.hint.closestPlayerHint.timer - GetTimeStep()
+	end
+
+    if client.hint.closestPlayerArrowHint.timer > 0 then
+		local pos
+		if teamsGetTeamId(GetLocalPlayer()) == 1 then
+			pos = TransformToParentPoint(GetPlayerTransform(client.hint.closestPlayerArrowHint.player), Vec(0,1, -2))
+		elseif  teamsGetTeamId(GetLocalPlayer()) == 2 then
+			pos = TransformToParentPoint(GetPlayerTransform(GetLocalPlayer()), Vec(0,1, -2))
+		end
+
+		local rot = QuatAlignXZ(VecNormalize(VecSub(pos, client.hint.closestPlayerArrowHint.transform.pos)), VecNormalize(VecSub(pos, GetCameraTransform().pos)))
+		DrawSprite(client.arrow, Transform(pos, rot), 0.7, 0.7, 0.7 ,0.7,1,1,1,false,false,false)
+
+		if VecLength(VecSub(pos, client.hint.closestPlayerArrowHint.transform.pos)) < 40 then
+			client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()*10
+		end
+
+    	client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()
+    end
+
+	-- Loop through all circle hints. Remove after they expire but not in the same loop
+	for i=1, #shared.game.hint.circleHint do
+		if shared.game.hint.circleHint[i].timer > 0 then
+			for j=1, 5 do
+				local c = j
+				if j % 2 == 0 then c = j*-1 end
+				local rot = QuatRotateQuat(QuatAxisAngle(Vec(0,1,0), GetTime()*c), shared.game.hint.circleHint[i].transform.rot)
+				local pos = VecAdd(shared.game.hint.circleHint[i].transform.pos, Vec(0, -j, 0))
+				DrawSprite(client.circle, Transform(pos, rot), shared.game.hint.circleHint[i].radius, shared.game.hint.circleHint[i].radius, 1 , 0, 0, shared.game.hint.circleHint[i].timer/30 , false, false, false)
+			end
+		end
+	end
+end
+
+function client.spectator()
+	UiPush()
+	UiColor(1,1,1)
+	UiTranslate(UiWidth()/2, UiHeight()-190)
+	UiFont("bold.ttf",30)
+	UiAlign('center middle')
+	UiText("You were found, or joining midgame is disabled. You will join after this round ends.")
+	UiPop()
+end
+
+function client.revealHiderSpots()
+	for id in Players() do
+		if teamsGetTeamId(id) == 1 then
+			local camPos = GetCameraTransform().pos
+			local playerPos = GetPlayerTransform(id).pos
+
+			local xAxis = Vec(0, 1 ,0)
+			local zAxis = VecNormalize(VecSub(playerPos, camPos))
+
+			local quat = QuatAlignXZ(xAxis, zAxis) 
+
+			DrawSprite(client.rect, Transform(playerPos,quat), client.finalHint ,1.5 , 1,1,1,0.7, true, true, false)
+		end
+	end
+
+	if client.finalHintLerpDelay > 0 then
+		client.finalHintLerpDelay = client.finalHintLerpDelay - GetTimeStep()
+	else
+		client.finalHint = 2000
+	end
 end
 
 function client.SetupScreen(dt)
@@ -25,7 +191,7 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.time",
 							label = "Round Length",
 							info = "How long one round lasts",
-							options = { { label = "05:00", value = 5 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 90 } }
+							options = { { label = "05:00", value = 5 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 3*60 } }
 						},
 						{
 							key = "savegame.mod.settings.hideTime",
@@ -33,12 +199,18 @@ function client.SetupScreen(dt)
 							info = "How much time hiders have to hide",
 							options = {{ label = "00:30", value = 30}, { label = "00:45", value = 45 }, { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 },  }
 						},
-						--{ # There is no spectator mode
-						--	key = "savegame.mod.settings.joinHunters",
-						--	label = "Hider Hunters",
-						--	info = "Makes the hiders join the hunters once found.",
-						--	options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
-						--},
+						{
+							key = "savegame.mod.settings.hiderHunters",
+							label = "Hider Hunters",
+							info = "Makes the hiders join the hunters once found.",
+							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+						},
+						{
+							key = "savegame.mod.settings.midGameJoin",
+							label = "Mid game join",
+							info = "Players joining during a round will join the hunters..",
+							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+						},
 						{
 							key = "savegame.mod.settings.hunters",
 							label = "Hunters Amount",
@@ -68,6 +240,12 @@ function client.SetupScreen(dt)
 							options = {    { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -1}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30}, { label = "45 Seconds", value = 45}}
 						},
 						{
+							key = "savegame.mod.settings.hints",
+							label = "Hunter Hints",
+							info ="Enable or disable hints.",
+							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+						},
+						{
 							key = "savegame.mod.settings.bulletTimer",
 							label = "Bullet Reload",
 							info =
@@ -86,8 +264,26 @@ function client.SetupScreen(dt)
 							label = "Bluetide Reload",
 							info =
 							"How quickly hunters get new Bluetides.",
-							options = { { label = "20 Seconds", value = 20},  { label = "30 Seconds", value = 30}, { label = "40 Seconds", value = 40}, { label = "50 Seconds", value = 50}, { label = "60 Seconds", value = 60}, { label = "Disable PipeBombs", value = -1}, { label = "10 Seconds", value = 10},   }
+							options = { { label = "20 Seconds", value = 20},  { label = "30 Seconds", value = 30}, { label = "40 Seconds", value = 40}, { label = "50 Seconds", value = 50}, { label = "60 Seconds", value = 60}, { label = "Disable BlueTide", value = -1}, { label = "10 Seconds", value = 10},   }
 						},
+						{
+							key = "savegame.mod.settings.tauntReload",
+							label = "Forced taunt",
+							info ="Players get a taunt every X seconds. After reaching 10 they will be forced to taunt. Configure how quickly a player Recieves a new taunt.",
+							options = { { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "60 Seconds", value = 60}, { label = "Disable Forced Taunt", value = 1000000} ,{ label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15}  }
+						},
+						{
+							key = "savegame.mod.settings.enableSizeLimits",
+							label = "Size Limits",
+							info ="Enable Size limits.",
+							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+						},
+						{
+							key = "savegame.mod.settings.friendlyFire",
+							label = "Kick Friendly Fire",
+							info ="If enabled players that kill too many players will be kicked.",
+							options = { { label = "Disable", value = 0 }, { label = "Enable", value = 1 } }
+						}
 					}
 				}
 			}
@@ -104,11 +300,131 @@ function client.SetupScreen(dt)
 					pipeBombTimer = GetInt("savegame.mod.settings.pipeBombTimer"),
 					bluetideTimer = GetInt("savegame.mod.settings.blueTide"),
 					hunterHinttimer = GetInt("savegame.mod.settings.hintTimer"),
-				--joinHunters = GetInt("savegame.mod.settings.joinHunters")
+					tauntReload = GetInt("savegame.mod.settings.tauntReload"),
+					hiderHunters = GetInt("savegame.mod.settings.hiderHunters"),
+					midGameJoin = GetInt("savegame.mod.settings.midGameJoin"),
+					hints = GetInt("savegame.mod.settings.hints"),
+					enableSizeLimits = GetInt("savegame.mod.settings.enableSizeLimits"),
+					friendlyFire = GetInt("savegame.mod.settings.friendlyFire")
 				})
 			end
 		end
 		return false
 	end
 	return true
+end
+
+
+function getPlayerStats() -- This is for the Shift button scoreboard
+	local stats
+	local hunterTable = {}
+	local hiderTable = {}
+	local spectators = {}
+
+	for id in Players() do
+		if teamsGetTeamId(id) == 2 then
+			hunterTable[#hunterTable+1] = {
+				player = id,
+				columns = { "Hunter" }
+			}
+		end
+
+		if teamsGetTeamId(id) == 1 then
+			hiderTable[#hiderTable+1] = {
+				player = id,
+				columns = { "Not Found"}
+			}
+		end
+	end
+
+	for i = 1, #shared.stats.wasHider do
+		hiderTable[#hiderTable+1] = {
+			player = shared.stats.wasHider[i][1],
+			columns = { shared.stats.wasHider[i][2] .. " seconds" }
+		}
+	end
+	for id in Players() do
+		if teamsGetTeamId(id) == 3 then
+			spectators[#spectators+1] = {
+				player = id,
+				columns = {"Spectator"}
+			}
+		end
+	end
+
+	stats = {
+		{
+			name = "Hiders",
+			color = teamsGetColor(1),
+			rows = hiderTable
+		},
+		{
+			name = "Hunters",
+			color = teamsGetColor(2),
+			rows = hunterTable
+		},
+		{
+			name = "Spectators",
+			color = {0.8,0.8,0.8},
+			rows = spectators
+		}
+	}
+
+	return stats
+end
+
+function getEndResults() -- This is for the end game scoreboard. Perhaps players found should be a statistic in the future
+	local stats
+
+	local hunterTable = {}
+	local hiderTable = {}
+	for i = 1, #shared.stats.OriginalHunters do
+		hunterTable[#hunterTable+1] = {
+			player = shared.stats.OriginalHunters[i],
+			columns = { "Hunter" }
+		}
+	end
+
+	for id in Players() do
+		if teamsGetTeamId(id) == 1 then
+			hiderTable[#hiderTable+1] = {
+				player = id,
+				columns = { "Survived"}
+			}
+		end
+	end
+	for i = 1, #shared.stats.wasHider do
+		hiderTable[#hiderTable+1] = {
+			player = shared.stats.wasHider[i][1],
+			columns = { shared.stats.wasHider[i][2] .. " seconds" }
+		}
+	end
+
+	if #teamsGetTeamPlayers(1) == 0 then
+		stats = {{
+				name = "Hunters Win",
+				color = teamsGetColor(2),
+				rows = hunterTable
+			},
+			{
+				name = "Hiders Lost",
+				color = teamsGetColor(1),
+				rows = hiderTable
+			}
+		}
+	else
+		stats = {{
+				name = "Hiders Win",
+				color = teamsGetColor(1),
+				rows = hiderTable
+			},
+			{
+				name = "Hunters Lost",
+				color = teamsGetColor(2),
+				rows = hunterTable
+			}
+		}
+	end
+
+	return stats
 end
