@@ -1289,7 +1289,7 @@ function hudDrawGameSetup(settings)
 		end
 
 		if uiDrawPrimaryButton("Start", 290) then
-			if GetPlayerCount() == 1 then 
+			if GetPlayerCount() == 1 then --# DimaCustom
 				hudShowBanner ("Atleast 2 players are required to start game.", {0,0,0})
 			else
 				ServerCall("server.hudPlayPressed")
@@ -1457,7 +1457,11 @@ end
 function hudDrawResultsAnimation(time, text, backgroundColor)
 	backgroundColor = backgroundColor or COLOR_BLACK_TRNSP
 
-	function GetCenterOfVectors(players)
+	-- By default camera spins around Vec(0,0,0). 
+	-- I changed it instead to spin around the center of all 
+	-- Not found hiders to make sure that they are visible in the results screen
+	-- #DimaCustom
+	function GetCenterOfVectors(players) 
 		if #players == 0 then
 			return nil
 		end

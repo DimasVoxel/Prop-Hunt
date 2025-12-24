@@ -68,6 +68,7 @@ end
 -- All tools are disabled and cleared first, then tools in the loadout are enabled
 -- and given the specified ammo. The first entry becomes the active tool.
 --
+-- @param[type=number] Loadout for specific team
 -- @param[type=table] loadout List of `{ toolName, ammoCount }` tables.
 -- @usage
 -- function server.init()
@@ -79,6 +80,7 @@ end
 --      }
 --      spawnSetDefaultLoadout(defaultLoadout)
 -- end
+-- #DimaCustom
 function spawnSetDefaultLoadoutForTeam(id, loadout)
     if not _spawnState.defaultLoadout then
         _spawnState.defaultLoadout = {}
@@ -195,7 +197,7 @@ function spawnTick(dt, playerGroupList)
         if _spawnState.forceRespawn[p] then
             doRespawn = true
         elseif teamsGetName(teamsGetTeamId(p)) == "Spectator" then
-            doRespawn = false
+            doRespawn = false -- Spectators don't Respawn unless the team gets changed -- #DimaCustom
         elseif _spawnState.deadTime[p] == nil then
             _spawnState.deadTime[p] = 0.0
         elseif GetPlayerHealth(p) <= 0.0 then
@@ -211,14 +213,12 @@ function spawnTick(dt, playerGroupList)
 
         if doRespawn then
             local t = spawnPickSpawnTransform(p, playerGroupList)
-            local teams = teamsGetTotalTeamsCount()
-            for i=1,teams do
-                if teamsGetTeamId(p) == i then 
-                    DebugPrint("Respawning player "..p.." in team "..i)
-                    AutoInspect(_spawnState.defaultLoadout[i], 2," ", false)
-                    spawnSpawnPlayer(t, _spawnState.defaultLoadout[i], p)
-                end
-            end
+
+            local teamID = teamsGetTeamId(p)
+            DebugPrint("Respawning player "..p.." in team "..teamID)
+            AutoInspect(_spawnState.defaultLoadout[teamID], 2," ", false)
+            spawnSpawnPlayer(t, _spawnState.defaultLoadout[teamID], p) -- #DimaCustom
+
             _spawnState.deadTime[p] = 0.0
         end
 

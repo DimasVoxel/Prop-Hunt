@@ -60,7 +60,6 @@ function eventlogPostMessage(items, time)
         local item = items[j]
         local itemType = type(item)
 
-
         if itemType == "number" then
             local playerId = item
             item = {playerId = playerId}

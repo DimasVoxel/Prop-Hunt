@@ -133,7 +133,7 @@ function teamsGetPlayerTeamsList()
     return playerTeamList
 end
 
-function teamsGetTotalTeamsCount()
+function teamsGetTotalTeamsCount() -- #DimaCustom
     return #shared._teamState.teams
 end
 
@@ -179,9 +179,9 @@ end
 -- pick teams.
 --
 -- @param[type=bool] skipCountdown Whether to skip the team selection countdown.
-function teamsStart(skipCountdown, hunters, forceLimit)
+function teamsStart(skipCountdown)
     if skipCountdown then
-        _teamsAssignPlayers(hunters, forceLimit)
+        _teamsAssignPlayers()
         shared._teamState.state = _DONE
         _teamState.skippedCountdown = true
     else
@@ -239,7 +239,6 @@ function teamsTick(dt)
     end
 
     if shared._teamState.state == _DONE then
-
         for p in PlayersAdded() do 
             _teamsAssignPlayers()
         end
@@ -337,7 +336,9 @@ function teamsDraw(dt)
     UiMakeInteractive()
     SetBool("game.disablemap", true)
 
-    local teamCount = 2
+    -- This game mode only ever expects to draw Hiders and hunters.
+    -- I dont want to draw spectators therefor hardcoded to 2
+    local teamCount = 2 
 
     local teamBoxWidth = 292
     local teamBoxHeight = 376
@@ -397,6 +398,9 @@ function server._teamsJoinTeam(playerId, teamId)
     _teamState.pendingTeamSwaps[1 + #_teamState.pendingTeamSwaps] = {playerId, teamId}
 end
 
+--Assign Player to new Team #DimaCustom
+--@param[type=number] id Player ID to assign to new team
+--@param[type=number] newTeam New team ID
 function teamsAssignToTeam(id, newTeam)
     local teamID = teamsGetTeamId(id)
 
@@ -416,6 +420,7 @@ function teamsAssignToTeam(id, newTeam)
     PostEvent("teamsupdated", teamsGetPlayerTeamsList(), teamColors)
 end
 
+-- This function was rewriten from scratch to accomodate Lobby settings and Hunter Hider Teams.
 function _teamsAssignPlayers()
     -- Hiders team has team ID 1
     local allPlayers = GetAllPlayers()

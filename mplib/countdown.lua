@@ -29,25 +29,27 @@
 
 
 shared.countdownTimer = 3
-shared.countdownName = "Countdown"
+shared.ui.currentCountDownName = "Countdown" -- #DimaCustom
 countdown = {skip = false, seconds = nil}
 
 --- Initialize count down timer (server)
 --
 -- Initializes a count down timer that can be displayed for all players.
 -- @param[type=number] countdownSeconds Time in seconds that represents the duration of the countdown.
+-- @param[type=string] countdownName Name of the countdown. If countdown ends it will broadcast an Event "countdownFinished", + the name of the countdown. #DimaCustom
 function countdownInit(countdownSeconds, countdownName)
     shared.countdownTimer = countdownSeconds
 	countdownFinished = LoadSound("timer/game-start.ogg")
 
-	shared.countdownName = countdownName or "Countdown"
-
+	shared.ui.currentCountDownName = countdownName or "Countdown"
 end
 
 --- Tick down the timer (server)
 --
 -- Decrement the timer by `dt`. Players are locked during countdown.
 -- @param[type=number] dt Time in seconds that represents the duration of the countdown.
+-- @param[type=number] teamsID which team should get disabled. 0 For all #DimaCustom
+-- @param[type=bool] should players get disabled #DimaCustom
 -- @return[type=bool] true if the timer is still active.
 function countdownTick(dt, teamID , disablePlayer)
 	if shared.countdownTimer <= 0.0 then return false end
@@ -68,7 +70,7 @@ function countdownTick(dt, teamID , disablePlayer)
         end
 	else
 		PlaySound(countdownFinished) --NOTE: placed here since UISound stops when the window closes
-		PostEvent("countdownFinished", shared.countdownName, true)
+		PostEvent("countdownFinished", shared.ui.currentCountDownName, true) -- #DimaCustom
 	end
 
 	shared.countdownTimer = math.max(shared.countdownTimer, 0.0)
@@ -78,6 +80,7 @@ end
 --- Draw the countdown timer (client)
 --
 -- Draws the countdown timer and a 'Match starts in...' label. 
+-- @param[type=string] message The message to display. -- #DimaCustom
 -- @return[type=bool] true if the timer is still active.
 function countdownDraw(message)
 	if shared.countdownTimer <= 0.0 then return false end
