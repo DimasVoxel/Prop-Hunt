@@ -6,6 +6,8 @@
 #include /gamelogic/clientLogic.lua
 #include /gamelogic/clientHUD.lua
 
+#include /gamelogic/universalHelper.lua
+
 #include "/mplib/mp.lua"
 #include "script/include/player.lua"
 ]]
