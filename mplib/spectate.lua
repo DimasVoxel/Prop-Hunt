@@ -29,6 +29,7 @@
 
 #include "script/common.lua"
 #include "ui.lua"
+#include "teams.lua"
 
 SPECTATE_DEFAULT_X_ROT = -math.pi / 8
 

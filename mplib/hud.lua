@@ -19,6 +19,7 @@
 #include "script/include/player.lua"
 #include "ui.lua"
 #include "ui/ui_helpers.lua"
+#include "teams.lua"
 
 
 _titleAlpha = nil

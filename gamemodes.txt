@@ -1,2 +1,2 @@
 [Prop Hunt]
-path = prophunt2.lua
+path = prophunt.lua

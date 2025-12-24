@@ -9,6 +9,3 @@
 #include "/mplib/mp.lua"
 #include "script/include/player.lua"
 ]]
-
------------- CLient Draw Functions -------------
-
