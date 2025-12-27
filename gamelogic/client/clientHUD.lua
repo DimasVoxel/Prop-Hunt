@@ -4,28 +4,28 @@ function client.draw(dt)
 
     if not gameInit(dt) then return end -- Dont Proceed while game is not setup
 
-	if isGameEnded() then 
+	if helperIsGameOver() then 
 		client.revealHiderSpots()
 		-- TODO: Game Ended should be replaced with a text who actually won or if everyone left something akin to "Hiders Left"
 		hudDrawResults("Game Ended!", {1, 1, 1, 0.75}, "loc@RESULTS_TITLE_TEAM_DEATHMATCH", {{name="Time Survived", width=160, align="center"}}, getEndResults())
 		return
 	end
 
-	hudDrawScoreboard(InputDown("shift") and not isGameEnded(), "", {{name="Time Survived", width=160, align="center"}}, getPlayerStats())
+	hudDrawScoreboard(InputDown("shift") and not helperIsGameOver(), "", {{name="Time Survived", width=160, align="center"}}, getPlayerStats())
 
-	if shared.countdownName == "hidersHiding" then
+	if shared.ui.currentCountDownName == "hidersHiding" then
 		countdownDraw("Hider are Hiding!")
 	end
 
-	if isPlayerHunter() then
+	if helperIsPlayerHunter() then
 		client.hunterDraw()
-	elseif isPlayerHider() then
+	elseif helperIsPlayerHider() then
 		client.hiderDraw()
 	else
 		client.spectator()
 	end
 
-	if isHunterRelased() and not isGameEnded() then
+	if helperIsHuntersReleased() and not helperIsGameOver() then
 		hudDrawTimer(shared.game.time, 1)
 		hudDrawScore2Teams(teamsGetColor(1), "Hiders ".. #teamsGetTeamPlayers(1), teamsGetColor(2), #teamsGetTeamPlayers(2) .. " Hunters", 1)
 
@@ -45,8 +45,8 @@ end
 function client.hunterDraw()
 	-- Draws The Image While hunters Wait
 
-	if not isGameEnded() then
-		if isPlayerHunter() and not isHunterRelased() then
+	if not helperIsGameOver() then
+		if helperIsPlayerHunter() and not helperIsHuntersReleased() then
 			UiImageBox("assets/placeholder.png", UiWidth(), UiHeight(), 0,0)
 		end
 
@@ -57,7 +57,7 @@ function client.hunterDraw()
 end
 
 function client.hiderDraw()
-	if not isGameEnded() then
+	if not helperIsGameOver() then
 
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
 		hudDrawGameModeHelpText("You are a Hider", "Search a prop and press ( E ) to transform. And press ( F ) to hide. Water will kill you!")
@@ -69,9 +69,9 @@ function client.hiderDraw()
 end
 
 function client.DrawTransformPrompt()
-	if client.game.hider.lookAtShape ~= -1 then
+	if client.player.lookAtShape ~= -1 then
 
-		local boundsAA, boundsBB = GetBodyBounds(GetShapeBody(client.game.hider.lookAtShape))
+		local boundsAA, boundsBB = GetBodyBounds(GetShapeBody(client.game.lookAtShape))
 		local middle = VecLerp(boundsAA, boundsBB, 0.5)
 		AutoTooltip("Transform Into Prop (E)", middle, false, 40, 1)
 	end
@@ -95,7 +95,7 @@ function client.clippingText()
 	UiTranslate(UiWidth()/2, UiHeight()-160)
 	UiFont("bold.ttf",30)
 	UiAlign('center middle')
-	if client.game.hider.triedHiding then
+	if client.player.hider.hidingAttempt then
 		UiText("You're clipping into " .. #checkPropClipping(GetLocalPlayer()) .. " shapes. Can't hide.")
 	end
 	UiPop()
@@ -200,7 +200,7 @@ function client.SetupScreen(dt)
 							options = {{ label = "00:30", value = 30}, { label = "00:45", value = 45 }, { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 },  }
 						},
 						{
-							key = "savegame.mod.settings.hiderHunters",
+							key = "savegame.mod.settings.hidersJoinHunters",
 							label = "Hider Hunters",
 							info = "Makes the hiders join the hunters once found.",
 							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
@@ -219,7 +219,7 @@ function client.SetupScreen(dt)
 							options = maxHunters
 						},
 						{
-							key = "savegame.mod.settings.enforceLimit",
+							key = "savegame.mod.settings.enforceGameStartHunterAmount",
 							label = "Limit Hunters",
 							info =
 							"At the start of each game, the server removes extra hunters if there are more hunters than are set in 'Hunters Amount'.",
@@ -240,20 +240,20 @@ function client.SetupScreen(dt)
 							options = {    { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -1}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30}, { label = "45 Seconds", value = 45}}
 						},
 						{
-							key = "savegame.mod.settings.hints",
+							key = "savegame.mod.settings.enableHunterHints",
 							label = "Hunter Hints",
 							info ="Enable or disable hints.",
 							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
-							key = "savegame.mod.settings.bulletTimer",
+							key = "savegame.mod.settings.hunterBulletReloadTimer",
 							label = "Bullet Reload",
 							info =
 							"How quickly hunters get new bullets.",
 							options = {  { label = "5 Seconds", value = 5},  { label = "6 Seconds", value = 6}, { label = "7 Seconds", value = 7}, { label = "8 Seconds", value = 8}, { label = "9 Seconds", value = 9}, { label = "10 Seconds", value = 10}, { label = "1 Second", value = 1}, { label = "2 Seconds", value = 2}, { label = "3 Seconds", value = 3}, { label = "4 Seconds", value = 4} }
 						},
 						{
-							key = "savegame.mod.settings.pipeBombTimer",
+							key = "savegame.mod.settings.hunterPipebombReloadTimer",
 							label = "Pipebomb Reload",
 							info =
 							"How quickly hunters get new PipeBombs.",
@@ -267,7 +267,7 @@ function client.SetupScreen(dt)
 							options = { { label = "20 Seconds", value = 20},  { label = "30 Seconds", value = 30}, { label = "40 Seconds", value = 40}, { label = "50 Seconds", value = 50}, { label = "60 Seconds", value = 60}, { label = "Disable BlueTide", value = -1}, { label = "10 Seconds", value = 10},   }
 						},
 						{
-							key = "savegame.mod.settings.tauntReload",
+							key = "savegame.mod.settings.hiderTauntReloadTimer",
 							label = "Forced taunt",
 							info ="Players get a taunt every X seconds. After reaching 10 they will be forced to taunt. Configure how quickly a player Recieves a new taunt.",
 							options = { { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "60 Seconds", value = 60}, { label = "Disable Forced Taunt", value = 1000000} ,{ label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15}  }
@@ -279,7 +279,7 @@ function client.SetupScreen(dt)
 							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
-							key = "savegame.mod.settings.friendlyFire",
+							key = "savegame.mod.settings.allowallowallowFriendlyFire",
 							label = "Kick Friendly Fire",
 							info ="If enabled players that kill too many players will be kicked.",
 							options = { { label = "Disable", value = 0 }, { label = "Enable", value = 1 } }
@@ -291,21 +291,20 @@ function client.SetupScreen(dt)
 			if hudDrawGameSetup(settings) then
 				ServerCall("server.start", {
 					time = GetFloat("savegame.mod.settings.time"),
-					amountHunters = GetInt("savegame.mod.settings.hunters"),
-					forceTeams = GetInt("savegame.mod.settings.forceTeams"),
-					enforceLimit = GetInt("savegame.mod.settings.enforceLimit"),
+					huntersStartAmount = GetInt("savegame.mod.settings.hunters"),
+					enforceGameStartHunterAmount = GetInt("savegame.mod.settings.enforceGameStartHunterAmount"),
 					randomTeams = GetInt("savegame.mod.settings.serverRandomTeams"),
 					hideTime = GetFloat("savegame.mod.settings.hideTime"),
-					bulletTimer = GetInt("savegame.mod.settings.bulletTimer"),
-					pipeBombTimer = GetInt("savegame.mod.settings.pipeBombTimer"),
-					bluetideTimer = GetInt("savegame.mod.settings.blueTide"),
+					hunterBulletReloadTimer = GetInt("savegame.mod.settings.hunterBulletReloadTimer"),
+					hunterPipebombReloadTimer = GetInt("savegame.mod.settings.hunterPipebombReloadTimer"),
+					hunterBluetideReloadTimer = GetInt("savegame.mod.settings.blueTide"),
 					hunterHinttimer = GetInt("savegame.mod.settings.hintTimer"),
-					tauntReload = GetInt("savegame.mod.settings.tauntReload"),
-					hiderHunters = GetInt("savegame.mod.settings.hiderHunters"),
+					hiderTauntReloadTimer = GetInt("savegame.mod.settings.hiderTauntReloadTimer"),
+					hidersJoinHunters = GetInt("savegame.mod.settings.hidersJoinHunters"),
 					midGameJoin = GetInt("savegame.mod.settings.midGameJoin"),
-					hints = GetInt("savegame.mod.settings.hints"),
+					hints = GetInt("savegame.mod.settings.enableHunterHints"),
 					enableSizeLimits = GetInt("savegame.mod.settings.enableSizeLimits"),
-					friendlyFire = GetInt("savegame.mod.settings.friendlyFire")
+					allowFriendlyFire = GetInt("savegame.mod.settings.allowFriendlyFire")
 				})
 			end
 		end
@@ -337,10 +336,10 @@ function getPlayerStats() -- This is for the Shift button scoreboard
 		end
 	end
 
-	for i = 1, #shared.stats.wasHider do
+	for i = 1, #shared.ui.stats.wasHider do
 		hiderTable[#hiderTable+1] = {
-			player = shared.stats.wasHider[i][1],
-			columns = { shared.stats.wasHider[i][2] .. " seconds" }
+			player = shared.ui.stats.wasHider[i][1],
+			columns = { shared.ui.stats.wasHider[i][2] .. " seconds" }
 		}
 	end
 	for id in Players() do
@@ -393,10 +392,10 @@ function getEndResults() -- This is for the end game scoreboard. Perhaps players
 			}
 		end
 	end
-	for i = 1, #shared.stats.wasHider do
+	for i = 1, #shared.ui.stats.wasHider do
 		hiderTable[#hiderTable+1] = {
-			player = shared.stats.wasHider[i][1],
-			columns = { shared.stats.wasHider[i][2] .. " seconds" }
+			player = shared.ui.stats.wasHider[i][1],
+			columns = { shared.ui.stats.wasHider[i][2] .. " seconds" }
 		}
 	end
 

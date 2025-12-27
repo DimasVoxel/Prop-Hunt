@@ -130,7 +130,7 @@ function spectateTick(playerList)
 				filtered[#filtered + 1] = p
 			end
 		end
-	else -- Hunters (Spectators can only be other spectators or hunters while respawning) #DimaCustom
+	else -- Hunters (Spectators can only be other spectators or hunters while respawning)
 		for i = 1, #playerList do
 			local p = playerList[i]
 
