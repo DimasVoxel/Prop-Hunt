@@ -133,7 +133,7 @@ function teamsGetPlayerTeamsList()
     return playerTeamList
 end
 
-function teamsGetTotalTeamsCount()
+function teamsGetTotalTeamsCount() -- #DimaCustom
     return #shared._teamState.teams
 end
 
@@ -179,9 +179,9 @@ end
 -- pick teams.
 --
 -- @param[type=bool] skipCountdown Whether to skip the team selection countdown.
-function teamsStart(skipCountdown, hunters, forceLimit)
+function teamsStart(skipCountdown)
     if skipCountdown then
-        _teamsAssignPlayers(hunters, forceLimit)
+        _teamsAssignPlayers()
         shared._teamState.state = _DONE
         _teamState.skippedCountdown = true
     else
@@ -239,7 +239,6 @@ function teamsTick(dt)
     end
 
     if shared._teamState.state == _DONE then
-
         for p in PlayersAdded() do 
             _teamsAssignPlayers()
         end
@@ -337,7 +336,9 @@ function teamsDraw(dt)
     UiMakeInteractive()
     SetBool("game.disablemap", true)
 
-    local teamCount = 2
+    -- This game mode only ever expects to draw Hiders and hunters.
+    -- I dont want to draw spectators therefor hardcoded to 2
+    local teamCount = 2 
 
     local teamBoxWidth = 292
     local teamBoxHeight = 376
@@ -397,6 +398,9 @@ function server._teamsJoinTeam(playerId, teamId)
     _teamState.pendingTeamSwaps[1 + #_teamState.pendingTeamSwaps] = {playerId, teamId}
 end
 
+--Assign Player to new Team #DimaCustom
+--@param[type=number] id Player ID to assign to new team
+--@param[type=number] newTeam New team ID
 function teamsAssignToTeam(id, newTeam)
     local teamID = teamsGetTeamId(id)
 
@@ -416,6 +420,7 @@ function teamsAssignToTeam(id, newTeam)
     PostEvent("teamsupdated", teamsGetPlayerTeamsList(), teamColors)
 end
 
+-- This function was rewriten from scratch to accomodate Lobby settings and Hunter Hider Teams.
 function _teamsAssignPlayers()
     -- Hiders team has team ID 1
     local allPlayers = GetAllPlayers()
@@ -425,9 +430,9 @@ function _teamsAssignPlayers()
         local totalPlayers = #allPlayers
 
         -- Clamp hunters so at least one hider
-        local amountHunters = math.min(server.lobbySettings.amountHunters, totalPlayers - 1)
-        local randomTeams = server.lobbySettings.randomTeams == 1
-        local enforceLimit = server.lobbySettings.enforceLimit == 1
+        local huntersStartAmount = math.min(server.gameConfig.huntersStartAmount, totalPlayers - 1)
+        local randomTeams = server.gameConfig.randomTeams == 1
+        local enforceGameStartHunterAmount = server.gameConfig.enforceGameStartHunterAmount == 1
 
         -- Reset teams if randomTeams is enabled
         if randomTeams then
@@ -443,16 +448,16 @@ function _teamsAssignPlayers()
             end
         end
 
-        if enforceLimit then
+        if enforceGameStartHunterAmount then
             -- Trim Team 2 (hunters) if too many and move extras to Team 1
-            while #shared._teamState.teams[2].players > amountHunters do
+            while #shared._teamState.teams[2].players > huntersStartAmount do
                 local idx = math.random(1, #shared._teamState.teams[2].players)
                 local player = table.remove(shared._teamState.teams[2].players, idx)
                 shared._teamState.teams[1].players[#shared._teamState.teams[1].players + 1] = player
             end
 
             -- Determine hunters still needed
-            local huntersNeeded = amountHunters - #shared._teamState.teams[2].players
+            local huntersNeeded = huntersStartAmount - #shared._teamState.teams[2].players
 
             -- If not enough neutral players, trim Team 1 to free players for Team 2
             while huntersNeeded > #neutralPlayers and #shared._teamState.teams[1].players > 0 do
@@ -463,7 +468,7 @@ function _teamsAssignPlayers()
         end
 
         -- Fill Team 2 (hunters) from neutral players
-        while #shared._teamState.teams[2].players < amountHunters and #neutralPlayers > 0 do
+        while #shared._teamState.teams[2].players < huntersStartAmount and #neutralPlayers > 0 do
             local idx = math.random(1, #neutralPlayers)
             local player = table.remove(neutralPlayers, idx)
             shared._teamState.teams[2].players[#shared._teamState.teams[2].players + 1] = player
@@ -473,7 +478,7 @@ function _teamsAssignPlayers()
         for _, player in ipairs(neutralPlayers) do
             shared._teamState.teams[1].players[#shared._teamState.teams[1].players + 1] = player
         end
-    elseif server.lobbySettings.midGameJoin == 0 then
+    elseif server.gameConfig.midGameJoin == 0 then
         local neutralPlayers = {}
         for _, p in ipairs(allPlayers) do
             if teamsGetTeamId(p) == 0 then

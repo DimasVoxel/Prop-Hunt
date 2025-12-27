@@ -29,6 +29,7 @@
 
 #include "script/common.lua"
 #include "ui.lua"
+#include "teams.lua"
 
 SPECTATE_DEFAULT_X_ROT = -math.pi / 8
 
@@ -115,32 +116,30 @@ function spectateTick(playerList)
 	local filtered = {}
 	local seen = {}
 
-	if teamsGetTeamId(GetLocalPlayer()) == 3 then -- Spectators can watch anyone
+	if helperIsPlayerSpectator() then -- Spectators can watch Hiders and Hunters #DimaCustom
 		for i = 1, #playerList do
 			local p = playerList[i]
 
-			-- skip local here; we'll insert it explicitly at index 1 later
 			if not IsPlayerLocal(p)
 				and IsPlayerValid(p)
 				and not IsPlayerDisabled(p)
-				and teamsGetTeamId(p) ~= 3 -- Cant specatate other spectators
+				and not helperIsPlayerSpectator(p) -- Cant specatate other spectators
 				and not seen[p]
 			then
 				seen[p] = true
 				filtered[#filtered + 1] = p
 			end
 		end
-	else -- Hiders cant spectate they are either spectator or hunters. Therefor are not allowed to see any hiders
+	else -- Hunters (Spectators can only be other spectators or hunters while respawning)
 		for i = 1, #playerList do
 			local p = playerList[i]
-			
-			-- skip local here; we'll insert it explicitly at index 1 later
+
 			if not IsPlayerLocal(p)
 				and IsPlayerValid(p)
 				and not IsPlayerDisabled(p)
 				and not seen[p]
-				and teamsGetTeamId(p) ~= 1
-				and teamsGetTeamId(p) ~= 3 -- Cant specatate other spectators
+				and not isPlayerHider(p) -- We dont want to reveal Hiders locations therefor you cant spectate other hiders as hunter
+				and not helperIsPlayerSpectator(p) -- Cant specatate other spectators
 			then
 				seen[p] = true
 				filtered[#filtered + 1] = p
