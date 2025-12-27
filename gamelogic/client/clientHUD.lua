@@ -13,10 +13,6 @@ function client.draw(dt)
 
 	hudDrawScoreboard(InputDown("shift") and not helperIsGameOver(), "", {{name="Time Survived", width=160, align="center"}}, getPlayerStats())
 
-	if shared.ui.currentCountDownName == "hidersHiding" then
-		countdownDraw("Hider are Hiding!")
-	end
-
 	if helperIsPlayerHunter() then
 		client.hunterDraw()
 	elseif helperIsPlayerHider() then
@@ -25,8 +21,12 @@ function client.draw(dt)
 		client.spectator()
 	end
 
+	if shared.ui.currentCountDownName == "hidersHiding" then
+		countdownDraw("Hider are Hiding!")
+	end
+
 	if helperIsHuntersReleased() and not helperIsGameOver() then
-		hudDrawTimer(shared.game.time, 1)
+		hudDrawTimer(shared.state.time, 1)
 		hudDrawScore2Teams(teamsGetColor(1), "Hiders ".. #teamsGetTeamPlayers(1), teamsGetColor(2), #teamsGetTeamPlayers(2) .. " Hunters", 1)
 
 		client.showHint()
@@ -71,7 +71,7 @@ end
 function client.DrawTransformPrompt()
 	if client.player.lookAtShape ~= -1 then
 
-		local boundsAA, boundsBB = GetBodyBounds(GetShapeBody(client.game.lookAtShape))
+		local boundsAA, boundsBB = GetBodyBounds(GetShapeBody(client.player.lookAtShape))
 		local middle = VecLerp(boundsAA, boundsBB, 0.5)
 		AutoTooltip("Transform Into Prop (E)", middle, false, 40, 1)
 	end
@@ -117,7 +117,7 @@ function client.showHint()
 		end
 
 		local rot = QuatAlignXZ(VecNormalize(VecSub(pos, client.hint.closestPlayerArrowHint.transform.pos)), VecNormalize(VecSub(pos, GetCameraTransform().pos)))
-		DrawSprite(client.arrow, Transform(pos, rot), 0.7, 0.7, 0.7 ,0.7,1,1,1,false,false,false)
+		DrawSprite(client.assets.arrow, Transform(pos, rot), 0.7, 0.7, 0.7 ,0.7,1,1,1,false,false,false)
 
 		if VecLength(VecSub(pos, client.hint.closestPlayerArrowHint.transform.pos)) < 40 then
 			client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()*10
@@ -127,14 +127,14 @@ function client.showHint()
     end
 
 	-- Loop through all circle hints. Remove after they expire but not in the same loop
-	for i=1, #shared.game.hint.circleHint do
-		if shared.game.hint.circleHint[i].timer > 0 then
+	for i=1, #shared.hint.circleHint do
+		if shared.hint.circleHint[i].timer > 0 then
 			for j=1, 5 do
 				local c = j
 				if j % 2 == 0 then c = j*-1 end
-				local rot = QuatRotateQuat(QuatAxisAngle(Vec(0,1,0), GetTime()*c), shared.game.hint.circleHint[i].transform.rot)
-				local pos = VecAdd(shared.game.hint.circleHint[i].transform.pos, Vec(0, -j, 0))
-				DrawSprite(client.circle, Transform(pos, rot), shared.game.hint.circleHint[i].radius, shared.game.hint.circleHint[i].radius, 1 , 0, 0, shared.game.hint.circleHint[i].timer/30 , false, false, false)
+				local rot = QuatRotateQuat(QuatAxisAngle(Vec(0,1,0), GetTime()*c), shared.hint.circleHint[i].transform.rot)
+				local pos = VecAdd(shared.hint.circleHint[i].transform.pos, Vec(0, -j, 0))
+				DrawSprite(client.assets.circle, Transform(pos, rot), shared.hint.circleHint[i].radius, shared.hint.circleHint[i].radius, 1 , 0, 0, shared.hint.circleHint[i].timer/30 , false, false, false)
 			end
 		end
 	end
@@ -161,14 +161,14 @@ function client.revealHiderSpots()
 
 			local quat = QuatAlignXZ(xAxis, zAxis) 
 
-			DrawSprite(client.rect, Transform(playerPos,quat), client.finalHint ,1.5 , 1,1,1,0.7, true, true, false)
+			DrawSprite(client.assets.rect, Transform(playerPos,quat), client.ui.finalRevealRectSize ,1.5 , 1,1,1,0.7, true, true, false)
 		end
 	end
 
-	if client.finalHintLerpDelay > 0 then
-		client.finalHintLerpDelay = client.finalHintLerpDelay - GetTimeStep()
+	if client.ui.finalHiderRevealDelay > 0 then
+		client.ui.finalHiderRevealDelay = client.ui.finalHiderRevealDelay - GetTimeStep()
 	else
-		client.finalHint = 2000
+		client.ui.finalRevealRectSize = 2000
 	end
 end
 
@@ -191,7 +191,7 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.time",
 							label = "Round Length",
 							info = "How long one round lasts",
-							options = { { label = "05:00", value = 5 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 3*60 } }
+							options = { { label = "05:00", value = 5 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 5 } }
 						},
 						{
 							key = "savegame.mod.settings.hideTime",
@@ -377,9 +377,9 @@ function getEndResults() -- This is for the end game scoreboard. Perhaps players
 
 	local hunterTable = {}
 	local hiderTable = {}
-	for i = 1, #shared.stats.OriginalHunters do
+	for i = 1, #shared.ui.stats.originalHunters do
 		hunterTable[#hunterTable+1] = {
-			player = shared.stats.OriginalHunters[i],
+			player = shared.ui.stats.originalHunters[i],
 			columns = { "Hunter" }
 		}
 	end

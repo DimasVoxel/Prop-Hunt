@@ -7,36 +7,15 @@ client.state = {
 	matchEnded = false
 }
 
-client.camera = {}
 
-client.ui = {}
-
-client.hints = {
-	tauntCooldown = 0
-	
+client.ui = {
+	finalHiderRevealDelay = 0, -- Used for the white beams at the end
+	finalRevealRectSize = 0
 }
 
--- client.game = {}
--- client.game.hider = {}
--- client.game.hider.lookAtShape = -1
--- client.game.hider.hiderOutline = {}
--- client.game.hider.triedHiding = false
-
--- client.hint = {}
--- client.hint.closestPlayerHint = {}
--- client.hint.closestPlayerHint.distance = 0
--- client.hint.closestPlayerHint.timer = 0
--- client.hint.closestPlayerHint.detailed = false
-
--- client.hint.closestPlayerArrowHint = {}
--- client.hint.closestPlayerArrowHint.transform = Transform()
--- client.hint.closestPlayerArrowHint.timer = 0
--- client.hint.closestPlayerArrowHint.player = 0
-
--- client.hint.meow = {}
--- client.hint.meow.timer = 0
--- client.hint.tauntCooldown = 0
-
+client.hint = {
+	tauntCooldown = 0
+}
 
 client.player = {
 	hurtOutline = {},
@@ -46,10 +25,38 @@ client.player = {
 	lookAtShape = -1
 }
 
+client.assets = {
+	arrow = nil,
+	rect = nil,
+	circle = nil
+}
+
+client.camera = {}
+client.camera.Rotation = Vec() -- Using a Vec instead of a quat so it doesn't cause any roll by mistake.
+client.camera.dist = 8
+client.camera.SM = {
+        pos = AutoSM_Define(Vec(), 2, 0.8, 1),      -- Inital Value, Frequency, Dampening, Response
+        rot = AutoSM_DefineQuat(Quat(), 2, 0.8, 1), -- Inital Value, Frequency, Dampening, Response
+}
+
+client.hint = {
+	closestPlayerHint = {
+		message = "",
+		timer = 0
+	},
+	closestPlayerArrowHint = {
+		transform = Transform(),
+		timer = 0,
+		player = 0
+	},
+	tauntCooldown = 0
+}
+
+
 function client.init()
-	client.arrow = LoadSprite("assets/arrow.png")
-	client.rect = LoadSprite("gfx/white.png")
-	client.circle = LoadSprite("gfx/ring.png")
+	client.assets.arrow = LoadSprite("assets/arrow.png")
+	client.assets.rect = LoadSprite("gfx/white.png")
+	client.assets.circle = LoadSprite("gfx/ring.png")
 end
 
 function client.tick()
@@ -112,7 +119,7 @@ function client.showHint()
 
 
 		local rot = QuatAlignXZ(VecNormalize(VecSub(pos, client.hint.closestPlayerArrowHint.transform.pos)), VecNormalize(VecSub(pos, GetCameraTransform().pos)))
-		DrawSprite(client.arrow, Transform(pos, rot), 0.7, 0.7, 0.7 ,0.7,1,1,1,false,false,false)
+		DrawSprite(client.assets.arrow, Transform(pos, rot), 0.7, 0.7, 0.7 ,0.7,1,1,1,false,false,false)
 
 
 		if VecLength(VecSub(pos, client.hint.closestPlayerArrowHint.transform.pos)) < 40 then
@@ -123,14 +130,14 @@ function client.showHint()
     end
 
 	-- Loop through all circle hints. Remove after they expire but not in the same loop
-	for i=1, #shared.game.hint.circleHint do
-		if shared.game.hint.circleHint[i].timer > 0 then
+	for i=1, #shared.hint.circleHint do
+		if shared.hint.circleHint[i].timer > 0 then
 			for j=1, 5 do
 				local c = j
 				if j % 2 == 0 then c = j*-1 end
-				local rot = QuatRotateQuat(QuatAxisAngle(Vec(0,1,0), GetTime()*c), shared.game.hint.circleHint[i].transform.rot)
-				local pos = VecAdd(shared.game.hint.circleHint[i].transform.pos, Vec(0, -j, 0))
-				DrawSprite(client.circle, Transform(pos, rot), shared.game.hint.circleHint[i].radius, shared.game.hint.circleHint[i].radius, 1 , 0, 0, shared.game.hint.circleHint[i].timer/30 , false, false, false)
+				local rot = QuatRotateQuat(QuatAxisAngle(Vec(0,1,0), GetTime()*c), shared.hint.circleHint[i].transform.rot)
+				local pos = VecAdd(shared.hint.circleHint[i].transform.pos, Vec(0, -j, 0))
+				DrawSprite(client.assets.circle, Transform(pos, rot), shared.hint.circleHint[i].radius, shared.hint.circleHint[i].radius, 1 , 0, 0, shared.hint.circleHint[i].timer/30 , false, false, false)
 			end
 		end
 	end

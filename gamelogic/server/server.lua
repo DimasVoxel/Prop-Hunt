@@ -13,7 +13,7 @@ server.gameConfig = {
 	hunterPipebombReloadTimer = 10,
 	hunterBluetideReloadTimer = 20,
 	hunterHinttimer = 45,
-	hiderTauntReloadTimerTimer = 10,
+	hiderTauntReloadTimer = 10,
 
 	midGameJoin = true,
 	hidersJoinHunters = true,
@@ -25,12 +25,16 @@ server.gameConfig = {
 	enableSizeLimits = true
 }
 
+shared.gameConfig = {
+	enableSizeLimits = true
+}
 
 
 -- Match state (game logic and so on)
 server.state = {
 	time = 0, -- Accurate server only time
-	gameEnded = false
+	gameEnded = false,
+	triggerLastHint = false,
 }
 
 -- Timers (all ticking values)
@@ -39,7 +43,7 @@ server.timers = {
 	hunterPipebombReloadTimer = 0,
 	hunterBluetideReloadTimer = 0,
 	hunterHinttimer = 0,
-	hiderTauntReloadTimerTimer = 0
+	hiderTauntReloadTimer = 0
 }
 
 server.players = {
@@ -61,9 +65,15 @@ shared.ui.stats = {
 	wasHider = {}
 }
 
+shared.hint = {
+	circleHint = {},
+	
+}
+
 shared.state = {
-	huntersFreed = false,
+	hunterFreed = false,
 	time = 0, -- We only send floored time to the clients
+	gameOver = false
 }
 
 shared.players = {
@@ -104,7 +114,7 @@ function server.start(settings)
 	server.gameConfig.hunterPipebombReloadTimer = settings.hunterPipebombReloadTimer
 	server.gameConfig.hunterBluetideReloadTimer = settings.hunterBluetideReloadTimer
 	server.gameConfig.hunterHinttimer = settings.hunterHinttimer
-	server.gameConfig.hiderTauntReloadTimerTimer = settings.hiderTauntReloadTimer
+	server.gameConfig.hiderTauntReloadTimer = settings.hiderTauntReloadTimer
 
 	-- The gameConfig function doesnt support bools? Therefor I am converting them here
 	server.gameConfig.midGameJoin = settings.midGameJoin == 1
@@ -147,7 +157,7 @@ function server.start(settings)
 		shared.players.hiders[id] = {}
 		shared.players.hiders[id].propBody = -1
 		shared.players.hiders[id].propBackupShape = -1
-		shared.players.hiders[id].isPlaced = false
+		shared.players.hiders[id].isPropPlaced = false
 	end
 end
 
@@ -190,6 +200,7 @@ function server.tick(dt)
 
 	-- Game end
 	if server.state.time <= 0 then
+		shared.state.gameOver = true
 		for p in Players() do
 			DisablePlayerInput(p)
 		end
@@ -200,6 +211,7 @@ function server.tick(dt)
 	if #teamsGetTeamPlayers(1) == 0 and teamsIsSetup() or GetPlayerCount() == 1  then
 		server.state.time = 0
 		shared.state.time = 0
+		shared.state.gameOver = true
 		server.state.hunterFreed = true
 		shared.state.hunterFreed = true
 		return
@@ -233,7 +245,7 @@ function server.deadTick()
 				Delete(shared.players.hiders[id].propBackupShape)
 				shared.players.hiders[id] = {}
 
-				if server.lobbySettings.hiderHunters == true then
+				if server.gameConfig.hiderHunters == true then
 					 -- #TODO: There seems to be an issue switching teams imidiately after death. Players are "dead" but dont ragdoll
 					 -- They just stand around until they respawn.
 					teamsAssignToTeam(id, 2)
@@ -242,7 +254,7 @@ function server.deadTick()
 				end
 
 				-- We note down who was hider for the end screen results
-				shared.ui.stats.wasHider[#shared.ui.stats.wasHider+1] = {id, math.floor(server.lobbySettings.roundLength - server.state.time)}
+				shared.ui.stats.wasHider[#shared.ui.stats.wasHider+1] = {id, math.floor(server.gameConfig.roundLength - server.state.time)}
 
 				SetPlayerParam("healthRegeneration", true, id)
 				SetPlayerParam("collisionMask", 255, id)
@@ -255,7 +267,7 @@ end
 function server.newPlayerJoinRoutine()
 	for id in PlayersAdded() do
 		if teamsIsSetup() then
-			if server.lobbySettings.midGameJoin == 1 then
+			if server.gameConfig.midGameJoin == 1 then
 				spawnRespawnPlayer(id)
 				eventlogPostMessage({ id, " Joined the game" }, 5)
 			else

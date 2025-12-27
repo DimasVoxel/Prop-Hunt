@@ -11,6 +11,7 @@ function client.hiderTick()
 	client.highlightClippingProps()
 end
 
+
 function client.hiderCamera()
 	local body = shared.players.hiders[GetLocalPlayer()].propBody
 	if body ~= -1 then
@@ -55,13 +56,13 @@ function client.hiderUpdate()
     if helperIsPlayerHider() and teamsIsSetup() then
 		client.sendHideRequest()
         client.SelectProp()
-		if client.hints.tauntCooldown == 0 and GetString("game.player.tool", GetLocalPlayer()) == "taunt" and InputPressed("usetool", GetLocalPlayer()) then
+		if client.hint.tauntCooldown == 0 and GetString("game.player.tool", GetLocalPlayer()) == "taunt" and InputPressed("usetool", GetLocalPlayer()) then
 			ServerCall("server.taunt", GetPlayerTransform(GetLocalPlayer()).pos, GetLocalPlayer())
-			client.hints.tauntCooldown = 5
+			client.hint.tauntCooldown = 5
 		end
 
-		if client.hints.tauntCooldown > 0 then
-			client.hints.tauntCooldown = math.max(0, client.hints.tauntCooldown - GetTimeStep())
+		if client.hint.tauntCooldown > 0 then
+			client.hint.tauntCooldown = math.max(0, client.hint.tauntCooldown - GetTimeStep())
 		end
 	end
 end
@@ -126,7 +127,7 @@ function client.HighlightDynamicBodies()
 				local voxelCount = GetShapeVoxelCount(shape)
 
 				local unqualified = false
-				if shared.gameConfigs.enableSizeLimits == 1 then
+				if shared.gameConfig.enableSizeLimits == 1 then
                     -- 70 is large enough for containers and 150 is reasonably large to still see easily
 					if (x > 70 or y > 70 or z > 70 or voxelCount < 150) then
 						unqualified = true

@@ -33,7 +33,7 @@ end
 function helperIsPlayerHidden(id)
     id = id or GetLocalPlayer()
     if not helperIsPlayerHider(id) then return false end 
-    return shared.players.hiders[id] and shared.players.hiders[id].isPlaced == true
+    return shared.players.hiders[id] and shared.players.hiders[id].isPropPlaced == true
 end
 
 function helperGetPlayerPropBody(id)
@@ -50,7 +50,7 @@ function helperGetPlayerPropShape(id)
 end
 
 function helperIsHuntersReleased()
-    return shared.state and shared.state.huntersFreed == true
+    return shared.state and shared.state.hunterFreed == true
 end
 
 function helperIsGameOver()

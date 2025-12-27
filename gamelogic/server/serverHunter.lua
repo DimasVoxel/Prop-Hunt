@@ -15,8 +15,13 @@ function server.hunterTick()
 		server.timers.hunterBluetideReloadTimer = server.gameConfig.hunterBluetideReloadTimer
 	end
 
+    local dt = GetTimeStep()
+	server.timers.hunterBulletReloadTimer = server.timers.hunterBulletReloadTimer - dt
+	server.timers.hunterPipebombReloadTimer = server.timers.hunterPipebombReloadTimer - dt
+	server.timers.hunterBluetideReloadTimer = server.timers.hunterBluetideReloadTimer - dt
+
     for id in Players() do
-        if helperIsHuntersReleased() then
+        if helperIsHuntersReleased() and helperIsPlayerHunter(id) then
             if server.timers.hunterBulletReloadTimer < 0 then
                 SetToolAmmo("gun", math.min(GetToolAmmo("gun", id) + 1, 10), id)
             end
@@ -31,27 +36,25 @@ function server.hunterTick()
         end
     end
 
-	local dt = GetTimeStep()
-	server.timers.hunterBulletReloadTimer = server.timers.hunterBulletReloadTimer - dt
-	server.timers.hunterPipebombReloadTimer = server.timers.hunterPipebombReloadTimer - dt
-	server.timers.hunterBluetideReloadTimer = server.timers.hunterBluetideReloadTimer - dt
+
 end
 
 function server.moveHuntersDuringHideTime()
     if not helperIsHuntersReleased() then
 		local data, finished = GetEvent("countdownFinished", 1)
-		local hunters = teamsGetTeamPlayers(2)
-        for _, id in pairs(hunters) do
-            if data == "hidersHiding" and finished then
-                spawnRespawnPlayer(id)
 
-                if server.state.hunterFreed then 
-                    eventlogPostMessage({ "loc@EVENT_GLHF" })
-                end
+        if data == "hidersHiding" and finished then
+            spawnRespawnTeamPlayers(2)
+            DebugPrint("why")
+            eventlogPostMessage({ "loc@EVENT_GLHF" })
 
-                server.state.hunterFreed = true
-                shared.state.hunterFreed = true
-            else
+            server.state.hunterFreed = true
+            shared.state.hunterFreed = true
+
+            DebugPrint(server.state.hunterFreed)
+        else
+            local hunters = teamsGetTeamPlayers(2)
+             for _, id in pairs(hunters) do
                 -- While waiting we just teleport the hunters off the map.
                 -- #TODO: make a waiting room or something while waiting.
                 SetPlayerTransform(Transform(Vec(0, 10000, 0)), id)

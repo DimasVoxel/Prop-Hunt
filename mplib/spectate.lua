@@ -116,14 +116,14 @@ function spectateTick(playerList)
 	local filtered = {}
 	local seen = {}
 
-	if isPlayerSpectator() then -- Spectators can watch Hiders and Hunters #DimaCustom
+	if helperIsPlayerSpectator() then -- Spectators can watch Hiders and Hunters #DimaCustom
 		for i = 1, #playerList do
 			local p = playerList[i]
 
 			if not IsPlayerLocal(p)
 				and IsPlayerValid(p)
 				and not IsPlayerDisabled(p)
-				and not isPlayerSpectator(p) -- Cant specatate other spectators
+				and not helperIsPlayerSpectator(p) -- Cant specatate other spectators
 				and not seen[p]
 			then
 				seen[p] = true
@@ -139,7 +139,7 @@ function spectateTick(playerList)
 				and not IsPlayerDisabled(p)
 				and not seen[p]
 				and not isPlayerHider(p) -- We dont want to reveal Hiders locations therefor you cant spectate other hiders as hunter
-				and not isPlayerSpectator(p) -- Cant specatate other spectators
+				and not helperIsPlayerSpectator(p) -- Cant specatate other spectators
 			then
 				seen[p] = true
 				filtered[#filtered + 1] = p

@@ -8,13 +8,13 @@ function server.handleHints(dt)
 		server.timers.hunterHintTimer = server.timers.hunterHintTimer - dt
 
 		-- We trigger a hint if hint timer gets to 0, and during the last 30 seconds we force one last hint.
-		if server.game.hunterHintTimer < 0 or server.state.time < 30 and server.game.lastHint == false then
+		if server.timers.hunterHintTimer < 0 or server.state.time < 30 and server.state.triggerLastHint == false then
 			if server.state.time < 30 then
 				-- We make sure that the last hint wont get spammed
-				server.game.lastHint = true
+				server.state.triggerLastHint = true
 			end
 
-			server.game.hunterHintTimer = server.lobbySettings.hunterHinttimer
+			server.timers.hunterHintTimer = server.lobbySettings.hunterHinttimer
 			for id in Players() do 
 				if helperIsPlayerHunter(id) then 
 					server.TriggerHint(id, 1)
@@ -68,7 +68,7 @@ function server.circleHint()
     end
 
     -- Reset the circle hint table
-    shared.game.hint.circleHint = {}
+    shared.hint.circleHint = {}
 
     -- Add a transform for each hider
     for _, hiderId in ipairs(hiders) do
@@ -99,11 +99,11 @@ function server.circleHint()
             }
 
             local hintTransform = Transform(hintPos, QuatEuler(90,0,0)) --Rotate the circle to be level with floor
-            shared.game.hint.circleHint[#shared.game.hint.circleHint + 1] = {}
-			shared.game.hint.circleHint[#shared.game.hint.circleHint].transform = hintTransform
-			shared.game.hint.circleHint[#shared.game.hint.circleHint].diameter = diameter
-			shared.game.hint.circleHint[#shared.game.hint.circleHint].playerid = hiderId
-			shared.game.hint.circleHint[#shared.game.hint.circleHint].timer = 29
+            shared.hint.circleHint[#shared.hint.circleHint + 1] = {}
+			shared.hint.circleHint[#shared.hint.circleHint].transform = hintTransform
+			shared.hint.circleHint[#shared.hint.circleHint].diameter = diameter
+			shared.hint.circleHint[#shared.hint.circleHint].playerid = hiderId
+			shared.hint.circleHint[#shared.hint.circleHint].timer = 29
 		end
     end
 end

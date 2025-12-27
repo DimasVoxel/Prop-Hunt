@@ -14,7 +14,7 @@ server.lobbySettings.amountHunters = 1
 server.lobbySettings.hunterBulletTimer = 0
 server.lobbySettings.pipeBombTimer = 0
 server.lobbySettings.bluetideTimer = 0
-server.lobbySettings.tauntReload = 0
+server.gameConfig.hiderTauntReloadTimer = 0
 server.lobbySettings.midGameJoin = 0 
 server.lobbySettings.hiderHunters = 0
 server.lobbySettings.enableSizeLimits = 1
@@ -53,7 +53,7 @@ shared.game.hint.circleHint = {}
 
 shared.stats = {}
 shared.stats.hiders = {}
-shared.stats.OriginalHunters = {}
+shared.stats.originalHunters = {}
 shared.stats.wasHider = {}
 
 client.game = {}
@@ -237,7 +237,7 @@ function client.draw(dt)
 
 				local quat = QuatAlignXZ(xAxis, zAxis) 
 
-				DrawSprite(client.rect, Transform(playerPos,quat), client.finalHint ,1.5 , 1,1,1,0.7, true, true, false)
+				DrawSprite(client.assets.rect, Transform(playerPos,quat), client.finalHint ,1.5 , 1,1,1,0.7, true, true, false)
 			end
 		end
 
@@ -368,9 +368,9 @@ function getEndResults()
 
 	local hunterTable = {}
 	local hiderTable = {}
-	for i = 1, #shared.stats.OriginalHunters do
+	for i = 1, #shared.stats.originalHunters do
 		hunterTable[#hunterTable+1] = {
-			player = shared.stats.OriginalHunters[i],
+			player = shared.stats.originalHunters[i],
 			columns = { "Hunter" }
 		}
 	end

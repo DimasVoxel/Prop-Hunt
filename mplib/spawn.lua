@@ -167,6 +167,15 @@ function spawnRespawnAllPlayers()
     end
 end
 
+-- Flag a particular team to be flagged to be respawned on the next tick (server) #DimaCustom
+function spawnRespawnTeamPlayers(teamID)
+    for p in Players() do
+        if teamsGetTeamId(p) == teamID then
+            spawnRespawnPlayer(p)
+        end
+    end
+end
+
 --- Main update loop for the spawn system (server).
 --
 -- Should be called every tick. For each player it:
