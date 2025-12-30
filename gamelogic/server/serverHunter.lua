@@ -1,6 +1,6 @@
 function server.hunterTick()
 
-    server.moveHuntersDuringHideTime()
+    server.huntersDuringHideTime()
     server.friendlyFireRoutine()
 
     if server.timers.hunterBulletReloadTimer < 0 then
@@ -21,17 +21,23 @@ function server.hunterTick()
 	server.timers.hunterBluetideReloadTimer = server.timers.hunterBluetideReloadTimer - dt
 
     for id in Players() do
-        if helperIsHuntersReleased() and helperIsPlayerHunter(id) then
-            if server.timers.hunterBulletReloadTimer < 0 then
-                SetToolAmmo("gun", math.min(GetToolAmmo("gun", id) + 1, 10), id)
-            end
+        if helperIsPlayerHunter(id) then
+            if helperIsHuntersReleased() then
+                if server.timers.hunterBulletReloadTimer < 0 then
+                    SetToolAmmo("gun", math.min(GetToolAmmo("gun", id) + 1, 10), id)
+                end
 
-            if server.timers.hunterPipebombReloadTimer < 0 then
-                SetToolAmmo("pipebomb", math.min(GetToolAmmo("pipebomb", id) + 1, 3), id)
-            end
+                if server.timers.hunterPipebombReloadTimer < 0 then
+                    SetToolAmmo("pipebomb", math.min(GetToolAmmo("pipebomb", id) + 1, 3), id)
+                end
 
-            if server.timers.hunterBluetideReloadTimer < 0 then
-                SetToolAmmo("steroid", math.min(GetToolAmmo("steroid", id) + 1, 3), id)
+                if server.timers.hunterBluetideReloadTimer < 0 then
+                    SetToolAmmo("steroid", math.min(GetToolAmmo("steroid", id) + 1, 3), id)
+                end
+            else
+                SetToolAmmo("gun", 0, id)
+                SetToolAmmo("pipebomb", 0, id)
+                SetToolAmmo("steroid", 0, id)
             end
         end
     end
@@ -39,7 +45,7 @@ function server.hunterTick()
 
 end
 
-function server.moveHuntersDuringHideTime()
+function server.huntersDuringHideTime()
     if not helperIsHuntersReleased() then
 		local data, finished = GetEvent("countdownFinished", 1)
 
@@ -50,19 +56,43 @@ function server.moveHuntersDuringHideTime()
 
             server.state.hunterFreed = true
             shared.state.hunterFreed = true
+            server.game.hasPlacedHuntersinRoom = false
+            --for id in Players() do
+            --    SetPlayerParam("godMode", false, id)
+            --end
 
             DebugPrint(server.state.hunterFreed)
         else
             local hunters = teamsGetTeamPlayers(2)
-             for _, id in pairs(hunters) do
-                -- While waiting we just teleport the hunters off the map.
-                -- #TODO: make a waiting room or something while waiting.
-                SetPlayerTransform(Transform(Vec(0, 10000, 0)), id)
-                SetPlayerVelocity(Vec(0, 0, 0), id)
-                DisablePlayer(id)
-			end
+
+            local hunter_room_spawn = FindLocation("hunter_spawn_waiting", true)
+            local spawn_transform = GetLocationTransform(hunter_room_spawn)
+            if IsHandleValid(hunter_room_spawn) then
+                if not server.game.hasPlacedHuntersinRoom then
+                    for _, id in pairs(hunters) do
+                        -- room spawned, place all hunters there
+                        SetPlayerTransform(spawn_transform, id)
+                        SetPlayerVelocity(Vec(0, 0, 0), id)
+                        --SetPlayerParam("godMode", true, id) --so that they can't kill each other with velocity to escape
+                        --DisablePlayer(id)
+                    end
+                    server.game.hasPlacedHuntersinRoom = true
+                end
+            else
+                for _, id in pairs(hunters) do
+                    -- hunter room did not spawn properly, revert to old method
+                    SetPlayerTransform(Transform(Vec(0, 10000, 0)), id)
+                    SetPlayerVelocity(Vec(0, 0, 0), id)
+                    DisablePlayer(id)
+                end
+            end
 		end
-	end
+	else
+        server.game.hasPlacedHuntersinRoom = false
+        --for id in Players() do
+        --    SetPlayerParam("godMode", false, id)
+        --end
+    end
 end
 
 function server.friendlyFireRoutine()

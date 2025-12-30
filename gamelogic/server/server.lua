@@ -29,7 +29,6 @@ shared.gameConfig = {
 	enableSizeLimits = true
 }
 
-
 -- Match state (game logic and so on)
 server.state = {
 	time = 0, -- Accurate server only time
@@ -58,6 +57,12 @@ server.assets = {
 	taunt = 0
 }
 
+-- All other game related variables
+server.game = {
+	spawnedForHunterRoom = {}, --stores everything spawned for the waiting room to be deleted in server.destroy
+	hasPlacedHuntersInRoom = false
+}
+
 shared.ui = {}
 shared.ui.currentCountDownName = ""
 shared.ui.stats = {
@@ -67,7 +72,6 @@ shared.ui.stats = {
 
 shared.hint = {
 	circleHint = {},
-	
 }
 
 shared.state = {
@@ -142,6 +146,12 @@ function server.start(settings)
 		server.gameConfig.hunterHintTimer = false
 	else
 		server.gameConfig.hunterHintTimer = true
+	end
+
+	--room has to be spawned here and not in init or the screens won't work
+	server.hasPlacedHuntersInRoom = false
+	if #server.game.spawnedForHunterRoom <= 0 then
+		server.game.spawnedForHunterRoom = Spawn("MOD/hunter_room.xml", Transform(Vec(0,600,0)), true)
 	end
 
 	countdownInit(settings.hideTime, "hidersHiding")
@@ -239,6 +249,8 @@ function server.tick(dt)
 			DisablePlayer(id)
 		end
 	end
+
+	SetFloat("level.hunterTimerForRelease", shared.countdownTimer) --for countdown screen in waiting room
 end
 
 function server.deadTick()
@@ -272,8 +284,18 @@ end
 function server.newPlayerJoinRoutine()
 	for id in PlayersAdded() do
 		if teamsIsSetup() then
-			if server.gameConfig.midGameJoin == 1 then
-				spawnRespawnPlayer(id)
+			if server.gameConfig.midGameJoin then
+				if helperIsHuntersReleased() then
+					spawnRespawnPlayer(id)
+				else
+					local hunter_room_spawn = FindLocation("hunter_spawn_waiting", true)
+					local spawn_transform = GetLocationTransform(hunter_room_spawn)
+					if IsHandleValid(hunter_room_spawn) then
+						-- room spawned, place all hunters there (other case is handled in serverHunter.lua)
+						SetPlayerTransform(spawn_transform, id)
+						SetPlayerVelocity(Vec(0, 0, 0), id)
+					end
+				end
 				eventlogPostMessage({ id, " Joined the game" }, 5)
 			else
 				eventlogPostMessage({ id, " Joined as a spectator" }, 5)
@@ -330,7 +352,16 @@ function server.destroy()
 		SetPlayerParam("healthRegeneration", true, id)
 		SetPlayerParam("collisionMask", 255, id)
 		SetPlayerParam("walkingSpeed", 1, id)
+
+		if not helperIsHuntersReleased() then
+			RespawnPlayer(id)
+		end
 	end
+
+	for i=1, #server.game.spawnedForHunterRoom do
+		Delete(server.game.spawnedForHunterRoom[i])
+	end
+	server.game.hasPlacedHuntersInRoom = false
 
 	eventlogPostMessage({"Leave a review for Prophunt on the Workshop!"}, 10) -- Wont be actually displayed because the script for handling it will be destroyed
 end
