@@ -75,7 +75,6 @@ function server.hiderUpdate(id)
 			if helperIsPlayerHidden(id) then
 				local aa,bb = GetBodyBounds(helperGetPlayerPropBody(id))
 				local center = VecLerp(aa, bb, 0.5)
-				DebugPrint("hello")
 				if (IsPointInWater(center) or InputDown('down', id) or InputDown('up', id) or InputDown('left', id) or InputDown('right', id) or InputDown('jump', id)) and shared.players.hiders[id].isPropPlaced == true then
 					shared.players.hiders[id].isPropPlaced = false
 					SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.2, 0)),GetPlayerCameraTransform(id).rot), id)

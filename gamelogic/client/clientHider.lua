@@ -13,9 +13,9 @@ end
 
 
 function client.hiderCamera()
-	local body = shared.players.hiders[GetLocalPlayer()].propBody
+	local body = helperGetPlayerPropBody()
 	if body ~= -1 then
-		if shared.players.hiders[GetLocalPlayer()].isPropPlaced then
+		if helperIsPlayerHidden() then
 			local body_center = AutoBodyCenter(body)
 			local dt = GetTimeStep()
 			do -- Camera Rotation

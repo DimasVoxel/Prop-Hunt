@@ -233,6 +233,12 @@ function server.tick(dt)
 	server.hunterTick(dt) -- Logic in serverHunterLogic.lua
 	server.playersTick(dt) -- Logic in serverPlayerLogic.lua
 	server.deadTick(dt) -- Handles found players
+
+	for id in Players() do 
+		if helperIsPlayerSpectator(id) then
+			DisablePlayer(id)
+		end
+	end
 end
 
 function server.deadTick()
@@ -244,8 +250,7 @@ function server.deadTick()
 				Delete(shared.players.hiders[id].propBody)
 				Delete(shared.players.hiders[id].propBackupShape)
 				shared.players.hiders[id] = {}
-
-				if server.gameConfig.hiderHunters == true then
+				if server.gameConfig.hidersJoinHunters == true then
 					 -- #TODO: There seems to be an issue switching teams imidiately after death. Players are "dead" but dont ragdoll
 					 -- They just stand around until they respawn.
 					teamsAssignToTeam(id, 2)

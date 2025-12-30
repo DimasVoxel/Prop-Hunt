@@ -212,6 +212,7 @@ function spawnTick(dt, playerGroupList)
         elseif GetPlayerHealth(p) <= 0.0 then
             _spawnState.deadTime[p] = _spawnState.deadTime[p] + dt
             shared.respawnTimeLeft[p] = math.ceil(_spawnState.respawnTime - _spawnState.deadTime[p])
+            DisablePlayer(p)
 
             if _spawnState.deadTime[p] > _spawnState.respawnTime then
                 doRespawn = true

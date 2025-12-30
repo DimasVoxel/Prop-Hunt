@@ -402,22 +402,7 @@ end
 --@param[type=number] id Player ID to assign to new team
 --@param[type=number] newTeam New team ID
 function teamsAssignToTeam(id, newTeam)
-    local teamID = teamsGetTeamId(id)
-
-    for i = 1, #shared._teamState.teams[teamID].players do
-        if shared._teamState.teams[teamID].players[i] == id then
-            table.remove(shared._teamState.teams[teamID].players, i)
-            shared._teamState.teams[newTeam].players[1 + #shared._teamState.teams[newTeam].players] = id
-            break
-        end
-    end
-
-    local teamColors = {}
-    for i=1,#shared._teamState.teams do
-        teamColors[1 + #teamColors] = teamsGetColor(i)
-    end
-
-    PostEvent("teamsupdated", teamsGetPlayerTeamsList(), teamColors)
+    server._teamsJoinTeam(id, newTeam)
 end
 
 -- This function was rewriten from scratch to accomodate Lobby settings and Hunter Hider Teams.

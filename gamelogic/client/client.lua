@@ -68,8 +68,19 @@ function client.tick()
 	if helperIsPlayerHider() and teamsIsSetup() then
 		client.hiderTick()
 	end
+	local spectateList = {}
+	for _,i in pairs(teamsGetTeamPlayers(2)) do
+		table.insert(spectateList, i)
+	end
 
-	spectateTick(GetAllPlayers())
+	if helperIsPlayerSpectator() then 
+		local hiders = teamsGetTeamPlayers(1)
+		for i = 1, #hiders do
+			table.insert(spectateList, hiders[i])
+		end
+	end
+	spectateTick(spectateList)
+
 	client.highlightHurtHider()
 end
 
