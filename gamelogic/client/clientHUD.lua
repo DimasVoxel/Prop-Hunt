@@ -7,7 +7,7 @@ function client.draw(dt)
 	if helperIsGameOver() then 
 		client.revealHiderSpots()
 		-- TODO: Game Ended should be replaced with a text who actually won or if everyone left something akin to "Hiders Left"
-		hudDrawResults("Game Ended!", {1, 1, 1, 0.75}, "loc@RESULTS_TITLE_TEAM_DEATHMATCH", {{name="Time Survived", width=160, align="center"}}, getEndResults())
+		hudDrawResults("Game Ended!", {1, 1, 1, 0.75}, "Prop Hunt Results", {{name="Time Survived", width=160, align="center"}}, getEndResults())
 		return
 	end
 
