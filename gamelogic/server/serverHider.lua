@@ -15,7 +15,7 @@ function server.hiderTick(dt)
         -- Hiders should not be able to enter vehicles
         SetPlayerVehicle(0, id) 
         -- Sometimes other mods can mess with the tools we just set it to be taunt so they are unable to use other ones
-        SetPlayerTool("taunt", id) 
+        SetPlayerTool("", id) 
 
         local propBody = helperGetPlayerPropBody(id)
         if propBody then
@@ -37,64 +37,62 @@ function server.hiderTick(dt)
                 SetPlayerParam("collisionMask", 1 , id)
                 SetPlayerParam("walkingSpeed", 0, id)
             end
+		elseif not propBody and helperIsHuntersReleased() then
+			SetPlayerParam("godmode", false, id)
+		end
 
-            local aa,bb = GetBodyBounds(propBody)
-            local center = VecLerp(aa, bb, 0.5)
-            if IsBodyBroken(propBody) then
-                -- #TODO: make damage variable depending on prop size
-                -- Reason: Small props are harder to find and harder to shoot at.
-                SetPlayerHealth(GetPlayerHealth(id) - 0.33, id) 
-
-                -- We move the player to the shape if player was too far from the prop when found
-                -- If we dont there are situations when the prop falls down a cliff or building and the player stays on top of the cliff.
-                -- Once found the prop gets teleported back to the player. This makes it look like as if the prop dissapeared for the hunter
-                -- Therefor we move the player to the prop. One issue is that players can get stun locked sometimes
-                if VecLength(VecSub(GetPlayerTransform(id).pos, center)) > 2 then
-                    SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
-                end
-
-                server.propRegenerate(id, shared.players.hiders[id].propBackupShape)
-                shared.players.hiders[id].isPropPlaced = false
-                ClientCall(0, "client.highlightPlayer", shared.players.hiders[id].propBody)
-            end
-
-            if IsPointInBoundaries(center) == false and helperIsPlayerHidden(id) then
-                shared.players.hiders[id].isPropPlaced = false
-
-                if VecLength(VecSub(GetPlayerTransform(id).pos, center)) > 2 then
-                    SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
-                end
-            end
-        end
+		server.handleHiderPlayerDamage(id)
     end
-end
-
-function server.hiderUpdate(id)
-	if teamsIsSetup() then
-		for id in Players() do
-			if helperIsPlayerHidden(id) then
-				local aa,bb = GetBodyBounds(helperGetPlayerPropBody(id))
-				local center = VecLerp(aa, bb, 0.5)
-				if (IsPointInWater(center) or InputDown('down', id) or InputDown('up', id) or InputDown('left', id) or InputDown('right', id) or InputDown('jump', id)) and shared.players.hiders[id].isPropPlaced == true then
-					shared.players.hiders[id].isPropPlaced = false
-					SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.2, 0)),GetPlayerCameraTransform(id).rot), id)
-
-                    -- You shouldnt spam this function because every call will put the message in a queue
-					hudShowBanner("Water will damage you, get out as soon as you can.", {0,0,0}) 
-				end
-			end
-
-			if IsPointInWater(GetPlayerTransform(id).pos) then
-				SetPlayerHealth(GetPlayerHealth(id) - GetTimeStep()/15, id)
-			end
-
-			server.handlePlayerProp(id)
-			SetLightEnabled(GetFlashlight(id), false)
+	
+	local eventCount = GetEventCount("playerhurt")
+	if eventCount ~= 0 then
+		local playerID, _,_, attackerID = GetEvent("playerhurt",1)
+		if helperIsPlayerHider(playerID) and not helperGetPlayerPropBody(playerID) then 
+			helperDecreasePlayerShots(playerID)
+			helperSetPlayerHealth(playerID, shared.players.hiders[playerID].health - shared.players.hiders[playerID].damageValue)
+			SetPlayerHealth(1, playerID)
 		end
 	end
 end
 
-function server.handlePlayerProp(id)
+function server.hiderUpdate()
+	if teamsIsSetup() then
+		for id in Players() do
+			if helperIsPlayerHider(id) then
+				if helperIsPlayerHidden(id) then
+					local aa,bb = GetBodyBounds(helperGetPlayerPropBody(id))
+					local center = VecLerp(aa, bb, 0.5)
+					if (IsPointInWater(center) or InputDown('down', id) or InputDown('up', id) or InputDown('left', id) or InputDown('right', id) or InputDown('jump', id)) and shared.players.hiders[id].isPropPlaced == true then
+						shared.players.hiders[id].isPropPlaced = false
+						SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.2, 0)),GetPlayerCameraTransform(id).rot), id)
+						-- You shouldnt spam this function because every call will put the message in a queue
+						if IsPointInWater(center) then
+							ClientCall(id, "client.notify", "Water will damage you, get out as soon as you can." )
+						end
+					end
+				end
+
+				local speed = VecLength(GetPlayerVelocity(id))
+
+				if InputDown("shift", id) and not helperIsPlayerHidden(id) and shared.players.hiders[id].staminaCoolDown < GetTime() and speed > 0.1 then 
+					SetPlayerParam("walkingSpeed", 9, id)
+					shared.players.hiders[id].stamina = math.max(shared.players.hiders[id].stamina - GetTimeStep(), 0)
+
+					if shared.players.hiders[id].stamina == 0 then 
+						shared.players.hiders[id].staminaCoolDown = GetTime() + 10
+					end
+				else
+					shared.players.hiders[id].stamina = math.min(shared.players.hiders[id].stamina + GetTimeStep()/8, 3)
+				end
+
+				server.handlePlayerProp(id)
+				SetLightEnabled(GetFlashlight(id), false)
+			end
+		end
+	end
+end
+
+function server.handlePlayerProp(id) -- In Update
 	local clippingProps = checkPropClipping(id)
     -- The server only needs to know if props are clipping or not. It doesnt matter which shapes in particular
     -- On client we use the output to highlight shapes that are being clipped into
@@ -122,34 +120,97 @@ function server.handlePlayerProp(id)
 	end
 end
 
+function server.handleHiderPlayerDamage(id) -- In Tick
+	local propBody = helperGetPlayerPropBody(id)
+	if propBody then
+		local aa,bb = GetBodyBounds(propBody)
+		local center = VecLerp(aa, bb, 0.5)
+
+		if IsBodyBroken(propBody) then
+			helperDecreasePlayerShots(id)
+			helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
+
+			-- We move the player to the shape if player was too far from the prop when found
+			-- If we dont there are situations when the prop falls down a cliff or building and the player stays on top of the cliff.
+			-- Once found the prop gets teleported back to the player. This makes it look like as if the prop dissapeared for the hunter
+			-- Therefor we move the player to the prop. One issue is that players can get stun locked sometimes
+
+			if VecLength(VecSub(GetPlayerTransform(id).pos, center)) > 3 and GetShapeVoxelCount(helperGetPlayerPropShape(id)) ~= 0 then
+				SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
+			end
+
+			propBody = server.propRegenerate(id)
+			shared.players.hiders[id].isPropPlaced = false
+
+			local aa,bb = GetBodyBounds(propBody)
+			center = VecLerp(aa, bb, 0.5)
+
+			ClientCall(0, "client.highlightPlayer", id)
+		end
+
+
+		local lowerHalf = Vec(center[1],AutoLerp(center[2], aa[2],0.5),center[3])
+
+		if not IsPointInWater(lowerHalf) or not helperIsHuntersReleased() then 
+			shared.players.hiders[id].damageTick = GetTime()
+			shared.players.hiders[id].environmentalDamageTrigger = false
+		else
+			shared.players.hiders[id].environmentalDamageTrigger = true
+		end
+	else
+		local playerTransform = GetPlayerTransform(id)
+		if not IsPointInWater(VecAdd(playerTransform.pos),Vec(0,0.5,0)) or not helperIsHuntersReleased() then 
+			shared.players.hiders[id].damageTick = GetTime()
+			shared.players.hiders[id].environmentalDamageTrigger = false
+		else
+			shared.players.hiders[id].environmentalDamageTrigger = true
+		end
+	end
+
+	local totalWaterTime = 10
+	local tickDamageTime = totalWaterTime/(1/shared.players.hiders[id].damageValue) + 1
+
+	if (shared.players.hiders[id].damageTick + tickDamageTime) <= GetTime() then
+		helperDecreasePlayerShots(id)
+		helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
+		shared.players.hiders[id].damageTick = GetTime()
+	end
+
+	if IsPointInBoundaries(center) == false and helperIsPlayerHidden(id) then
+		shared.players.hiders[id].isPropPlaced = false
+
+		if VecLength(VecSub(GetPlayerTransform(id).pos, center)) > 2 then
+			SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
+		end
+	end
+end
+
 -- Gets Called by clients.
 -- #TODO: Some say that the server sound sync sucks and its recommended to use ClientCall to execute a playsound locally
-function server.taunt(pos, id)
-	SetToolAmmo("taunt", math.max(GetToolAmmo("taunt", id) - 3 ,1), id)
-	PlaySound(server.assets.taunt,pos,2,true,1)
+function server.tauntBroadcast(pos, id)
+	shared.players.hiders[id].taunts = math.max(helperGetHiderTauntsAmount(id) - 1, 1)
+	ClientCall(0, "client.tauntBroadcast", pos)
 end
 
 function server.handleHiderTaunts(hiderIds)
-    local dt = GetTimeStep()
 
-    server.timers.hiderTauntReloadTimer = server.timers.hiderTauntReloadTimer - dt
-
-    if server.timers.hiderTauntReloadTimer < 0 then
-        server.timers.hiderTauntReloadTimer = server.gameConfig.hiderTauntReloadTimer
+	
+    if server.timers.hiderTauntReloadTimer <= GetTime() then
+        server.timers.hiderTauntReloadTimer = GetTime() + server.gameConfig.hiderTauntReloadTimer
 
         for _, id in ipairs(hiderIds) do
             -- If the player has 10 taunts already, force them to taunt.
-            if GetToolAmmo("taunt", id) == 10 then
-                server.taunt(GetPlayerTransform(id).pos, id)
-                SetToolAmmo("taunt", 6, id)
+            if helperGetHiderTauntsAmount(id) == 10 then
+                server.tauntBroadcast(GetPlayerTransform(id).pos, id)
+                shared.players.hiders[id].taunts = 6
             else
-                SetToolAmmo("taunt", math.min(GetToolAmmo("taunt", id) + 1, 10), id)
+				shared.players.hiders[id].taunts = math.min(helperGetHiderTauntsAmount(id) + 1, 10)
             end
         end
     end
 end
 
-function server.PropSpawnRequest(playerid, propid, cameraTransform)
+function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 	local string = "Player " .. GetPlayerName(playerid) .. " wants to spawn prop " .. propid
 
     -- GetCameraTransform() is client only. But I wanted to validate if the player is looking at the prop on the server too
@@ -157,6 +218,8 @@ function server.PropSpawnRequest(playerid, propid, cameraTransform)
 	local shapeBody = GetShapeBody(shape)
 
 	if shape == propid and shapeBody ~= shared.players.hiders[playerid].propBody then
+
+		-- Delete Old Prop and Backup shapes if transforming into a new shape
 		if shared.players.hiders[playerid].propBody ~= -1 then
 			Delete(shared.players.hiders[playerid].propBody)
 		end
@@ -165,33 +228,51 @@ function server.PropSpawnRequest(playerid, propid, cameraTransform)
 			Delete(GetShapeBody(shared.players.hiders[playerid].propBackupShape))
 		end
 
+		-- Create new Clone Shape and keep a backup copy to regenerate if damaged
 		local newBody, newShape = server.cloneShape(propid)
 		local backUpBody, backUpShape = server.cloneShape(propid) -- We clone twice if the prop gets damaged we regenerate using the backup
+		local emissiveScale = GetProperty(shape, "emissiveScale")
+		SetProperty(backUpShape, "emissiveScale", emissiveScale * 2)
+		SetProperty(newShape, "emissiveScale", emissiveScale * 2)
 
+		-- Move the prop to the player
 		local bodyTransform = GetBodyTransform(newBody)
-
-		SetBodyTransform(newBody, Transform(VecAdd(GetPlayerTransform(propid).pos, Vec(0, 0, 2)), bodyTransform.rot))
+		SetBodyTransform(newBody, Transform(VecAdd(GetPlayerTransform(playerid).pos, Vec(0, 0, 2)), bodyTransform.rot))
 		SetBodyDynamic(newBody, true)
 		server.disableBodyCollission(newBody, true)
 
-		shared.players.hiders[playerid].propBody = newBody
-		shared.players.hiders[playerid].propBackupShape = backUpShape
+		-- Move Backup shape away
 		SetBodyTransform(backUpBody, Transform(Vec(-1000, 10, 0)))
 		SetBodyDynamic(backUpBody, false)
 		server.disableBodyCollission(backUpBody, false)
 
-		SetProperty(newShape, "strength", 10) -- Shapes only get destroyed by weapons
+		-- Note down Prop IDs
+		shared.players.hiders[playerid].propBody = newBody
+		shared.players.hiders[playerid].propBackupShape = backUpShape
 
-		--SetInt('options.game.thirdperson',1, true)
+		-- Make sure Prop isnt fragile
+		SetProperty(newShape, "strength", 5) -- Shapes only get destroyed by weapons
+		SetPlayerParam("godmode", true, playerid)
+
+		-- Note Down the damage values of the prop
+		shared.players.hiders[playerid].damageValue = damageValue
+		shared.players.hiders[playerid].hp = math.max(AutoRound(helperGetPlayerHealth(playerid)/damageValue),1)
+		shared.players.hiders[playerid].transformCooldown = shared.serverTime + server.gameConfig.transformCooldown
+		shared.players.hiders[playerid].environmentalDamageTrigger = false
 	end
 end
 
-function server.propRegenerate(playerid, propid)
+function server.propRegenerate(playerid)
     local propBody = helperGetPlayerPropBody(playerid)
 	if propBody then
         Delete(propBody)
 
-		local newBody, newShape = server.cloneShape(propid) -- #TODO: Check if i can just make copyshapecontents
+		local backupShape = shared.players.hiders[playerid].propBackupShape
+
+		-- I tried doing just copyshapecontents but it didnt get rid of the "IsBodyBroken" property and breaks my logic.
+		-- Therefor I will keep it like this for now 
+		-- #Todo: could perhaps use voxel count instead of is broken?
+		local newBody, newShape = server.cloneShape(backupShape) 
 
 		SetBodyTransform(newBody, GetPlayerTransform(playerid))
 		SetBodyDynamic(newBody, true)
@@ -199,16 +280,20 @@ function server.propRegenerate(playerid, propid)
 
 		shared.players.hiders[playerid].propBody = newBody
 
-		SetProperty(newShape, "strength", 10)
+		SetProperty(newShape, "strength", 5)
 		SetProperty(newShape, "density", 1)
 
+		local emissiveScale = GetProperty(backupShape, "emissiveScale")
+		SetProperty(newShape, "emissiveScale", emissiveScale * 2)
+
 		--SetInt('options.game.thirdperson',1, true)
+		return newBody
 	end
 end
 
 function server.cloneShape(shape, collisison)
 	local newBody = Spawn('<body pos="0.0 0 0.0" dynamic="true"> <voxbox tags="deleteTempShape" size="1 1 1"/> </body>',
-		Transform(), false)[1]                                                                                                                -- Temo shape because empty bodies get rmoved?
+		Transform(Vec(0,0,0)), false)[1]                                                                                                                -- Temo shape because empty bodies get rmoved?
 	local save = CreateShape(newBody, Transform(), 0)
 	CopyShapeContent(shape, save)
 	local x, y, z, scale = GetShapeSize(shape)

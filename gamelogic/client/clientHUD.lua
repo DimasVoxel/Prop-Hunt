@@ -1,3 +1,5 @@
+#include "uiHelper.lua"
+
 function client.draw(dt)
 	hudTick(dt)
 	eventlogDraw(dt, teamsGetPlayerColorsList())
@@ -7,16 +9,16 @@ function client.draw(dt)
 	if helperIsGameOver() then 
 		client.revealHiderSpots()
 		-- TODO: Game Ended should be replaced with a text who actually won or if everyone left something akin to "Hiders Left"
-		hudDrawResults("Game Ended!", {1, 1, 1, 0.75}, "loc@RESULTS_TITLE_TEAM_DEATHMATCH", {{name="Time Survived", width=160, align="center"}}, getEndResults())
+		hudDrawResults("Game Ended!", {1, 1, 1, 0.75}, "Prop Hunt Results", {{name="Time Survived", width=160, align="center"}}, getEndResults())
 		return
 	end
 
-	hudDrawScoreboard(InputDown("shift") and not helperIsGameOver(), "", {{name="Time Survived", width=160, align="center"}}, getPlayerStats())
+	hudDrawScoreboard(InputDown("tab") and not helperIsGameOver(), "", {{name="Time Survived", width=160, align="center"}}, getPlayerStats())
 
 	if helperIsPlayerHunter() then
 		client.hunterDraw()
 	elseif helperIsPlayerHider() then
-		client.hiderDraw()
+		client.hiderDraw(dt)
 	else
 		client.spectator()
 	end
@@ -61,25 +63,181 @@ function client.hunterDraw()
 	end
 end
 
-function client.hiderDraw()
+local healthBarActualFill = 0
+--local lowHealthSoundEffect = false
+--local lowHealthSfxVol = 3
+function client.hiderDraw(dt)
 	if shared.ui.currentCountDownName == "hidersHiding" then
 		countdownDraw("Hide! Hunters start in")
+	end
+
+	hudDrawPlayerWorldMarkers(teamsGetTeamPlayers(2), true, 50, teamsGetColor(2))
+
+	if not helperIsHuntersReleased() then
+		for id in Players() do
+			DebugPrint(helperIsPlayerHidden(id))
+			if not helperIsPlayerHidden(id) then 
+				local body = helperGetPlayerPropBody(id)
+				if body and IsBodyVisible(body,20,false) then
+					hudDrawPlayerWorldMarkers({id}, false, 10, teamsGetColor(1))
+				else
+					hudDrawPlayerWorldMarkers({id}, true, 10, teamsGetColor(1))
+				end
+			end
+		end
 	end
 
 	if not helperIsGameOver() then
 
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
-		hudDrawGameModeHelpText("You are a Hider", "Search a prop and press ( E ) to transform. And press ( F ) to hide. Water will kill you!")
+		hudDrawGameModeHelpText("You are a Hider", "- Press ( E ) to transform\n- Press ( F ) to hide\n- Press & hold ( LMB ) to Taunt\n- Press & Hold ( Shift ) to Sprint\n- Water will kill you!",nil, 385)
 		client.clippingText()
 		client.tauntForce()
 
 		client.DrawTransformPrompt()
+
+		--Below is the HUD for health, sprint, taunts, and cooldown
+		UiPush()
+			UiAlign("center middle")
+			UiTextAlignment("center")
+			UiColor(1,1,1,1)
+
+			UiTranslate(UiCenter(),UiHeight()-90)
+
+			RoundedBlurredRect(800, 35, 10, 0.5, {0,0,0,0.6})
+
+			--health
+			UiPush()
+				UiAlign("left middle")
+				UiTranslate(110)
+
+				local barBlink = 0
+				if helperIsPlayerInDangerEnvironment(GetLocalPlayer()) then --text warning, bar blink, danger sound
+					UiPush()
+						UiFont("regular.ttf", 25)
+						UiAlign("center middle")
+						UiTextAlignment("center")
+						UiTranslate(140, -35)
+						local alpha = (math.sin((GetTime()*7))/2)+0.5
+						UiColor(1,1,1,alpha)
+						UiText("Taking water damage!") --TODO make say what type of damage when fire dmg implemented
+						
+						UiSoundLoop("MOD/assets/taking_env_damage.ogg")
+					UiPop()
+
+					barBlink = 1
+				end
+
+				do
+					local barMax = math.max(AutoRound(1/shared.players.hiders[GetLocalPlayer()].damageValue),1)
+					local barFill = helperGetPlayerShotsLeft()
+					healthBarActualFill = expDecay(healthBarActualFill, barFill, 10, dt)
+					ProgressBar(true, 25, 250, healthBarActualFill, barMax, 13, {0.82,0.08,0.02,1}, barMax, barBlink)
+				end
+
+				UiTranslate(256)
+				UiColor(1,1,1,1)
+				UiImageBox("MOD/assets/heart_graphic.png", 25, 25)
+			UiPop()
+
+			--sprint
+			UiPush()
+				UiRotate(180)
+				UiTranslate(110)
+				do
+					local maxStamina = 3
+					local stamina = shared.players.hiders[GetLocalPlayer()].stamina
+					local barColor = {0.02, 0.49, 0.82, 1}
+					if math.max(shared.players.hiders[GetLocalPlayer()].staminaCoolDown - shared.serverTime, 0) ~= 0 then
+						barColor = {0.6, 0.2, 0.2, 1}
+					end
+					ProgressBar(true, 25, 250, stamina, maxStamina, 13, barColor, 0, 0)
+				end
+				UiTranslate(256)
+				UiAlign("right middle")
+				UiRotate(180)
+				UiColor(1,1,1,1)
+				UiImageBox("MOD/assets/run_graphic.png", 25, 25)
+			UiPop()
+
+			--center info
+			RoundedBlurredRect(200, 70, 15, 0.5, {0,0,0,0.6})
+			UiRect(3, 55)
+
+			--taunts
+			UiPush()
+				UiTranslate(50)
+
+				UiPush()
+					UiTranslate(0,35)
+					UiRotate(90)
+					do
+						local barFill = client.helperGetTauntProgress()
+						if barFill < dt then barFill = 0 end
+						ProgressBar(false, 100, 70, barFill, 1, 15, {1,1,1,0.3})
+					end
+				UiPop()
+
+				UiTranslate(0, -20)
+				UiFont("regular.ttf", 20)
+				UiText("Taunts:")
+
+				local Xamount = math.max(helperGetHiderTauntsAmount()-8,0)
+				local yamount = math.max(helperGetHiderTauntsAmount()-8,0)
+				local Xwiggle = math.random(Xamount*-1, Xamount)
+				local Ywiggle = math.random(yamount*-1, yamount)
+				local blink = math.min(math.sin(GetTime()), math.max(helperGetHiderTauntsAmount()-6,0)/3)
+				UiColor(1,1-blink,1-blink,1)
+
+				UiTranslate(Xwiggle, 30+Ywiggle)
+				UiFont("bold.ttf", 40)
+				UiText(helperGetHiderTauntsAmount(GetLocalPlayer()))
+			UiPop()
+
+			--cooldown
+			local cooldownText = ""
+			local cooldownTimer = AutoRound(AutoClamp((shared.players.hiders[GetLocalPlayer()].transformCooldown-shared.serverTime),0,shared.gameConfig.transformCooldown),0.1) --TODO these need to use the server's max cooldown, no? maybe make a func to get the current (real, not floored) cooldown
+			if not helperIsHuntersReleased() then
+				cooldown = 0
+			end
+
+			local textSize = 40
+			if cooldownTimer == 0 then 
+				cooldownText = "Ready!"
+				textSize = 30
+			else
+				cooldownText = cooldownTimer
+			end
+
+			UiPush()
+				UiTranslate(-50)
+
+				UiPush()
+					UiTranslate(0,35)
+					UiRotate(90)
+					do
+						local barFill = AutoClamp(shared.players.hiders[GetLocalPlayer()].transformCooldown-shared.serverTime,0,shared.gameConfig.transformCooldown) --TODO these need to use the server's max cooldown, no? maybe make a func to get the current (real, not floored) cooldown
+						local barMax = shared.gameConfig.transformCooldown
+						ProgressBar(false, 100, 70, barFill, barMax, 15, {1,1,1,0.3})
+					end
+				UiPop()
+
+				UiTranslate(0, -20)
+				UiFont("regular.ttf", 20)
+				UiText("Cooldown:")
+				UiTranslate(0, 30)
+				UiFont("bold.ttf", textSize)
+				UiText(cooldownText)
+			UiPop()
+		UiPop()
+	else
+		lowHealthSoundEffect = false
+		lowHealthSfxVol = 10
 	end
 end
 
 function client.DrawTransformPrompt()
-	if client.player.lookAtShape ~= -1 then
-
+	if client.player.lookAtShape ~= -1 and not helperIsPlayerHidden() then
 		local boundsAA, boundsBB = GetBodyBounds(GetShapeBody(client.player.lookAtShape))
 		local middle = VecLerp(boundsAA, boundsBB, 0.5)
 		AutoTooltip("Transform Into Prop (E)", middle, false, 40, 1)
@@ -89,11 +247,11 @@ end
 function client.tauntForce()
 	UiPush()
 	UiColor(1,1,1)
-	UiTranslate(UiWidth()/2, UiHeight()-120)
+	UiTranslate(UiWidth()/2, UiHeight()-150)
 	UiFont("bold.ttf",30)
 	UiAlign('center middle')
-	if GetToolAmmo("taunt", GetLocalPlayer()) >= 7 then
-		UiText("If you get 10 taunts, the game will taunt for you! Already " .. GetToolAmmo("taunt", GetLocalPlayer()) .. " taunts!")
+	if helperGetHiderTauntsAmount() >= 7 then
+		UiText("If you get 10 taunts, the game will taunt for you! Already " .. helperGetHiderTauntsAmount() .. " taunts!")
 	end
 	UiPop()
 end
@@ -108,45 +266,6 @@ function client.clippingText()
 		UiText("You're clipping into " .. #checkPropClipping(GetLocalPlayer()) .. " shapes. Can't hide.")
 	end
 	UiPop()
-end
-
-function client.showHint()
-	if client.hint.closestPlayerHint.timer > 0 then
-		if client.hint.closestPlayerHint.detailed then detail =  client.hint.closestPlayerHint.detailed end
-		hudDrawInformationMessage(client.hint.closestPlayerHint.message)
-		client.hint.closestPlayerHint.timer = client.hint.closestPlayerHint.timer - GetTimeStep()
-	end
-
-    if client.hint.closestPlayerArrowHint.timer > 0 then
-		local pos
-		if teamsGetTeamId(GetLocalPlayer()) == 1 then
-			pos = TransformToParentPoint(GetPlayerTransform(client.hint.closestPlayerArrowHint.player), Vec(0,1, -2))
-		elseif  teamsGetTeamId(GetLocalPlayer()) == 2 then
-			pos = TransformToParentPoint(GetPlayerTransform(GetLocalPlayer()), Vec(0,1, -2))
-		end
-
-		local rot = QuatAlignXZ(VecNormalize(VecSub(pos, client.hint.closestPlayerArrowHint.transform.pos)), VecNormalize(VecSub(pos, GetCameraTransform().pos)))
-		DrawSprite(client.assets.arrow, Transform(pos, rot), 0.7, 0.7, 0.7 ,0.7,1,1,1,false,false,false)
-
-		if VecLength(VecSub(pos, client.hint.closestPlayerArrowHint.transform.pos)) < 40 then
-			client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()*10
-		end
-
-    	client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()
-    end
-
-	-- Loop through all circle hints. Remove after they expire but not in the same loop
-	for i=1, #shared.hint.circleHint do
-		if shared.hint.circleHint[i].timer > 0 then
-			for j=1, 5 do
-				local c = j
-				if j % 2 == 0 then c = j*-1 end
-				local rot = QuatRotateQuat(QuatAxisAngle(Vec(0,1,0), GetTime()*c), shared.hint.circleHint[i].transform.rot)
-				local pos = VecAdd(shared.hint.circleHint[i].transform.pos, Vec(0, -j, 0))
-				DrawSprite(client.assets.circle, Transform(pos, rot), shared.hint.circleHint[i].radius, shared.hint.circleHint[i].radius, 1 , 0, 0, shared.hint.circleHint[i].timer/30 , false, false, false)
-			end
-		end
-	end
 end
 
 function client.spectator()
@@ -194,13 +313,13 @@ function client.SetupScreen(dt)
 
 			local settings = {
 				{
-					title = "",
+					title = "Default is Recommended",
 					items = {
 						{
 							key = "savegame.mod.settings.time",
 							label = "Round Length",
 							info = "How long one round lasts",
-							options = { { label = "05:00", value = 5 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 60*3 } }
+							options = { { label = "06:00", value = 6 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 70 } }
 						},
 						{
 							key = "savegame.mod.settings.hideTime",
@@ -223,30 +342,26 @@ function client.SetupScreen(dt)
 						{
 							key = "savegame.mod.settings.hunters",
 							label = "Hunters Amount",
-							info =
-							"The amount of hunters at the beginning of a game. There will always be atleast one hider",
+							info ="The amount of hunters at the beginning of a game. There will always be atleast one hider",
 							options = maxHunters
 						},
 						{
 							key = "savegame.mod.settings.enforceGameStartHunterAmount",
 							label = "Limit Hunters",
-							info =
-							"At the start of each game, the server removes extra hunters if there are more hunters than are set in 'Hunters Amount'.",
+							info ="At the start of each game, the server removes extra hunters if there are more hunters than are set in 'Hunters Amount'.",
 							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
 							key = "savegame.mod.settings.serverRandomTeams",
 							label = "Random Hunters",
-							info =
-							"The server will randomize each team no matter if someone already joined hunters or hiders.",
+							info ="The server will randomize each team no matter if someone already joined hunters or hiders.",
 							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
 							key = "savegame.mod.settings.hintTimer",
 							label = "Hunter Hints",
 							info = "Timer when Hunters get a hint",
-							"How quickly hunters get new PipeBombs.",
-							options = {    { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -1}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30}, { label = "45 Seconds", value = 45}}
+							options = {{ label = "45 Seconds", value = 45}, { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -1}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30}}
 						},
 						{
 							key = "savegame.mod.settings.enableHunterHints",
@@ -257,35 +372,38 @@ function client.SetupScreen(dt)
 						{
 							key = "savegame.mod.settings.hunterBulletReloadTimer",
 							label = "Bullet Reload",
-							info =
-							"How quickly hunters get new bullets.",
-							options = {  { label = "5 Seconds", value = 5},  { label = "6 Seconds", value = 6}, { label = "7 Seconds", value = 7}, { label = "8 Seconds", value = 8}, { label = "9 Seconds", value = 9}, { label = "10 Seconds", value = 10}, { label = "1 Second", value = 1}, { label = "2 Seconds", value = 2}, { label = "3 Seconds", value = 3}, { label = "4 Seconds", value = 4} }
+							info ="How quickly hunters get new bullets.",
+							options = {{ label = "4 Seconds", value = 4}, { label = "5 Seconds", value = 5},  { label = "6 Seconds", value = 6}, { label = "7 Seconds", value = 7}, { label = "8 Seconds", value = 8}, { label = "9 Seconds", value = 9}, { label = "10 Seconds", value = 10}, { label = "1 Second", value = 1}, { label = "2 Seconds", value = 2}, { label = "3 Seconds", value = 3}}
 						},
 						{
 							key = "savegame.mod.settings.hunterPipebombReloadTimer",
 							label = "Pipebomb Reload",
-							info =
-							"How quickly hunters get new PipeBombs.",
+							info ="How quickly hunters get new PipeBombs.",
 							options = {  { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "40 Seconds", value = 40}, { label = "50 Seconds", value = 50}, { label = "60 Seconds", value = 60}, { label = "Disable PipeBombs", value = -1}, { label = "10 Seconds", value = 10}  }
 						},
 						{
 							key = "savegame.mod.settings.blueTide",
 							label = "Bluetide Reload",
-							info =
-							"How quickly hunters get new Bluetides.",
+							info ="How quickly hunters get new Bluetides.",
 							options = { { label = "20 Seconds", value = 20},  { label = "30 Seconds", value = 30}, { label = "40 Seconds", value = 40}, { label = "50 Seconds", value = 50}, { label = "60 Seconds", value = 60}, { label = "Disable BlueTide", value = -1}, { label = "10 Seconds", value = 10},   }
 						},
 						{
 							key = "savegame.mod.settings.hiderTauntReloadTimer",
 							label = "Forced taunt",
 							info ="Players get a taunt every X seconds. After reaching 10 they will be forced to taunt. Configure how quickly a player Recieves a new taunt.",
-							options = { { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "60 Seconds", value = 60}, { label = "Disable Forced Taunt", value = 1000000} ,{ label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15}  }
+							options = { { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "60 Seconds", value = 60}, { label = "Disable Forced Taunt", value = 1000000} ,{ label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15}}
 						},
 						{
 							key = "savegame.mod.settings.enableSizeLimits",
 							label = "Size Limits",
 							info ="Enable Size limits.",
 							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+						},
+						{
+							key = "savegame.mod.settings.transformCooldown",
+							label = "Prop Cooldown",
+							info ="How quickly hiders can switch from one prop to another.",
+							options = { { label = "3 Seconds", value = 3}, { label = "5 Seconds", value = 5}, { label = "8 Seconds", value = 8}, { label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15} }
 						},
 						{
 							key = "savegame.mod.settings.allowallowallowFriendlyFire",
@@ -307,13 +425,14 @@ function client.SetupScreen(dt)
 					hunterBulletReloadTimer = GetInt("savegame.mod.settings.hunterBulletReloadTimer"),
 					hunterPipebombReloadTimer = GetInt("savegame.mod.settings.hunterPipebombReloadTimer"),
 					hunterBluetideReloadTimer = GetInt("savegame.mod.settings.blueTide"),
-					hunterHinttimer = GetInt("savegame.mod.settings.hintTimer"),
+					hunterHintTimer = GetInt("savegame.mod.settings.hintTimer"),
 					hiderTauntReloadTimer = GetInt("savegame.mod.settings.hiderTauntReloadTimer"),
 					hidersJoinHunters = GetInt("savegame.mod.settings.hidersJoinHunters"),
 					midGameJoin = GetInt("savegame.mod.settings.midGameJoin"),
-					hints = GetInt("savegame.mod.settings.enableHunterHints"),
+					enableHints = GetInt("savegame.mod.settings.enableHunterHints"),
 					enableSizeLimits = GetInt("savegame.mod.settings.enableSizeLimits"),
-					allowFriendlyFire = GetInt("savegame.mod.settings.allowFriendlyFire")
+					allowFriendlyFire = GetInt("savegame.mod.settings.allowFriendlyFire"),
+					transformCooldown = GetInt("savegame.mod.settings.transformCooldown"),
 				})
 			end
 		end
@@ -323,7 +442,7 @@ function client.SetupScreen(dt)
 end
 
 
-function getPlayerStats() -- This is for the Shift button scoreboard
+function getPlayerStats() -- This is for the tab button scoreboard
 	local stats
 	local hunterTable = {}
 	local hiderTable = {}

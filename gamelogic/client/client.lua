@@ -1,10 +1,16 @@
 --[[
+#include clientOnlyHelpers.lua
 #include clientHider.lua
 #include clientHUD.lua
 ]]
 
 client.state = {
 	matchEnded = false
+}
+
+client.gameConfig = {
+	tauntChargeTime = 0.5,
+	hideCoolDown = 0.5
 }
 
 
@@ -22,13 +28,15 @@ client.player = {
 	hider = {
 		hidingAttempt = false
 	},
-	lookAtShape = -1
+	lookAtShape = -1,
+	tauntChargeCount = 0,
+	hideCoolDown = 0
 }
 
 client.assets = {
-	arrow = nil,
 	rect = nil,
-	circle = nil
+	circle = nil,
+	taunt = nil,
 }
 
 client.camera = {}
@@ -44,19 +52,14 @@ client.hint = {
 		message = "",
 		timer = 0
 	},
-	closestPlayerArrowHint = {
-		transform = Transform(),
-		timer = 0,
-		player = 0
-	},
 	tauntCooldown = 0
 }
 
 
 function client.init()
-	client.assets.arrow = LoadSprite("assets/arrow.png")
 	client.assets.rect = LoadSprite("gfx/white.png")
 	client.assets.circle = LoadSprite("gfx/ring.png")
+	client.assets.taunt = LoadSound('MOD/assets/taunt0.ogg')
 end
 
 function client.tick()
@@ -95,18 +98,20 @@ end
 
 
 function client.highlightHurtHider()
+	
 	-- If a hider gets damaged the server sends a ClientCall to highlight a player body.
 	-- The code bellow handles drawing and removing the highlight.
 	for i = 1, #client.player.hurtOutline do
-		if client.player.hurtOutline[i].timer > 0 then
-			client.player.hurtOutline[i].timer = client.player.hurtOutline[i].timer - GetTimeStep()
-			DrawBodyHighlight(client.player.hurtOutline[i].body, client.player.hurtOutline[i].timer) 
-			DrawBodyOutline(client.player.hurtOutline[i].body,1,0,0, client.player.hurtOutline[i].timer)
+		if client.player.hurtOutline[i].timer >= GetTime() then
+			local intensity = math.max(0, 1 - 0.2/(client.player.hurtOutline[i].timer - GetTime())) 
+			
+			DrawBodyHighlight(helperGetPlayerPropBody(client.player.hurtOutline[i].id), intensity) 
+			DrawBodyOutline(helperGetPlayerPropBody(client.player.hurtOutline[i].id),1,0,0, intensity/3)
 		end
 	end
 
 	for i = 1, #client.player.hurtOutline do
-		if client.player.hurtOutline[i].timer < 0 then
+		if client.player.hurtOutline[i].timer <= GetTime() then
 			table.remove(client.player.hurtOutline, i)
 			break
 		end
@@ -114,64 +119,44 @@ function client.highlightHurtHider()
 end
 
 function client.showHint()
-	if client.hint.closestPlayerHint.timer > 0 then
+	if client.hint.closestPlayerHint.timer >= shared.serverTime then
 		if client.hint.closestPlayerHint.detailed then detail =  client.hint.closestPlayerHint.detailed end
 		hudDrawInformationMessage(client.hint.closestPlayerHint.message)
-		client.hint.closestPlayerHint.timer = client.hint.closestPlayerHint.timer - GetTimeStep()
 	end
-
-    if client.hint.closestPlayerArrowHint.timer > 0 then
-		local pos
-		if teamsGetTeamId(GetLocalPlayer()) == 1 then
-			pos = TransformToParentPoint(GetPlayerTransform(client.hint.closestPlayerArrowHint.player), Vec(0,1, -2))
-		elseif  teamsGetTeamId(GetLocalPlayer()) == 2 then
-			pos = TransformToParentPoint(GetPlayerTransform(GetLocalPlayer()), Vec(0,1, -2))
-		end
-
-
-		local rot = QuatAlignXZ(VecNormalize(VecSub(pos, client.hint.closestPlayerArrowHint.transform.pos)), VecNormalize(VecSub(pos, GetCameraTransform().pos)))
-		DrawSprite(client.assets.arrow, Transform(pos, rot), 0.7, 0.7, 0.7 ,0.7,1,1,1,false,false,false)
-
-
-		if VecLength(VecSub(pos, client.hint.closestPlayerArrowHint.transform.pos)) < 40 then
-			client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()*10
-		end
-
-    	client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()
-    end
-
+--	AutoInspect(shared.hint.circleHint, 2, " ")
 	-- Loop through all circle hints. Remove after they expire but not in the same loop
 	for i=1, #shared.hint.circleHint do
-		if shared.hint.circleHint[i].timer > 0 then
+		if shared.hint.circleHint[i].timer >= shared.serverTime then
 			for j=1, 5 do
 				local c = j
 				if j % 2 == 0 then c = j*-1 end
 				local rot = QuatRotateQuat(QuatAxisAngle(Vec(0,1,0), GetTime()*c), shared.hint.circleHint[i].transform.rot)
 				local pos = VecAdd(shared.hint.circleHint[i].transform.pos, Vec(0, -j, 0))
-				DrawSprite(client.assets.circle, Transform(pos, rot), shared.hint.circleHint[i].radius, shared.hint.circleHint[i].radius, 1 , 0, 0, shared.hint.circleHint[i].timer/30 , false, false, false)
+
+				DrawSprite(client.assets.circle, Transform(pos, rot), shared.hint.circleHint[i].diameter, shared.hint.circleHint[i].diameter, 1 , 0, 0, AutoClamp(1 - 1/(shared.hint.circleHint[i].timer - shared.serverTime),0, 1) , false, false, false)
 			end
 		end
 	end
 end
 
+function client.notify(text)
+	hudShowBanner(text, {0,0,0}) 
+end
 
-function client.highlightPlayer(body)
+function client.tauntBroadcast(pos)
+	PlaySound(client.assets.taunt,pos,2,true,1)
+end
+
+function client.highlightPlayer(id)
 	client.player.hurtOutline[#client.player.hurtOutline+1] = { }
-	client.player.hurtOutline[#client.player.hurtOutline].body = body
-	client.player.hurtOutline[#client.player.hurtOutline].timer = 1
+	client.player.hurtOutline[#client.player.hurtOutline].id = id
+	client.player.hurtOutline[#client.player.hurtOutline].timer = GetTime() + 0.9
 end
 
 function client.hintShowMessage(message, timer)
 	client.hint.closestPlayerHint = {}
-	client.hint.closestPlayerHint.timer = timer
-	client.hint.closestPlayerHint.message = message
-end
-
-function client.hintShowArrow(transform, player, timer)
-	client.hint.closestPlayerArrowHint = {}
-	client.hint.closestPlayerArrowHint.transform = transform
-	client.hint.closestPlayerArrowHint.player = player
-	client.hint.closestPlayerArrowHint.timer = timer
+	client.hint.closestPlayerHint.timer = timer + shared.serverTime
+	client.hint.closestPlayerHint.message = message 
 end
 
 function client.friendlyFireWarning(amount)

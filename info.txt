@@ -1,6 +1,6 @@
-name = Prop Hunt
+name = Prop Hunt - Experimental
 author = DimasVoxel
-description = A prop hunt mod[noupload]
+description = A prop hunt mod - experimental version for testing only[noupload]
 tags = gameplay
 version = 2
 

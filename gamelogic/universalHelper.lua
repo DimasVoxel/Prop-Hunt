@@ -2,6 +2,8 @@
 -- Player state helpers
 -- =========================
 
+--- Player Team ---
+
 -- Hunter id if no id provided uses localplayer
 function helperIsPlayerHunter(id)
     id = id or GetLocalPlayer()
@@ -19,6 +21,10 @@ function helperIsPlayerSpectator(id)
     id = id or GetLocalPlayer()
     return teamsGetTeamId(id) == 3
 end
+
+---------
+
+----- Hider Helpers ----
 
 -- Returns if the player has transformed into a prop
 -- Will always return false if player is not a Hider
@@ -39,7 +45,11 @@ end
 function helperGetPlayerPropBody(id)
     id = id or GetLocalPlayer()
     if not helperIsPlayerHider(id) then return false end
-    if shared.players.hiders[id] and shared.players.hiders[id].propBody == -1 then return false end
+    if shared.players.hiders[id] then
+		if shared.players.hiders[id].propBody == -1 or shared.players.hiders[id].propBody == nil then 
+			return false 
+		end
+	end
     return shared.players.hiders[id].propBody
 end
 
@@ -49,12 +59,68 @@ function helperGetPlayerPropShape(id)
     return GetBodyShapes(helperGetPlayerPropBody(id))[1]
 end
 
+-- This is how much damage the hider gets when shot at or explodes
+function helperGetHiderDamageValue(id)
+	id = id or GetLocalPlayer()
+	if not helperIsPlayerHider(id) then return false end
+	if not helperGetPlayerPropBody(id) then return 0.30 end -- Base Damage
+	return shared.players.hiders[id].damageValue
+end
+
+function helperGetHiderTauntsAmount(id)
+	id = id or GetLocalPlayer()
+	if not helperIsPlayerHider(id) then return false end
+	return shared.players.hiders[id].taunts
+end
+------------
+
 function helperIsHuntersReleased()
     return shared.state and shared.state.hunterFreed == true
 end
 
 function helperIsGameOver()
     return shared.state and shared.state.gameOver == true
+end
+
+function helperGetPlayerShotsLeft(id)
+	local id = id or GetLocalPlayer()
+	if helperIsPlayerHider(id) and shared.players.hiders[id] then
+		return shared.players.hiders[id].hp
+	end
+	return false
+end
+
+function helperDecreasePlayerShots(id)
+	local id = id or GetLocalPlayer()
+	if helperIsPlayerHider(id) and shared.players.hiders[id] then
+		shared.players.hiders[id].hp = math.max(shared.players.hiders[id].hp - 1,0)
+	end
+end
+
+function helperGetPlayerHealth(id)
+	local id = id or GetLocalPlayer()
+	if helperIsPlayerHider(id) and shared.players.hiders[id] then
+		return shared.players.hiders[id].health
+	elseif helperIsPlayerHunter(id) then
+		return GetPlayerHealth(id)
+	else -- Spectators
+		return 1
+	end
+end
+
+function helperSetPlayerHealth(id, health)
+	if helperIsPlayerHider(id) and shared.players.hiders[id] then
+		shared.players.hiders[id].health = math.max(health, 0)
+	else
+		SetPlayerHealth(health, id)
+	end
+end
+
+function helperIsPlayerInDangerEnvironment(id)
+	local id = id or GetLocalPlayer()
+	if helperIsPlayerHider(id) and shared.players.hiders[id] then
+		return shared.players.hiders[id].environmentalDamageTrigger
+	end
 end
 
 ----------------# Functions that are used by both client and server #------------------
@@ -82,6 +148,7 @@ end
 
 function playerGetLookAtShape(dist, playerID, cameraT)
 	local cameraT = cameraT or GetCameraTransform()
+	local playerID = playerID or GetLocalPlayer()
 	local playerFwd = VecNormalize(TransformToParentVec(cameraT, Vec(0, 0, -1)))
 
 	QueryRequire("physical large")
@@ -96,4 +163,9 @@ function playerGetLookAtShape(dist, playerID, cameraT)
 	else
 		return -1
 	end
+end
+
+--better than lerp, is framerate independant and arrives at an end
+function expDecay(val, target, decay, dt)
+	return target + (val - target) * math.exp(-decay * dt)
 end

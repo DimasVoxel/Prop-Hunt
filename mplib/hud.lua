@@ -1396,12 +1396,12 @@ end
 -- @param[type=string] header Header text shown at the top of the box. Ignored if nil or "".
 -- @param[type=string] text Main body text to display.
 -- @param[opt,type=table] headerColor Color `{r, g, b, a}` for the header (defaults to yellow).
-function hudDrawGameModeHelpText(header, text, headerColor)
+function hudDrawGameModeHelpText(header, text, headerColor, width)
 	local hasHeader = header ~= nil and header ~= ""
 	
 	UiPush()
 		local padding = 20
-		local width = 300
+		local width = width or 350
 		local textOffset = 0
 		local textMaxWidth = width - 2 * padding
 

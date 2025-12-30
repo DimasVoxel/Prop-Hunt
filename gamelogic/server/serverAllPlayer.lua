@@ -4,17 +4,16 @@ function server.playersTick(dt)
 end
 
 function server.handleHints(dt)
-	if helperIsHuntersReleased() and server.gameConfig.hints then
-		server.timers.hunterHintTimer = server.timers.hunterHintTimer - dt
+	if helperIsHuntersReleased() and server.gameConfig.enableHunterHints then
 
 		-- We trigger a hint if hint timer gets to 0, and during the last 30 seconds we force one last hint.
-		if server.timers.hunterHintTimer < 0 or server.state.time < 30 and server.state.triggerLastHint == false then
+		if server.timers.hunterHintTimer <= GetTime() or server.state.time < 30 and server.state.triggerLastHint == false then
 			if server.state.time < 30 then
 				-- We make sure that the last hint wont get spammed
 				server.state.triggerLastHint = true
 			end
 
-			server.timers.hunterHintTimer = server.lobbySettings.hunterHinttimer
+			server.timers.hunterHintTimer = GetTime() + server.gameConfig.hunterHintTimer
 			for id in Players() do 
 				if helperIsPlayerHunter(id) then 
 					server.TriggerHint(id, 1)
@@ -50,6 +49,7 @@ function server.noHunterSituation()
 			end
 		end
 
+		SetPlayerParam("godMode", false, id)
 		SetPlayerParam("healthRegeneration", true, id)
 		SetPlayerParam("collisionMask", 255, id)
 		SetPlayerParam("walkingSpeed", 1, id)
@@ -57,21 +57,21 @@ function server.noHunterSituation()
 end
 
 function server.circleHint()
-    local timeLeft = server.state.time
+
     local hiders = teamsGetTeamPlayers(1)
 
     -- Only trigger in the last 3 minutes
-    if timeLeft > 180 then
+	if server.state.time > 180 then
         return
     end
 
     -- Determine diameter
     local diameter
-    if #hiders == 1 and timeLeft <= 60 then
+    if #hiders == 1 and server.state.time <= 60 then
         diameter = 25 + #teamsGetTeamPlayers(2) * 2 
-    elseif timeLeft > 120 then      -- between 3 and 2 minutes left
+    elseif server.state.time > 120 then      -- between 3 and 2 minutes left
         diameter = 60
-    elseif timeLeft > 60 then       -- between 2 and 1 minutes left
+    elseif server.state.time > 60 then       -- between 2 and 1 minutes left
         diameter = 35
     else                            -- last minute
         diameter = 25
@@ -113,7 +113,7 @@ function server.circleHint()
 			shared.hint.circleHint[#shared.hint.circleHint].transform = hintTransform
 			shared.hint.circleHint[#shared.hint.circleHint].diameter = diameter
 			shared.hint.circleHint[#shared.hint.circleHint].playerid = hiderId
-			shared.hint.circleHint[#shared.hint.circleHint].timer = 29
+			shared.hint.circleHint[#shared.hint.circleHint].timer = shared.serverTime + server.gameConfig.hunterHintTimer / 1.5
 		end
     end
 end
@@ -138,31 +138,30 @@ function server.TriggerHint(id, teamId)
 	local hunters = #teamsGetTeamPlayers(TEAM_HUNTERS)
 
     -- Tried to balance the hints
-    local function CanShowDetailedHint()
-		local remainingTime = server.lobbySettings.roundLength - server.state.time
+	local function CanShowDetailedHint()
 
+		-- 1 hider left → last 2 minutes
 		if hiders == 1 then
-			return remainingTime <= 120
+			return server.state.time <= 120
 		end
 
-		if hunters >= 5 then
-			return server.state.time >= 300
-		end
-
+		-- 1 hunter vs many hiders → last 3 minutes
 		if hunters == 1 and hiders > 1 then
-			return remainingTime <= 180
+			return server.state.time <= 180
 		end
 
+		-- 2 hunters vs 2+ hiders → last 2 minutes
 		if hunters == 2 and hiders >= 2 then
-			return remainingTime <= 120
+			return server.state.time <= 120
 		end
 
 		return true
 	end
 
+
     -- Hints are less accurate in the first half of the round
 	local function GetShownDistance(dist)
-		if server.state.time < server.lobbySettings.roundLength * 0.5 then
+		if server.state.time < server.gameConfig.roundLength * 0.5 then
 			return math.floor(dist / 5) * 5
 		end
 		return math.floor(dist * 10) / 10
