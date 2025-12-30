@@ -38,7 +38,17 @@ function server.noHunterSituation()
 		shared.players.hiders[id] = {}
 
 		teamsAssignToTeam(id, 2)
-		spawnRespawnPlayer(id)
+		if helperIsHuntersReleased() then
+			spawnRespawnPlayer(id)
+		else
+			local hunter_room_spawn = FindLocation("hunter_spawn_waiting", true)
+			local spawn_transform = GetLocationTransform(hunter_room_spawn)
+			if IsHandleValid(hunter_room_spawn) then
+				-- room spawned, place all hunters there (other case is handled in serverHunter.lua)
+				SetPlayerTransform(spawn_transform, id)
+				SetPlayerVelocity(Vec(0, 0, 0), id)
+			end
+		end
 
 		SetPlayerParam("healthRegeneration", true, id)
 		SetPlayerParam("collisionMask", 255, id)
