@@ -21,9 +21,11 @@ function client.draw(dt)
 		client.spectator()
 	end
 
+	--[[ moved so only hiders see this timer, seekers get the tv screen
 	if shared.ui.currentCountDownName == "hidersHiding" then
 		countdownDraw("Hider are Hiding!")
 	end
+	--]]
 
 	if helperIsHuntersReleased() and not helperIsGameOver() then
 		hudDrawTimer(shared.state.time, 1)
@@ -47,7 +49,10 @@ function client.hunterDraw()
 
 	if not helperIsGameOver() then
 		if helperIsPlayerHunter() and not helperIsHuntersReleased() then
-			UiImageBox("assets/placeholder.png", UiWidth(), UiHeight(), 0,0)
+			--UiImageBox("assets/placeholder.png", UiWidth(), UiHeight(), 0,0)
+			if shared.ui.currentCountDownName == "hidersHiding" then
+				countdownDraw("Hide! Hunters start in", true)
+			end
 		end
 
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
@@ -57,6 +62,10 @@ function client.hunterDraw()
 end
 
 function client.hiderDraw()
+	if shared.ui.currentCountDownName == "hidersHiding" then
+		countdownDraw("Hide! Hunters start in")
+	end
+
 	if not helperIsGameOver() then
 
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
