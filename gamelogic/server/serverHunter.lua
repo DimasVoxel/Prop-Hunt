@@ -97,7 +97,7 @@ end
 
 function server.friendlyFireRoutine()
 	local victim, attacker = GetEvent("playerdied", 1)
-	if attacker and victim and helperIsPlayerHunter(attacker) and helperIsPlayerHunter(victim) and server.gameConfig.allowFriendlyFire == 1 and not IsPlayerHost(attacker) then -- Not sure what to do if the host is an ass. We could probably increase the respawn timer to 60 seconds
+	if attacker and victim and helperIsPlayerHunter(attacker) and helperIsPlayerHunter(victim) and server.gameConfig.allowFriendlyFire and not IsPlayerHost(attacker) then -- Not sure what to do if the host is an ass. We could probably increase the respawn timer to 60 seconds
 		-- Ensure entry exists
 		server.moderation[attacker] = (server.moderation[attacker] or 0) + 1
 		ClientCall(attacker, "client.friendlyFireWarning", server.moderation[attacker] )

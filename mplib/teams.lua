@@ -416,8 +416,8 @@ function _teamsAssignPlayers()
 
         -- Clamp hunters so at least one hider
         local huntersStartAmount = math.min(server.gameConfig.huntersStartAmount, totalPlayers - 1)
-        local randomTeams = server.gameConfig.randomTeams == 1
-        local enforceGameStartHunterAmount = server.gameConfig.enforceGameStartHunterAmount == 1
+        local randomTeams = server.gameConfig.randomTeams
+        local enforceGameStartHunterAmount = server.gameConfig.enforceGameStartHunterAmount
 
         -- Reset teams if randomTeams is enabled
         if randomTeams then

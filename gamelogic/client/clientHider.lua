@@ -127,7 +127,7 @@ function client.HighlightDynamicBodies()
 				local voxelCount = GetShapeVoxelCount(shape)
 
 				local unqualified = false
-				if shared.gameConfig.enableSizeLimits == 1 then
+				if shared.gameConfig.enableSizeLimits then
                     -- 70 is large enough for containers and 150 is reasonably large to still see easily
 					if (x > 70 or y > 70 or z > 70 or voxelCount < 150) then
 						unqualified = true
