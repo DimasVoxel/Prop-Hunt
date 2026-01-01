@@ -246,7 +246,7 @@ function client.SetupScreen(dt)
 							label = "Hunter Hints",
 							info = "Timer when Hunters get a hint",
 							"How quickly hunters get new PipeBombs.",
-							options = {    { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -1}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30}, { label = "45 Seconds", value = 45}}
+							options = {    { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30}, { label = "45 Seconds", value = 45}}
 						},
 						{
 							key = "savegame.mod.settings.enableHunterHints",
