@@ -12,7 +12,7 @@ server.gameConfig = {
 	hunterBulletReloadTimer = 5,
 	hunterPipebombReloadTimer = 10,
 	hunterBluetideReloadTimer = 20,
-	hunterHinttimer = 45,
+	hunterHintTimer = 45,
 	hiderTauntReloadTimer = 10,
 
 	midGameJoin = true,
@@ -41,7 +41,7 @@ server.timers = {
 	hunterBulletReloadTimer = 0,
 	hunterPipebombReloadTimer = 0,
 	hunterBluetideReloadTimer = 0,
-	hunterHinttimer = 0,
+	hunterHintTimer = 0,
 	hiderTauntReloadTimer = 0
 }
 
@@ -117,7 +117,7 @@ function server.start(settings)
 	server.gameConfig.hunterBulletReloadTimer = settings.hunterBulletReloadTimer
 	server.gameConfig.hunterPipebombReloadTimer = settings.hunterPipebombReloadTimer
 	server.gameConfig.hunterBluetideReloadTimer = settings.hunterBluetideReloadTimer
-	server.gameConfig.hunterHinttimer = settings.hunterHinttimer
+	server.gameConfig.hunterHintTimer = settings.hunterHintTimer
 	server.gameConfig.hiderTauntReloadTimer = settings.hiderTauntReloadTimer
 
 	-- The gameConfig function doesnt support bools? Therefor I am converting them here
@@ -126,9 +126,8 @@ function server.start(settings)
 	server.gameConfig.allowFriendlyFire = settings.allowFriendlyFire == 1
 	server.gameConfig.enforceGameStartHunterAmount = settings.enforceGameStartHunterAmount == 1
 	server.gameConfig.randomTeams = settings.randomTeams == 1
-	server.gameConfig.enableHunterHints = settings.enableHunterHints == 1
+	server.gameConfig.enableHunterHints = settings.enableHints == 1
 	server.gameConfig.enableSizeLimits = settings.enableSizeLimits == 1
-	shared.gameConfig.enableSizeLimits = settings.enableSizeLimits == 1
 
 	if settings.hunterPipebombReloadTimer == -1 then
 		server.gameConfig.hunterPipeBombEnabled = false
@@ -142,10 +141,10 @@ function server.start(settings)
 		server.gameConfig.bluetideEnabled = true
 	end
 
-	if settings.hunterHinttimer == -1 then
-		server.gameConfig.hunterHintTimer = false
+	if settings.hunterHintTimer == -1 then
+		server.gameConfig.enableHunterHints = false
 	else
-		server.gameConfig.hunterHintTimer = true
+		server.gameConfig.enableHunterHints = true
 	end
 
 	--room has to be spawned here and not in init or the screens won't work

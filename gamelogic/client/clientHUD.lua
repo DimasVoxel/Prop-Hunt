@@ -200,13 +200,13 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.time",
 							label = "Round Length",
 							info = "How long one round lasts",
-							options = { { label = "05:00", value = 5 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 60*3 } }
+							options = { { label = "05:00", value = 5 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 70 } }
 						},
 						{
 							key = "savegame.mod.settings.hideTime",
 							label = "Hide Time",
 							info = "How much time hiders have to hide",
-							options = {{ label = "00:30", value = 30}, { label = "00:45", value = 45 }, { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 },  }
+							options = {{ label = "00:30", value = 3}, { label = "00:45", value = 45 }, { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 },  }
 						},
 						{
 							key = "savegame.mod.settings.hidersJoinHunters",
@@ -307,11 +307,11 @@ function client.SetupScreen(dt)
 					hunterBulletReloadTimer = GetInt("savegame.mod.settings.hunterBulletReloadTimer"),
 					hunterPipebombReloadTimer = GetInt("savegame.mod.settings.hunterPipebombReloadTimer"),
 					hunterBluetideReloadTimer = GetInt("savegame.mod.settings.blueTide"),
-					hunterHinttimer = GetInt("savegame.mod.settings.hintTimer"),
+					hunterHintTimer = GetInt("savegame.mod.settings.hintTimer"),
 					hiderTauntReloadTimer = GetInt("savegame.mod.settings.hiderTauntReloadTimer"),
 					hidersJoinHunters = GetInt("savegame.mod.settings.hidersJoinHunters"),
 					midGameJoin = GetInt("savegame.mod.settings.midGameJoin"),
-					hints = GetInt("savegame.mod.settings.enableHunterHints"),
+					enableHints = GetInt("savegame.mod.settings.enableHunterHints"),
 					enableSizeLimits = GetInt("savegame.mod.settings.enableSizeLimits"),
 					allowFriendlyFire = GetInt("savegame.mod.settings.allowFriendlyFire")
 				})

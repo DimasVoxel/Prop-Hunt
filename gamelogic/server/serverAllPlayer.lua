@@ -4,7 +4,7 @@ function server.playersTick(dt)
 end
 
 function server.handleHints(dt)
-	if helperIsHuntersReleased() and server.gameConfig.hints then
+	if helperIsHuntersReleased() and server.gameConfig.enableHunterHints then
 		server.timers.hunterHintTimer = server.timers.hunterHintTimer - dt
 
 		-- We trigger a hint if hint timer gets to 0, and during the last 30 seconds we force one last hint.
@@ -14,7 +14,7 @@ function server.handleHints(dt)
 				server.state.triggerLastHint = true
 			end
 
-			server.timers.hunterHintTimer = server.lobbySettings.hunterHinttimer
+			server.timers.hunterHintTimer = server.gameConfig.hunterHintTimer
 			for id in Players() do 
 				if helperIsPlayerHunter(id) then 
 					server.TriggerHint(id, 1)
@@ -24,6 +24,19 @@ function server.handleHints(dt)
 			end
 
             server.circleHint()
+		end
+
+		local hints = shared.hint.circleHint
+		for i = #hints, 1, -1 do
+			local hint = hints[i]
+			if hint and hint.timer then
+				local t = hint.timer - dt
+				if t <= 0 then
+					table.remove(hints, i)
+				else
+					hint.timer = t
+				end
+			end
 		end
 	end
 end
@@ -139,7 +152,7 @@ function server.TriggerHint(id, teamId)
 
     -- Tried to balance the hints
     local function CanShowDetailedHint()
-		local remainingTime = server.lobbySettings.roundLength - server.state.time
+		local remainingTime = server.gameConfig.roundLength - server.state.time
 
 		if hiders == 1 then
 			return remainingTime <= 120
@@ -162,7 +175,7 @@ function server.TriggerHint(id, teamId)
 
     -- Hints are less accurate in the first half of the round
 	local function GetShownDistance(dist)
-		if server.state.time < server.lobbySettings.roundLength * 0.5 then
+		if server.state.time < server.gameConfig.roundLength * 0.5 then
 			return math.floor(dist / 5) * 5
 		end
 		return math.floor(dist * 10) / 10

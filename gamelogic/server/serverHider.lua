@@ -72,19 +72,21 @@ end
 function server.hiderUpdate()
 	if teamsIsSetup() then
 		for id in Players() do
-			if helperIsPlayerHidden(id) then
-				local aa,bb = GetBodyBounds(helperGetPlayerPropBody(id))
-				local center = VecLerp(aa, bb, 0.5)
-				if (IsPointInWater(center) or InputDown('down', id) or InputDown('up', id) or InputDown('left', id) or InputDown('right', id) or InputDown('jump', id)) and shared.players.hiders[id].isPropPlaced == true then
-					shared.players.hiders[id].isPropPlaced = false
-					SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.2, 0)),GetPlayerCameraTransform(id).rot), id)
+			if helperIsPlayerHider(id) then
+				if helperIsPlayerHidden(id) then
+					local aa,bb = GetBodyBounds(helperGetPlayerPropBody(id))
+					local center = VecLerp(aa, bb, 0.5)
+					if (IsPointInWater(center) or InputDown('down', id) or InputDown('up', id) or InputDown('left', id) or InputDown('right', id) or InputDown('jump', id)) and shared.players.hiders[id].isPropPlaced == true then
+						shared.players.hiders[id].isPropPlaced = false
+						SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.2, 0)),GetPlayerCameraTransform(id).rot), id)
 
-                    -- You shouldnt spam this function because every call will put the message in a queue
-					hudShowBanner("Water will damage you, get out as soon as you can.", {0,0,0}) 
-				end
-				
-				if IsPointInWater(GetPlayerTransform(id).pos) then
-					SetPlayerHealth(GetPlayerHealth(id) - GetTimeStep()/15, id)
+						-- You shouldnt spam this function because every call will put the message in a queue
+						hudShowBanner("Water will damage you, get out as soon as you can.", {0,0,0}) 
+					end
+	
+					if IsPointInWater(GetPlayerTransform(id).pos) then
+						SetPlayerHealth(GetPlayerHealth(id) - GetTimeStep()/15, id)
+					end
 				end
 
 				server.handlePlayerProp(id)

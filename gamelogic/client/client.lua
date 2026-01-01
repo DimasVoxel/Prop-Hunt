@@ -54,7 +54,8 @@ client.hint = {
 
 
 function client.init()
-	client.assets.arrow = LoadSprite("assets/arrow.png")
+	client.assets.arrow = LoadSprite("/assets/arrow.png")
+
 	client.assets.rect = LoadSprite("gfx/white.png")
 	client.assets.circle = LoadSprite("gfx/ring.png")
 end
@@ -148,7 +149,8 @@ function client.showHint()
 				if j % 2 == 0 then c = j*-1 end
 				local rot = QuatRotateQuat(QuatAxisAngle(Vec(0,1,0), GetTime()*c), shared.hint.circleHint[i].transform.rot)
 				local pos = VecAdd(shared.hint.circleHint[i].transform.pos, Vec(0, -j, 0))
-				DrawSprite(client.assets.circle, Transform(pos, rot), shared.hint.circleHint[i].radius, shared.hint.circleHint[i].radius, 1 , 0, 0, shared.hint.circleHint[i].timer/30 , false, false, false)
+
+				DrawSprite(client.assets.circle, Transform(pos, rot), shared.hint.circleHint[i].diameter, shared.hint.circleHint[i].diameter, 1 , 0, 0, shared.hint.circleHint[i].timer/30 , false, false, false)
 			end
 		end
 	end
