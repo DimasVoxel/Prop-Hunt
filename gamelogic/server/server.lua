@@ -41,7 +41,7 @@ server.timers = {
 	hunterBulletReloadTimer = 0,
 	hunterPipebombReloadTimer = 0,
 	hunterBluetideReloadTimer = 0,
-	hunterHintTimer = 0,
+	hunterHintTimer = 15,
 	hiderTauntReloadTimer = 0
 }
 
@@ -129,6 +129,8 @@ function server.start(settings)
 	server.gameConfig.enableHunterHints = settings.enableHints == 1
 	server.gameConfig.enableSizeLimits = settings.enableSizeLimits == 1
 
+	server.timers.hunterHintTimer = 15  -- First hint will be triggered in 15 seconds 
+
 	if settings.hunterPipebombReloadTimer == -1 then
 		server.gameConfig.hunterPipeBombEnabled = false
 	else
@@ -141,11 +143,6 @@ function server.start(settings)
 		server.gameConfig.bluetideEnabled = true
 	end
 
-	if settings.hunterHintTimer == -1 then
-		server.gameConfig.enableHunterHints = false
-	else
-		server.gameConfig.enableHunterHints = true
-	end
 
 	--room has to be spawned here and not in init or the screens won't work
 	server.hasPlacedHuntersInRoom = false
