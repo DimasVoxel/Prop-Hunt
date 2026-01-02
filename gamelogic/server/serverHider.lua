@@ -53,7 +53,7 @@ function server.hiderTick(dt)
                     SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
                 end
 
-                server.propRegenerate(id, shared.players.hiders[id].propBackupShape)
+                server.propRegenerate(id)
                 shared.players.hiders[id].isPropPlaced = false
                 ClientCall(0, "client.highlightPlayer", shared.players.hiders[id].propBody)
             end
@@ -169,6 +169,9 @@ function server.PropSpawnRequest(playerid, propid, cameraTransform)
 
 		local newBody, newShape = server.cloneShape(propid)
 		local backUpBody, backUpShape = server.cloneShape(propid) -- We clone twice if the prop gets damaged we regenerate using the backup
+		local emissiveScale = GetProperty(shape, "emissiveScale")
+		SetProperty(backUpShape, "emissiveScale", emissiveScale * 2)
+		SetProperty(newShape, "emissiveScale", emissiveScale * 2)
 
 		local bodyTransform = GetBodyTransform(newBody)
 
@@ -183,17 +186,19 @@ function server.PropSpawnRequest(playerid, propid, cameraTransform)
 		server.disableBodyCollission(backUpBody, false)
 
 		SetProperty(newShape, "strength", 10) -- Shapes only get destroyed by weapons
-
-		--SetInt('options.game.thirdperson',1, true)
 	end
 end
 
-function server.propRegenerate(playerid, propid)
+function server.propRegenerate(playerid)
     local propBody = helperGetPlayerPropBody(playerid)
 	if propBody then
         Delete(propBody)
 
-		local newBody, newShape = server.cloneShape(propid) -- #TODO: Check if i can just make copyshapecontents
+		local backupShape = shared.players.hiders[playerid].propBackupShape
+
+		-- I tried doing just copyshapecontents but it didnt get rid of the "IsBodyBroken" property and breaks my logic.
+		-- Therefor I will keep it like this for now
+		local newBody, newShape = server.cloneShape(backupShape) 
 
 		SetBodyTransform(newBody, GetPlayerTransform(playerid))
 		SetBodyDynamic(newBody, true)
@@ -203,6 +208,9 @@ function server.propRegenerate(playerid, propid)
 
 		SetProperty(newShape, "strength", 10)
 		SetProperty(newShape, "density", 1)
+
+		local emissiveScale = GetProperty(backupShape, "emissiveScale")
+		SetProperty(newShape, "emissiveScale", emissiveScale * 2)
 
 		--SetInt('options.game.thirdperson',1, true)
 	end
