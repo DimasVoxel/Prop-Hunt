@@ -103,38 +103,54 @@ function server.handleHiderPlayerDamage(id) -- In Tick
 	local aa,bb = GetBodyBounds(propBody)
 	local center = VecLerp(aa, bb, 0.5)
 	if IsBodyBroken(propBody) then
-		local x,y,z = GetShapeSize(propBody)
+
+		-- We first regenerate because the size could change if prop gets damaged
+		server.propRegenerate(id)
+		shared.players.hiders[id].isPropPlaced = false
 
 		-- The goal is to balance damange based on the size of the prop
 		-- This is only based on prop damage. We are currently not checking if the player itself got damaged.
-		local damage = 1
-		-- all axis > 50
-		if x > 50 and y > 50 and z > 50 then
-			damage = 0.15 -- 7 shots
+		local function getSortedAxes(x, y, z)
+			local t = {x, y, z}
+			table.sort(t)
+			return t[1], t[2], t[3] -- small, mid, large
 		end
 
-		-- all axis > 30
-		if x > 30 and y > 30 and z > 30 then
-			damage = 0.20 -- 5 Shots
+		local function getDamageFromShape(x, y, z)
+			local small, mid, large = getSortedAxes(x, y, z)
+			DebugPrint("Size".."  ".. mid .." ".. large)
+
+			-- large props
+			if mid > 70 and large > 70 then
+				return 0.10
+			end
+
+			-- Very large
+			if mid > 50 and large > 50 then
+				return 0.15
+			end
+
+			-- Large
+			if mid > 30 and large > 30 then
+				return 0.20
+			end
+
+			-- Medium
+			if mid > 10 and large > 10 then
+				return 0.30
+			end
+
+			-- Small props
+			return 0.40
 		end
 
-		-- all axis > 10
-		if x > 10 and y > 10 and z > 10 then
-			damage = 0.30 -- 4 Shots
-		end
 
-		-- at least 2 axis < 10
-		local smallAxes = 0
-		if x < 10 then smallAxes = smallAxes + 1 end
-		if y < 10 then smallAxes = smallAxes + 1 end
-		if z < 10 then smallAxes = smallAxes + 1 end
+		local x, y, z = GetShapeSize(helperGetPlayerPropShape(id))
+		local damage = getDamageFromShape(x, y, z)
 
-		if smallAxes >= 2 then
-			damage = 0.40 -- 3 Shots
-		end
-
-
-		SetPlayerHealth(GetPlayerHealth(id) - damage, id) 
+		local health = helperGetPlayerHealth(id)
+		DebugPrint(health - damage)
+		helperSetPlayerHealth(id, health - damage)
 
 		-- We move the player to the shape if player was too far from the prop when found
 		-- If we dont there are situations when the prop falls down a cliff or building and the player stays on top of the cliff.
@@ -144,8 +160,6 @@ function server.handleHiderPlayerDamage(id) -- In Tick
 			SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
 		end
 
-		server.propRegenerate(id)
-		shared.players.hiders[id].isPropPlaced = false
 		ClientCall(0, "client.highlightPlayer", shared.players.hiders[id].propBody)
 	end
 
@@ -220,6 +234,7 @@ function server.PropSpawnRequest(playerid, propid, cameraTransform)
 		server.disableBodyCollission(backUpBody, false)
 
 		SetProperty(newShape, "strength", 10) -- Shapes only get destroyed by weapons
+		SetPlayerParam("godmode", true, playerid)
 	end
 end
 

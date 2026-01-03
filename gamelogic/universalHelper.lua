@@ -57,6 +57,24 @@ function helperIsGameOver()
     return shared.state and shared.state.gameOver == true
 end
 
+function helperGetPlayerHealth(id)
+	if helperIsPlayerHider(id) and server.players.all[id] then
+		return server.players.all[id].health
+	elseif helperIsPlayerHunter(id) then
+		return GetPlayerHealth(id)
+	else -- Spectators
+		return 1
+	end
+end
+
+function helperSetPlayerHealth(id, health)
+	if helperIsPlayerHider(id) and server.players.all[id] then
+		server.players.all[id].health = math.max(health, 0)
+	else
+		SetPlayerHealth(health, id)
+	end
+end
+
 ----------------# Functions that are used by both client and server #------------------
 
 function checkPropClipping(id)
@@ -82,6 +100,7 @@ end
 
 function playerGetLookAtShape(dist, playerID, cameraT)
 	local cameraT = cameraT or GetCameraTransform()
+	local playerID = playerID or GetLocalPlayer()
 	local playerFwd = VecNormalize(TransformToParentVec(cameraT, Vec(0, 0, -1)))
 
 	QueryRequire("physical large")
