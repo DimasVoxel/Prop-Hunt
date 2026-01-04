@@ -108,48 +108,8 @@ function server.handleHiderPlayerDamage(id) -- In Tick
 		server.propRegenerate(id)
 		shared.players.hiders[id].isPropPlaced = false
 
-		-- The goal is to balance damange based on the size of the prop
-		-- This is only based on prop damage. We are currently not checking if the player itself got damaged.
-		local function getSortedAxes(x, y, z)
-			local t = {x, y, z}
-			table.sort(t)
-			return t[1], t[2], t[3] -- small, mid, large
-		end
-
-		local function getDamageFromShape(x, y, z)
-			local small, mid, large = getSortedAxes(x, y, z)
-			DebugPrint("Size".."  ".. mid .." ".. large)
-
-			-- large props
-			if mid > 70 and large > 70 then
-				return 0.10
-			end
-
-			-- Very large
-			if mid > 50 and large > 50 then
-				return 0.15
-			end
-
-			-- Large
-			if mid > 30 and large > 30 then
-				return 0.20
-			end
-
-			-- Medium
-			if mid > 10 and large > 10 then
-				return 0.30
-			end
-
-			-- Small props
-			return 0.40
-		end
-
-
-		local x, y, z = GetShapeSize(helperGetPlayerPropShape(id))
-		local damage = getDamageFromShape(x, y, z)
-
 		local health = helperGetPlayerHealth(id)
-		DebugPrint(health - damage)
+		local damage = helperGetHiderDamageValue(id)
 		helperSetPlayerHealth(id, health - damage)
 
 		-- We move the player to the shape if player was too far from the prop when found
@@ -199,7 +159,7 @@ function server.handleHiderTaunts(hiderIds)
     end
 end
 
-function server.PropSpawnRequest(playerid, propid, cameraTransform)
+function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 	local string = "Player " .. GetPlayerName(playerid) .. " wants to spawn prop " .. propid
 
     -- GetCameraTransform() is client only. But I wanted to validate if the player is looking at the prop on the server too
@@ -235,6 +195,8 @@ function server.PropSpawnRequest(playerid, propid, cameraTransform)
 
 		SetProperty(newShape, "strength", 10) -- Shapes only get destroyed by weapons
 		SetPlayerParam("godmode", true, playerid)
+
+		shared.players.hiders[playerid].damageValue = damageValue
 	end
 end
 

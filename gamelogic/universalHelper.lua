@@ -2,6 +2,8 @@
 -- Player state helpers
 -- =========================
 
+--- Player Team ---
+
 -- Hunter id if no id provided uses localplayer
 function helperIsPlayerHunter(id)
     id = id or GetLocalPlayer()
@@ -19,6 +21,10 @@ function helperIsPlayerSpectator(id)
     id = id or GetLocalPlayer()
     return teamsGetTeamId(id) == 3
 end
+
+---------
+
+----- Hider Helpers ----
 
 -- Returns if the player has transformed into a prop
 -- Will always return false if player is not a Hider
@@ -48,6 +54,14 @@ function helperGetPlayerPropShape(id)
     if not helperIsPlayerHider(id) then return false end
     return GetBodyShapes(helperGetPlayerPropBody(id))[1]
 end
+
+-- This is how much damage the hider gets when shot at or explodes
+function helperGetHiderDamageValue(id)
+	id = id or GetLocalPlayer()
+	if not helperIsPlayerHider(id) then return false end
+	return shared.players.hiders[id].damageValue
+end
+------------
 
 function helperIsHuntersReleased()
     return shared.state and shared.state.hunterFreed == true

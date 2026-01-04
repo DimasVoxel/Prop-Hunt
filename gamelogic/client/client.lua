@@ -61,59 +61,6 @@ function client.init()
 end
 
 function client.tick()
-
-	local function getSortedAxes(x, y, z)
-		local t = {x, y, z}
-		table.sort(t)
-		return t[1], t[2], t[3] -- small, mid, large
-	end
-
-	local function getDamageFromShape(x, y, z,shape)
-		local small, mid, large = getSortedAxes(x, y, z)
-		DebugPrint("Damage".."  ".. mid .." ".. large)
-
-		local surfaceArea = mid * large
-		DebugPrint("Surface Area".."  ".. surfaceArea)
-		
-		local voxelCount = GetShapeVoxelCount(shape)
-		DebugPrint("VoxelCount " .. voxelCount)
-
-		
-		DebugPrint(voxelCount/surfaceArea)
-		-- large props
-		if mid > 70 and large > 70 then
-			return 0.10
-		end
-
-		-- Very large
-		if mid > 50 and large > 50 then
-			return 0.15
-		end
-
-		-- Large
-		if mid > 30 and large > 30 then
-			return 0.20
-		end
-
-		-- Medium
-		if mid > 10 and large > 10 then
-			return 0.30
-		end
-
-		-- Small props
-		return 0.40
-	end
-
-	
-	if helperIsPlayerHider() then
-		local shape = playerGetLookAtShape(100)
-
-		local x,y,z = GetShapeSize(shape)
-		getDamageFromShape(x,y,z ,shape)
-
-	end
-
-
 	SetBool("game.disablemap", true)
 	SetLowHealthBlurThreshold(0.01)
 
