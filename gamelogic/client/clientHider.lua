@@ -72,7 +72,7 @@ function client.SelectProp()
 
 	if client.player.lookAtShape ~= -1 then
 		if InputPressed("interact") then
-			ServerCall("server.PropSpawnRequest", GetLocalPlayer(), client.player.lookAtShape, client.calculatePlayerHurtValue(shape),  GetCameraTransform())
+			ServerCall("server.PropSpawnRequest", GetLocalPlayer(), client.player.lookAtShape, client.calculatePlayerHurtValue(client.player.lookAtShape),  GetCameraTransform())
 		end
 	end
 end
@@ -291,8 +291,7 @@ function client.calculatePlayerHurtValue(shape)
 
 	-- Map difficulty - damage
 	local damage = math.min((minDmg + difficulty * (maxDmg - minDmg)) , 0.49)
-	DebugPrint(damage)
+	
 	-- Clamp to 1
 	return math.min(damage, 1.0)
-
 end
