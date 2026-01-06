@@ -69,8 +69,12 @@ end
 
 function client.SelectProp()
 	client.HighlightDynamicBodies()
+	local cooldown = AutoClamp(math.floor(shared.players.hiders[GetLocalPlayer()].transformCooldown-shared.serverTime+0.4),0,3)
+	if not helperIsHuntersReleased() then
+		cooldown = 0
+	end
 
-	if client.player.lookAtShape ~= -1 then
+	if client.player.lookAtShape ~= -1 and cooldown == 0 then
 		if InputPressed("interact") then
 			ServerCall("server.PropSpawnRequest", GetLocalPlayer(), client.player.lookAtShape, client.calculatePlayerHurtValue(client.player.lookAtShape),  GetCameraTransform())
 		end
@@ -78,6 +82,7 @@ function client.SelectProp()
 end
 
 function client.sendHideRequest()
+
     if InputPressed("flashlight") then
 		local playerID = GetLocalPlayer()
         if not shared.players.hiders[playerID].isPropClipping and shared.players.hiders[playerID].propBody ~= -1 then

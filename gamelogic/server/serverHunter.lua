@@ -46,7 +46,6 @@ function server.huntersDuringHideTime()
 
         if data == "hidersHiding" and finished then
             spawnRespawnTeamPlayers(2)
-            DebugPrint("why")
             eventlogPostMessage({ "loc@EVENT_GLHF" })
 
             server.state.hunterFreed = true
@@ -56,7 +55,7 @@ function server.huntersDuringHideTime()
             --    SetPlayerParam("godMode", false, id)
             --end
 
-            DebugPrint(server.state.hunterFreed)
+            server.timers.hunterHintTimer = GetTime() + 15
         else
             local hunters = teamsGetTeamPlayers(2)
 

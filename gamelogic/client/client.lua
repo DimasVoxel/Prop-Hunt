@@ -108,7 +108,7 @@ function client.highlightHurtHider()
 end
 
 function client.showHint()
-	if client.hint.closestPlayerHint.timer <= shared.serverTime then
+	if client.hint.closestPlayerHint.timer >= shared.serverTime then
 		if client.hint.closestPlayerHint.detailed then detail =  client.hint.closestPlayerHint.detailed end
 		hudDrawInformationMessage(client.hint.closestPlayerHint.message)
 	end
@@ -132,12 +132,12 @@ end
 function client.highlightPlayer(body)
 	client.player.hurtOutline[#client.player.hurtOutline+1] = { }
 	client.player.hurtOutline[#client.player.hurtOutline].body = body
-	client.player.hurtOutline[#client.player.hurtOutline].timer = GetTime() + 1
+	client.player.hurtOutline[#client.player.hurtOutline].timer = shared.serverTime + 1
 end
 
 function client.hintShowMessage(message, timer)
 	client.hint.closestPlayerHint = {}
-	client.hint.closestPlayerHint.timer = timer + GetTime()
+	client.hint.closestPlayerHint.timer = timer + shared.serverTime
 	client.hint.closestPlayerHint.message = message 
 end
 
