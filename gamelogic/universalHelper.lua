@@ -59,6 +59,7 @@ end
 function helperGetHiderDamageValue(id)
 	id = id or GetLocalPlayer()
 	if not helperIsPlayerHider(id) then return false end
+	if not helperGetPlayerPropBody(id) then return 0.30 end -- Base Damage
 	return shared.players.hiders[id].damageValue
 end
 ------------
@@ -71,9 +72,25 @@ function helperIsGameOver()
     return shared.state and shared.state.gameOver == true
 end
 
+function helperGetPlayerShotsLeft(id)
+	local id = id or GetLocalPlayer()
+	if helperIsPlayerHider(id) and shared.players.hiders[id] then
+		return shared.players.hiders[id].hp
+	end
+	return false
+end
+
+function helperDecreasePlayerShots(id)
+	local id = id or GetLocalPlayer()
+	if helperIsPlayerHider(id) and shared.players.hiders[id] then
+		shared.players.hiders[id].hp = shared.players.hiders[id].hp - 1
+	end
+end
+
 function helperGetPlayerHealth(id)
-	if helperIsPlayerHider(id) and server.players.all[id] then
-		return server.players.all[id].health
+	local id = id or GetLocalPlayer()
+	if helperIsPlayerHider(id) and shared.players.hiders[id] then
+		return shared.players.hiders[id].health
 	elseif helperIsPlayerHunter(id) then
 		return GetPlayerHealth(id)
 	else -- Spectators
@@ -82,8 +99,8 @@ function helperGetPlayerHealth(id)
 end
 
 function helperSetPlayerHealth(id, health)
-	if helperIsPlayerHider(id) and server.players.all[id] then
-		server.players.all[id].health = math.max(health, 0)
+	if helperIsPlayerHider(id) and shared.players.hiders[id] then
+		shared.players.hiders[id].health = math.max(health, 0)
 	else
 		SetPlayerHealth(health, id)
 	end

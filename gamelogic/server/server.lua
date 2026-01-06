@@ -83,7 +83,7 @@ shared.state = {
 
 shared.players = {
 	hiders = {},
-	hunters = {}
+	hunters = {},
 }
 
 function server.init()
@@ -196,9 +196,11 @@ function server.tick(dt)
 				SetPlayerParam("healthRegeneration", false, id)
 				SetPlayerParam("godmode", false, id) -- Godmode only set once player turns into prop
 				SetPlayerTool("taunt", id)
-				server.players.all[id] = {}
-				server.players.all[id].health = 1
-				server.players.all[id].stamina = 1
+				shared.players.hiders[id] = {}
+				shared.players.hiders[id].hp = 3 -- HP Is the amount of shots a hider can take will be changed depending on prop size
+				shared.players.hiders[id].health = 1 -- Health is a float the server requires for health math 
+				shared.players.hiders[id].stamina = 1
+				shared.players.hiders[id].damageTick = 1
 			end
 		end
 	end
@@ -259,8 +261,7 @@ end
 function server.deadTick()
 	for id in Players() do
 		if helperIsPlayerHider(id) then
-			local health = helperGetPlayerHealth(id)
-			if health == 0 and helperIsHuntersReleased() then
+			if helperGetPlayerShotsLeft(id) == 0 and helperIsHuntersReleased() then
 				eventlogPostMessage({id, " Was found"  })
 				Delete(shared.players.hiders[id].propBody)
 				Delete(shared.players.hiders[id].propBackupShape)

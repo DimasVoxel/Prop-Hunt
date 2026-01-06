@@ -66,6 +66,10 @@ function client.hiderDraw()
 		countdownDraw("Hide! Hunters start in")
 	end
 
+	DebugWatch('Shots', helperGetPlayerHealth()/helperGetHiderDamageValue())
+	DebugWatch("HP", shared.players.hiders[GetLocalPlayer()].hp)
+	DebugWatch("Health", shared.players.hiders[GetLocalPlayer()].health)
+
 	if not helperIsGameOver() then
 
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))

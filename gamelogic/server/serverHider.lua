@@ -53,13 +53,9 @@ function server.hiderUpdate()
 					if (IsPointInWater(center) or InputDown('down', id) or InputDown('up', id) or InputDown('left', id) or InputDown('right', id) or InputDown('jump', id)) and shared.players.hiders[id].isPropPlaced == true then
 						shared.players.hiders[id].isPropPlaced = false
 						SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.2, 0)),GetPlayerCameraTransform(id).rot), id)
-
 						-- You shouldnt spam this function because every call will put the message in a queue
+
 						hudShowBanner("Water will damage you, get out as soon as you can.", {0,0,0}) 
-					end
-	
-					if IsPointInWater(GetPlayerTransform(id).pos) then
-						SetPlayerHealth(GetPlayerHealth(id) - GetTimeStep()/15, id)
 					end
 				end
 
@@ -102,23 +98,23 @@ function server.handleHiderPlayerDamage(id) -- In Tick
 	local propBody = helperGetPlayerPropBody(id)
 	local aa,bb = GetBodyBounds(propBody)
 	local center = VecLerp(aa, bb, 0.5)
+
 	if IsBodyBroken(propBody) then
-
-		-- We first regenerate because the size could change if prop gets damaged
-		server.propRegenerate(id)
-		shared.players.hiders[id].isPropPlaced = false
-
-		local health = helperGetPlayerHealth(id)
-		local damage = helperGetHiderDamageValue(id)
-		helperSetPlayerHealth(id, health - damage)
+		helperDecreasePlayerShots(id)
+		helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
 
 		-- We move the player to the shape if player was too far from the prop when found
 		-- If we dont there are situations when the prop falls down a cliff or building and the player stays on top of the cliff.
 		-- Once found the prop gets teleported back to the player. This makes it look like as if the prop dissapeared for the hunter
 		-- Therefor we move the player to the prop. One issue is that players can get stun locked sometimes
-		if VecLength(VecSub(GetPlayerTransform(id).pos, center)) > 2 then
+
+		if VecLength(VecSub(GetPlayerTransform(id).pos, center)) > 3 and GetShapeVoxelCount(helperGetPlayerPropShape(id)) ~= 0 then
 			SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
+			DebugPrint(TransformStr(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot)))
 		end
+
+		server.propRegenerate(id)
+		shared.players.hiders[id].isPropPlaced = false
 
 		ClientCall(0, "client.highlightPlayer", shared.players.hiders[id].propBody)
 	end
@@ -167,6 +163,8 @@ function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 	local shapeBody = GetShapeBody(shape)
 
 	if shape == propid and shapeBody ~= shared.players.hiders[playerid].propBody then
+
+		-- Delete Old Prop and Backup shapes if transforming into a new shape
 		if shared.players.hiders[playerid].propBody ~= -1 then
 			Delete(shared.players.hiders[playerid].propBody)
 		end
@@ -175,28 +173,35 @@ function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 			Delete(GetShapeBody(shared.players.hiders[playerid].propBackupShape))
 		end
 
+		-- Create new Clone Shape and keep a backup copy to regenerate if damaged
 		local newBody, newShape = server.cloneShape(propid)
 		local backUpBody, backUpShape = server.cloneShape(propid) -- We clone twice if the prop gets damaged we regenerate using the backup
 		local emissiveScale = GetProperty(shape, "emissiveScale")
 		SetProperty(backUpShape, "emissiveScale", emissiveScale * 2)
 		SetProperty(newShape, "emissiveScale", emissiveScale * 2)
 
+		-- Move the prop to the player
 		local bodyTransform = GetBodyTransform(newBody)
-
 		SetBodyTransform(newBody, Transform(VecAdd(GetPlayerTransform(propid).pos, Vec(0, 0, 2)), bodyTransform.rot))
 		SetBodyDynamic(newBody, true)
 		server.disableBodyCollission(newBody, true)
 
-		shared.players.hiders[playerid].propBody = newBody
-		shared.players.hiders[playerid].propBackupShape = backUpShape
+		-- Move Backup shape away
 		SetBodyTransform(backUpBody, Transform(Vec(-1000, 10, 0)))
 		SetBodyDynamic(backUpBody, false)
 		server.disableBodyCollission(backUpBody, false)
 
-		SetProperty(newShape, "strength", 10) -- Shapes only get destroyed by weapons
+		-- Note down Prop IDs
+		shared.players.hiders[playerid].propBody = newBody
+		shared.players.hiders[playerid].propBackupShape = backUpShape
+
+		-- Make sure Prop isnt fragile
+		SetProperty(newShape, "strength", 5) -- Shapes only get destroyed by weapons
 		SetPlayerParam("godmode", true, playerid)
 
+		-- Note Down the damage values of the prop
 		shared.players.hiders[playerid].damageValue = damageValue
+		shared.players.hiders[playerid].hp = math.max(AutoRound(helperGetPlayerHealth(playerid)/damageValue),1)
 	end
 end
 
@@ -208,7 +213,8 @@ function server.propRegenerate(playerid)
 		local backupShape = shared.players.hiders[playerid].propBackupShape
 
 		-- I tried doing just copyshapecontents but it didnt get rid of the "IsBodyBroken" property and breaks my logic.
-		-- Therefor I will keep it like this for now
+		-- Therefor I will keep it like this for now 
+		-- #Todo: could perhaps use voxel count instead of is broken?
 		local newBody, newShape = server.cloneShape(backupShape) 
 
 		SetBodyTransform(newBody, GetPlayerTransform(playerid))
@@ -217,7 +223,7 @@ function server.propRegenerate(playerid)
 
 		shared.players.hiders[playerid].propBody = newBody
 
-		SetProperty(newShape, "strength", 10)
+		SetProperty(newShape, "strength", 5)
 		SetProperty(newShape, "density", 1)
 
 		local emissiveScale = GetProperty(backupShape, "emissiveScale")
