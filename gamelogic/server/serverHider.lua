@@ -131,10 +131,11 @@ function server.handleHiderPlayerDamage(id) -- In Tick
 	end
 
 	local totalWaterTime = 10
-	local tickDamageTime = 1/shared.players.hiders[id].damageValue + 1
+	local tickDamageTime = totalWaterTime/(1/shared.players.hiders[id].damageValue) + 1
 
 	if (shared.players.hiders[id].damageTick + tickDamageTime) <= GetTime() then
 		helperDecreasePlayerShots(id)
+		helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
 		shared.players.hiders[id].damageTick = GetTime()
 	end
 
@@ -217,6 +218,7 @@ function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 		-- Note Down the damage values of the prop
 		shared.players.hiders[playerid].damageValue = damageValue
 		shared.players.hiders[playerid].hp = math.max(AutoRound(helperGetPlayerHealth(playerid)/damageValue),1)
+		shared.players.hiders[playerid].transformCooldown = GetTime() + server.gameConfig.transformCooldown
 	end
 end
 

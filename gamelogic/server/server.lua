@@ -22,7 +22,8 @@ server.gameConfig = {
 
 	randomTeams = false,
 	enableHunterHints = true,
-	enableSizeLimits = true
+	enableSizeLimits = true,
+	transformCooldown = 5
 }
 
 shared.gameConfig = {
@@ -122,6 +123,7 @@ function server.start(settings)
 	server.gameConfig.hunterBluetideReloadTimer = settings.hunterBluetideReloadTimer
 	server.gameConfig.hunterHintTimer = settings.hunterHintTimer
 	server.gameConfig.hiderTauntReloadTimer = settings.hiderTauntReloadTimer
+	server.gameConfig.transformCooldown = settings.transformCooldown
 
 	-- The gameConfig function doesnt support bools? Therefor I am converting them here
 	server.gameConfig.midGameJoin = settings.midGameJoin == 1
@@ -198,6 +200,7 @@ function server.tick(dt)
 				shared.players.hiders[id].stamina = 1
 				shared.players.hiders[id].damageTick = 0
 				shared.players.hiders[id].damageValue = 0.33
+				shared.players.hiders[id].transformCooldown = 0
 			end
 		end
 	end

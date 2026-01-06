@@ -1,10 +1,5 @@
 #include "uiHelper.lua"
 
---DEBUG \/ TODO remove this
-client.barfill = 10
-client.barmax = 10
---DEBUG /\
-
 function client.draw(dt)
 	hudTick(dt)
 	eventlogDraw(dt, teamsGetPlayerColorsList())
@@ -88,19 +83,8 @@ function client.hiderDraw(dt)
 
 		--Below is the HUD for health, sprint, taunts, and cooldown
 		UiPush()
-			--DEBUG \/ TODO remove this
-			if InputPressed("y") then
-				client.barfill = client.barfill-1
-			end
-			if InputPressed("u") then
-				client.barfill = client.barfill+1
-			end
-
-			if InputPressed("i") then
-				client.barfill = 4
-				client.barmax = 6
-			end
-			--DEBUG /\
+			local barMax = math.max(AutoRound(1/shared.players.hiders[GetLocalPlayer()].damageValue),1)
+			local barFill = helperGetPlayerShotsLeft()
 
 			UiAlign("center middle")
 			UiTextAlignment("center")
@@ -114,7 +98,7 @@ function client.hiderDraw(dt)
 			UiPush() --health
 				UiAlign("left middle")
 				UiTranslate(110)
-				ProgressBar(25, 250, client.barfill, client.barmax, 10, {0.82,0.08,0.02,1}, client.barmax, 10, dt) --TODO replace barfill w/ current health, barmax w/ max health
+				ProgressBar(25, 250, barFill, barMax, 10, {0.82,0.08,0.02,1}, barMax, 10, dt) --TODO replace barfill w/ current health, barmax w/ max health
 				UiTranslate(260)
 				UiColor(1,1,1,1)
 				UiImageBox("MOD/assets/heart_graphic.png", 25, 25)
@@ -124,7 +108,7 @@ function client.hiderDraw(dt)
 				UiAlign("left middle")
 				UiRotate(180)
 				UiTranslate(110)
-				ProgressBar(25, 250, client.barfill, client.barmax, 10, {0.02,0.49,0.82,1}, 0, 10, dt) --TODO replace barfill w/ current stamina, barmax w/ max stamina
+				ProgressBar(25, 250, barFill, barMax, 10, {0.02,0.49,0.82,1}, 0, 10, dt) --TODO replace barfill w/ current stamina, barmax w/ max stamina
 				UiTranslate(260)
 				UiAlign("right middle")
 				UiRotate(180)
@@ -145,15 +129,31 @@ function client.hiderDraw(dt)
 				UiText("#") --TODO replace with var for taunts
 			UiPop()
 
+
+			local cooldownText = ""
+			local cooldownTimer = AutoClamp(math.floor(shared.players.hiders[GetLocalPlayer()].transformCooldown-shared.serverTime+0.4),0,3)
+			if not helperIsHuntersReleased() then
+				cooldown = 0
+			end
+
+			local textSize = 40
+			if cooldownTimer == 0 then 
+				cooldownText = "Ready!"
+				textSize = 30
+			else
+				cooldownText = cooldownTimer
+			end
+
 			UiPush()--cooldown
 				UiTranslate(50, -20)
 				UiFont("regular.ttf", 20)
 				UiText("Cooldown:")
 				UiTranslate(0, 30)
-				UiFont("bold.ttf", 40)
-				UiText("#") --TODO replace with var for cooldown
+				UiFont("bold.ttf", textSize)
+				UiText(cooldownText) --TODO replace with var for cooldown
 			UiPop()
 		UiPop()
+		DebugPrint(shared.players.hiders[GetLocalPlayer()].transformCooldown)
 	end
 end
 
@@ -320,13 +320,19 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.hiderTauntReloadTimer",
 							label = "Forced taunt",
 							info ="Players get a taunt every X seconds. After reaching 10 they will be forced to taunt. Configure how quickly a player Recieves a new taunt.",
-							options = { { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "60 Seconds", value = 60}, { label = "Disable Forced Taunt", value = 1000000} ,{ label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15}  }
+							options = { { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "60 Seconds", value = 60}, { label = "Disable Forced Taunt", value = 1000000} ,{ label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15}, { label = "No Cooldown", value = 0}  }
 						},
 						{
 							key = "savegame.mod.settings.enableSizeLimits",
 							label = "Size Limits",
 							info ="Enable Size limits.",
 							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+						},
+						{
+							key = "savegame.mod.settings.transformCooldown",
+							label = "Prop Cooldown",
+							info ="How quickly hiders can switch from one prop to another.",
+							options = { { label = "3 Seconds", value = 3}, { label = "5 Seconds", value = 5}, { label = "8 Seconds", value = 8}, { label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15} }
 						},
 						{
 							key = "savegame.mod.settings.allowallowallowFriendlyFire",
@@ -354,7 +360,8 @@ function client.SetupScreen(dt)
 					midGameJoin = GetInt("savegame.mod.settings.midGameJoin"),
 					enableHints = GetInt("savegame.mod.settings.enableHunterHints"),
 					enableSizeLimits = GetInt("savegame.mod.settings.enableSizeLimits"),
-					allowFriendlyFire = GetInt("savegame.mod.settings.allowFriendlyFire")
+					allowFriendlyFire = GetInt("savegame.mod.settings.allowFriendlyFire"),
+					transformCooldown = GetInt("savegame.mod.settings.transformCooldown"),
 				})
 			end
 		end
