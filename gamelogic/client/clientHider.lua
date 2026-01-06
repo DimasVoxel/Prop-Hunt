@@ -286,7 +286,7 @@ function client.calculatePlayerHurtValue(shape)
 	-- Combine: size dominates small objects, solidity still matters
 	local difficulty = sizeFactor * 0.65 + solidityFactor * 0.35
 
-	local minDmg = 0.10
+	local minDmg = 0.05
 	local maxDmg = 0.6
 
 	-- Map difficulty - damage
