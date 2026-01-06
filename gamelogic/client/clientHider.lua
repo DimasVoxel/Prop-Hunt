@@ -72,7 +72,7 @@ function client.SelectProp()
 
 	if client.player.lookAtShape ~= -1 then
 		if InputPressed("interact") then
-			ServerCall("server.PropSpawnRequest", GetLocalPlayer(), client.player.lookAtShape, GetCameraTransform())
+			ServerCall("server.PropSpawnRequest", GetLocalPlayer(), client.player.lookAtShape, client.calculatePlayerHurtValue(client.player.lookAtShape),  GetCameraTransform())
 		end
 	end
 end
@@ -166,4 +166,132 @@ function client.highlightClippingProps()
             DrawShapeOutline(clippingShapes[i], 1,0,0,1)
         end
     end
+end
+
+
+
+function client.calculatePlayerHurtValue(shape)
+		-- Sort axes so flat/thin shapes behave correctly
+	local function getSortedAxes(x, y, z)
+		local t = {x, y, z}
+		table.sort(t)
+		return t[1], t[2], t[3] -- small, mid, large
+	end
+
+	-- Generalized size - damage factor (small = high)
+	local function sizeDamageFactor(mid)
+		mid = math.max(mid, 1)
+		-- Linear inverse scaling
+		local t = mid / 30         -- 1- 30 scale
+		local factor = 1 - t
+		-- Extra boost for very small objects (generalized)
+		-- Smooth: smaller - more damage
+		if mid <= 8 then
+			factor = factor + (8 - mid) * 0.08
+		end
+		return math.min(factor, 1.0)
+	end
+
+	-- Solidity - damage factor (hollow = high)
+	local function solidityDamageFactor(sol)
+		-- Weighted average of axes
+		return 1 - (sol.min * 0.7 + sol.avg * 0.3)
+	end
+
+	local function getShapeSolidity(shape)
+		-- Return cached result
+		-- This function will only be called once on client side as calling it continiously can lag the game. 
+		-- Its also done on the client to distribute the load and not bog down the host. 
+		-- This function accepts a shape and will project / test from all 3 axis to determin how "see through"/solid it is 
+		-- For example a table is a very small U shape from the side and is hard to hit because of that. 
+		-- A box or container is basically solid box from all sides therefor is a lot easier to hit. 
+		-- Depending on this value its determinede how easy the shape is to hit 
+		-- It is also used to dermine how many hits it takes to kill the player 
+		-- Using only Voxel count or surface area is not enough to determine that
+
+		local x,y,z = GetShapeSize(shape)
+
+		local yProj, xProj, zProj = 0,0,0
+
+		-- top
+		for xi=0,x-1 do
+			for zi=0,z-1 do
+				for yi=0,y-1 do
+					local mat = GetShapeMaterialAtIndex(shape, xi, yi, zi)
+					if mat ~= "" and mat ~= "unphysical" then
+						yProj = yProj + 1
+						break
+					end
+				end
+			end
+		end
+
+		-- front
+		for yi=0,y-1 do
+			for zi=0,z-1 do
+				for xi=0,x-1 do
+					local mat = GetShapeMaterialAtIndex(shape, xi, yi, zi)
+					if mat ~= "" and mat ~= "unphysical" then
+						xProj = xProj + 1
+						break
+					end
+				end
+			end
+		end
+
+		-- side
+		for xi=0,x-1 do
+			for yi=0,y-1 do
+				for zi=0,z-1 do
+					local mat = GetShapeMaterialAtIndex(shape, xi, yi, zi)
+					if mat ~= "" and mat ~= "unphysical" then
+						zProj = zProj + 1
+						break
+					end
+				end
+			end
+		end
+
+		local solX = xProj / (y*z)
+		local solY = yProj / (x*z)
+		local solZ = zProj / (x*y)
+
+		local solMin = math.min(solX, solY, solZ)
+		local solAvg = (solX + solY + solZ) / 3
+		local solFinal = solMin * 0.65 + solAvg * 0.35
+
+		local result =
+		{
+			x = solX,
+			y = solY,
+			z = solZ,
+			min = solMin,
+			avg = solAvg,
+			final = solFinal
+		}
+
+		return result
+	end
+
+
+	local x, y, z = GetShapeSize(shape)
+	local _, mid, _ = getSortedAxes(x, y, z)
+
+	local sol = getShapeSolidity(shape) -- expects sol.min, sol.avg
+
+	-- Base factors
+	local sizeFactor = sizeDamageFactor(mid)
+	local solidityFactor = solidityDamageFactor(sol)
+
+	-- Combine: size dominates small objects, solidity still matters
+	local difficulty = sizeFactor * 0.65 + solidityFactor * 0.35
+
+	local minDmg = 0.10
+	local maxDmg = 0.6
+
+	-- Map difficulty - damage
+	local damage = math.min((minDmg + difficulty * (maxDmg - minDmg)) , 0.49)
+	
+	-- Clamp to 1
+	return math.min(damage, 1.0)
 end

@@ -188,12 +188,17 @@ function server.tick(dt)
 		for id in Players() do
 			if helperIsPlayerHunter(id) then -- We save this for the end screen statistic
 				shared.ui.stats.originalHunters[#shared.ui.stats.originalHunters+1] = id
+				SetPlayerParam("healthRegeneration", true, id)
+				SetPlayerParam("godmode", false, id)
 			end
 
 			if helperIsPlayerHider(id) then 
 				SetPlayerParam("healthRegeneration", false, id)
-				SetPlayerParam("godmode", true, id)
+				SetPlayerParam("godmode", false, id) -- Godmode only set once player turns into prop
 				SetPlayerTool("taunt", id)
+				server.players.all[id] = {}
+				server.players.all[id].health = 1
+				server.players.all[id].stamina = 1
 			end
 		end
 	end
@@ -254,7 +259,7 @@ end
 function server.deadTick()
 	for id in Players() do
 		if helperIsPlayerHider(id) then
-			local health = GetPlayerHealth(id)
+			local health = helperGetPlayerHealth(id)
 			if health == 0 and helperIsHuntersReleased() then
 				eventlogPostMessage({id, " Was found"  })
 				Delete(shared.players.hiders[id].propBody)

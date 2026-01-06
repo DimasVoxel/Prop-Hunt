@@ -2,6 +2,8 @@
 -- Player state helpers
 -- =========================
 
+--- Player Team ---
+
 -- Hunter id if no id provided uses localplayer
 function helperIsPlayerHunter(id)
     id = id or GetLocalPlayer()
@@ -19,6 +21,10 @@ function helperIsPlayerSpectator(id)
     id = id or GetLocalPlayer()
     return teamsGetTeamId(id) == 3
 end
+
+---------
+
+----- Hider Helpers ----
 
 -- Returns if the player has transformed into a prop
 -- Will always return false if player is not a Hider
@@ -49,12 +55,38 @@ function helperGetPlayerPropShape(id)
     return GetBodyShapes(helperGetPlayerPropBody(id))[1]
 end
 
+-- This is how much damage the hider gets when shot at or explodes
+function helperGetHiderDamageValue(id)
+	id = id or GetLocalPlayer()
+	if not helperIsPlayerHider(id) then return false end
+	return shared.players.hiders[id].damageValue
+end
+------------
+
 function helperIsHuntersReleased()
     return shared.state and shared.state.hunterFreed == true
 end
 
 function helperIsGameOver()
     return shared.state and shared.state.gameOver == true
+end
+
+function helperGetPlayerHealth(id)
+	if helperIsPlayerHider(id) and server.players.all[id] then
+		return server.players.all[id].health
+	elseif helperIsPlayerHunter(id) then
+		return GetPlayerHealth(id)
+	else -- Spectators
+		return 1
+	end
+end
+
+function helperSetPlayerHealth(id, health)
+	if helperIsPlayerHider(id) and server.players.all[id] then
+		server.players.all[id].health = math.max(health, 0)
+	else
+		SetPlayerHealth(health, id)
+	end
 end
 
 ----------------# Functions that are used by both client and server #------------------
@@ -82,6 +114,7 @@ end
 
 function playerGetLookAtShape(dist, playerID, cameraT)
 	local cameraT = cameraT or GetCameraTransform()
+	local playerID = playerID or GetLocalPlayer()
 	local playerFwd = VecNormalize(TransformToParentVec(cameraT, Vec(0, 0, -1)))
 
 	QueryRequire("physical large")
