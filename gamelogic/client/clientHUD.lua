@@ -102,7 +102,7 @@ function client.hiderDraw(dt)
 			UiTextAlignment("center")
 			UiColor(1,1,1,1)
 
-			UiTranslate(UiCenter(),UiHeight()*0.95)--change this to raise/lower the bottom hud; should be raised if you decide to leave the hint system as a tool and don't get rid of the name and ammo count. Don't forget to also raise the tauntforce
+			UiTranslate(UiCenter(),UiHeight()-90)--change this to raise/lower the bottom hud; should be raised if you decide to leave the hint system as a tool and don't get rid of the name and ammo count. Don't forget to also raise the tauntforce
 
 			--bars
 			RoundedBlurredRect(800, 35, 10, 0.5, {0,0,0,0.6})
@@ -165,7 +165,7 @@ end
 function client.tauntForce()
 	UiPush()
 	UiColor(1,1,1)
-	UiTranslate(UiWidth()/2, UiHeight()-130)
+	UiTranslate(UiWidth()/2, UiHeight()-150)
 	UiFont("bold.ttf",30)
 	UiAlign('center middle')
 	if GetToolAmmo("taunt", GetLocalPlayer()) >= 7 then
