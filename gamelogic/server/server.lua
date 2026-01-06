@@ -46,9 +46,10 @@ server.timers = {
 }
 
 server.players = {
-	hunter = {},
-	hider = {},
-	Spectator = {}
+	hunter = {}, -- Contains only Hider Specifc data
+	hider = {}, -- Contains only Hunter Specifc data
+	spectator = {}, --Contains only Spectator specific data
+	all = {} -- Contains health and stamina stats
 }
 
 server.moderation = {}
@@ -191,6 +192,7 @@ function server.tick(dt)
 
 			if helperIsPlayerHider(id) then 
 				SetPlayerParam("healthRegeneration", false, id)
+				SetPlayerParam("godmode", true, id)
 				SetPlayerTool("taunt", id)
 			end
 		end

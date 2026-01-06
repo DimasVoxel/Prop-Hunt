@@ -63,6 +63,7 @@ function server.noHunterSituation()
 			end
 		end
 
+		SetPlayerParam("godMode", false, id)
 		SetPlayerParam("healthRegeneration", true, id)
 		SetPlayerParam("collisionMask", 255, id)
 		SetPlayerParam("walkingSpeed", 1, id)
