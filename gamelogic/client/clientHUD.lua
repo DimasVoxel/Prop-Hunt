@@ -1,3 +1,10 @@
+#include "uiHelper.lua"
+
+--DEBUG \/ TODO remove this
+client.barfill = 10
+client.barmax = 10
+--DEBUG /\
+
 function client.draw(dt)
 	hudTick(dt)
 	eventlogDraw(dt, teamsGetPlayerColorsList())
@@ -16,7 +23,7 @@ function client.draw(dt)
 	if helperIsPlayerHunter() then
 		client.hunterDraw()
 	elseif helperIsPlayerHider() then
-		client.hiderDraw()
+		client.hiderDraw(dt)
 	else
 		client.spectator()
 	end
@@ -61,7 +68,7 @@ function client.hunterDraw()
 	end
 end
 
-function client.hiderDraw()
+function client.hiderDraw(dt)
 	if shared.ui.currentCountDownName == "hidersHiding" then
 		countdownDraw("Hide! Hunters start in")
 	end
@@ -74,6 +81,75 @@ function client.hiderDraw()
 		client.tauntForce()
 
 		client.DrawTransformPrompt()
+
+		--Below is the HUD for health, sprint, taunts, and cooldown
+		UiPush()
+			--DEBUG \/ TODO remove this
+			if InputPressed("y") then
+				client.barfill = client.barfill-1
+			end
+			if InputPressed("u") then
+				client.barfill = client.barfill+1
+			end
+
+			if InputPressed("i") then
+				client.barfill = 4
+				client.barmax = 6
+			end
+			--DEBUG /\
+
+			UiAlign("center middle")
+			UiTextAlignment("center")
+			UiColor(1,1,1,1)
+
+			UiTranslate(UiCenter(),UiHeight()*0.95)--change this to raise/lower the bottom hud; should be raised if you decide to leave the hint system as a tool and don't get rid of the name and ammo count. Don't forget to also raise the tauntforce
+
+			--bars
+			RoundedBlurredRect(800, 35, 10, 0.5, {0,0,0,0.6})
+
+			UiPush() --health
+				UiAlign("left middle")
+				UiTranslate(110)
+				ProgressBar(25, 250, client.barfill, client.barmax, 10, {0.82,0.08,0.02,1}, client.barmax, 10, dt) --TODO replace barfill w/ current health, barmax w/ max health
+				UiTranslate(260)
+				UiColor(1,1,1,1)
+				UiImageBox("MOD/assets/heart_graphic.png", 25, 25)
+			UiPop()
+
+			UiPush() --sprint
+				UiAlign("left middle")
+				UiRotate(180)
+				UiTranslate(110)
+				ProgressBar(25, 250, client.barfill, client.barmax, 10, {0.02,0.49,0.82,1}, 0, 10, dt) --TODO replace barfill w/ current stamina, barmax w/ max stamina
+				UiTranslate(260)
+				UiAlign("right middle")
+				UiRotate(180)
+				UiColor(1,1,1,1)
+				UiImageBox("MOD/assets/run_graphic.png", 25, 25)
+			UiPop()
+
+			--center info
+			RoundedBlurredRect(200, 70, 15, 0.5, {0,0,0,0.6})
+			UiRect(3, 62)
+
+			UiPush()--taunts
+				UiTranslate(-50, -20)
+				UiFont("regular.ttf", 20)
+				UiText("Taunts:")
+				UiTranslate(0, 30)
+				UiFont("bold.ttf", 40)
+				UiText("#") --TODO replace with var for taunts
+			UiPop()
+
+			UiPush()--cooldown
+				UiTranslate(50, -20)
+				UiFont("regular.ttf", 20)
+				UiText("Cooldown:")
+				UiTranslate(0, 30)
+				UiFont("bold.ttf", 40)
+				UiText("#") --TODO replace with var for cooldown
+			UiPop()
+		UiPop()
 	end
 end
 
@@ -89,7 +165,7 @@ end
 function client.tauntForce()
 	UiPush()
 	UiColor(1,1,1)
-	UiTranslate(UiWidth()/2, UiHeight()-120)
+	UiTranslate(UiWidth()/2, UiHeight()-130)
 	UiFont("bold.ttf",30)
 	UiAlign('center middle')
 	if GetToolAmmo("taunt", GetLocalPlayer()) >= 7 then

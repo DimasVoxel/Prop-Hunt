@@ -97,3 +97,8 @@ function playerGetLookAtShape(dist, playerID, cameraT)
 		return -1
 	end
 end
+
+--better than lerp, is framerate independant and arrives at an end
+function expDecay(val, target, decay, dt)
+	return target + (val - target) * math.exp(-decay * dt)
+end
