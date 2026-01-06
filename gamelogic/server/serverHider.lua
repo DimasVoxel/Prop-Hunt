@@ -37,9 +37,9 @@ function server.hiderTick(dt)
                 SetPlayerParam("collisionMask", 1 , id)
                 SetPlayerParam("walkingSpeed", 0, id)
             end
-
-			server.handleHiderPlayerDamage(id)
         end
+
+		server.handleHiderPlayerDamage(id)
     end
 end
 
@@ -96,27 +96,46 @@ end
 
 function server.handleHiderPlayerDamage(id) -- In Tick
 	local propBody = helperGetPlayerPropBody(id)
-	local aa,bb = GetBodyBounds(propBody)
-	local center = VecLerp(aa, bb, 0.5)
+	if propBody then
+		local aa,bb = GetBodyBounds(propBody)
+		local center = VecLerp(aa, bb, 0.5)
 
-	if IsBodyBroken(propBody) then
-		helperDecreasePlayerShots(id)
-		helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
+		if IsBodyBroken(propBody) then
+			helperDecreasePlayerShots(id)
+			helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
 
-		-- We move the player to the shape if player was too far from the prop when found
-		-- If we dont there are situations when the prop falls down a cliff or building and the player stays on top of the cliff.
-		-- Once found the prop gets teleported back to the player. This makes it look like as if the prop dissapeared for the hunter
-		-- Therefor we move the player to the prop. One issue is that players can get stun locked sometimes
+			-- We move the player to the shape if player was too far from the prop when found
+			-- If we dont there are situations when the prop falls down a cliff or building and the player stays on top of the cliff.
+			-- Once found the prop gets teleported back to the player. This makes it look like as if the prop dissapeared for the hunter
+			-- Therefor we move the player to the prop. One issue is that players can get stun locked sometimes
 
-		if VecLength(VecSub(GetPlayerTransform(id).pos, center)) > 3 and GetShapeVoxelCount(helperGetPlayerPropShape(id)) ~= 0 then
-			SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
-			DebugPrint(TransformStr(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot)))
+			if VecLength(VecSub(GetPlayerTransform(id).pos, center)) > 3 and GetShapeVoxelCount(helperGetPlayerPropShape(id)) ~= 0 then
+				SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
+			end
+
+			server.propRegenerate(id)
+			shared.players.hiders[id].isPropPlaced = false
+
+			ClientCall(0, "client.highlightPlayer", shared.players.hiders[id].propBody)
 		end
+		local lowerHalf = Vec(center[1],AutoLerp(center[2], aa[2],0.5),center[3])
 
-		server.propRegenerate(id)
-		shared.players.hiders[id].isPropPlaced = false
+		if not IsPointInWater(lowerHalf) then 
+			shared.players.hiders[id].damageTick = GetTime()
+		end
+	else
+		local playerTransform = GetPlayerTransform(id)
+		if not IsPointInWater(VecAdd(playerTransform.pos),Vec(0,0.5,0))  then 
+			shared.players.hiders[id].damageTick = GetTime()
+		end
+	end
 
-		ClientCall(0, "client.highlightPlayer", shared.players.hiders[id].propBody)
+	local totalWaterTime = 10
+	local tickDamageTime = 1/shared.players.hiders[id].damageValue + 1
+
+	if (shared.players.hiders[id].damageTick + tickDamageTime) <= GetTime() then
+		helperDecreasePlayerShots(id)
+		shared.players.hiders[id].damageTick = GetTime()
 	end
 
 	if IsPointInBoundaries(center) == false and helperIsPlayerHidden(id) then

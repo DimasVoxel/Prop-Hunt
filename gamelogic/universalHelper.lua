@@ -83,7 +83,7 @@ end
 function helperDecreasePlayerShots(id)
 	local id = id or GetLocalPlayer()
 	if helperIsPlayerHider(id) and shared.players.hiders[id] then
-		shared.players.hiders[id].hp = shared.players.hiders[id].hp - 1
+		shared.players.hiders[id].hp = math.max(shared.players.hiders[id].hp - 1,0)
 	end
 end
 

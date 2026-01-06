@@ -161,13 +161,6 @@ function server.start(settings)
 	SetBool("level.unlimitedammo", false, true)
 	SetBool("level.spawn", false, true)
 	SetBool("level.creative", false, true)
-
-	for id in Players() do
-		shared.players.hiders[id] = {}
-		shared.players.hiders[id].propBody = -1
-		shared.players.hiders[id].propBackupShape = -1
-		shared.players.hiders[id].isPropPlaced = false
-	end
 end
 
 function server.update()
@@ -176,7 +169,7 @@ function server.update()
 end
 
 function server.tick(dt)
-	shared.serverTime = GetTime()
+	shared.serverTime = math.floor(GetTime())
 
 	server.newPlayerJoinRoutine()
 	for id in PlayersRemoved() do -- Didnt want to make a whole function just for this
@@ -203,7 +196,8 @@ function server.tick(dt)
 				shared.players.hiders[id].hp = 3 -- HP Is the amount of shots a hider can take will be changed depending on prop size
 				shared.players.hiders[id].health = 1 -- Health is a float the server requires for health math 
 				shared.players.hiders[id].stamina = 1
-				shared.players.hiders[id].damageTick = 1
+				shared.players.hiders[id].damageTick = 0
+				shared.players.hiders[id].damageValue = 0.33
 			end
 		end
 	end
