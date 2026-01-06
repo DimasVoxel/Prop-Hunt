@@ -3,35 +3,18 @@ function server.hunterTick()
     server.huntersDuringHideTime()
     server.friendlyFireRoutine()
 
-    if server.timers.hunterBulletReloadTimer < 0 then
-		server.timers.hunterBulletReloadTimer = server.gameConfig.hunterBulletReloadTimer
-	end
-
-	if server.timers.hunterPipebombReloadTimer < 0 then
-		server.timers.hunterPipebombReloadTimer = server.gameConfig.hunterPipebombReloadTimer
-	end
-
-	if server.timers.hunterBluetideReloadTimer < 0 then
-		server.timers.hunterBluetideReloadTimer = server.gameConfig.hunterBluetideReloadTimer
-	end
-
-    local dt = GetTimeStep()
-	server.timers.hunterBulletReloadTimer = server.timers.hunterBulletReloadTimer - dt
-	server.timers.hunterPipebombReloadTimer = server.timers.hunterPipebombReloadTimer - dt
-	server.timers.hunterBluetideReloadTimer = server.timers.hunterBluetideReloadTimer - dt
-
     for id in Players() do
         if helperIsPlayerHunter(id) then
             if helperIsHuntersReleased() then
-                if server.timers.hunterBulletReloadTimer < 0 then
+                if server.timers.hunterBulletReloadTimer <= GetTime() then
                     SetToolAmmo("gun", math.min(GetToolAmmo("gun", id) + 1, 10), id)
                 end
 
-                if server.timers.hunterPipebombReloadTimer < 0 then
+                if server.timers.hunterPipebombReloadTimer <= GetTime() then
                     SetToolAmmo("pipebomb", math.min(GetToolAmmo("pipebomb", id) + 1, 3), id)
                 end
 
-                if server.timers.hunterBluetideReloadTimer < 0 then
+                if server.timers.hunterBluetideReloadTimer <= GetTime() then
                     SetToolAmmo("steroid", math.min(GetToolAmmo("steroid", id) + 1, 3), id)
                 end
             else
@@ -41,6 +24,18 @@ function server.hunterTick()
             end
         end
     end
+
+    if server.timers.hunterBulletReloadTimer <= GetTime() then
+	    server.timers.hunterBulletReloadTimer = GetTime() + server.gameConfig.hunterBulletReloadTimer
+    end
+
+	if server.timers.hunterPipebombReloadTimer <= GetTime() then
+        server.timers.hunterPipebombReloadTimer = GetTime() + server.gameConfig.hunterPipebombReloadTimer
+	end
+
+	if server.timers.hunterBluetideReloadTimer <= GetTime() then
+        server.timers.hunterBluetideReloadTimer = GetTime() + server.gameConfig.hunterBluetideReloadTimer
+	end
 
 
 end

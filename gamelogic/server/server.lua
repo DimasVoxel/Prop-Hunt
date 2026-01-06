@@ -71,6 +71,8 @@ shared.ui.stats = {
 	wasHider = {}
 }
 
+shared.serverTime = 0
+
 shared.hint = {
 	circleHint = {},
 }
@@ -174,6 +176,7 @@ function server.update()
 end
 
 function server.tick(dt)
+	shared.serverTime = GetTime()
 
 	server.newPlayerJoinRoutine()
 	for id in PlayersRemoved() do -- Didnt want to make a whole function just for this

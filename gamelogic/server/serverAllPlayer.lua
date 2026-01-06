@@ -5,16 +5,15 @@ end
 
 function server.handleHints(dt)
 	if helperIsHuntersReleased() and server.gameConfig.enableHunterHints then
-		server.timers.hunterHintTimer = server.timers.hunterHintTimer - dt
 
 		-- We trigger a hint if hint timer gets to 0, and during the last 30 seconds we force one last hint.
-		if server.timers.hunterHintTimer < 0 or server.state.time < 30 and server.state.triggerLastHint == false then
+		if GetTime() >= server.timers.hunterHintTimer or server.state.time < 30 and server.state.triggerLastHint == false then
 			if server.state.time < 30 then
 				-- We make sure that the last hint wont get spammed
 				server.state.triggerLastHint = true
 			end
 
-			server.timers.hunterHintTimer = server.gameConfig.hunterHintTimer
+			server.timers.hunterHintTimer = GetTime() + server.gameConfig.hunterHintTimer
 			for id in Players() do 
 				if helperIsPlayerHunter(id) then 
 					server.TriggerHint(id, 1)
@@ -24,19 +23,6 @@ function server.handleHints(dt)
 			end
 
             server.circleHint()
-		end
-
-		local hints = shared.hint.circleHint
-		for i = #hints, 1, -1 do
-			local hint = hints[i]
-			if hint and hint.timer then
-				local t = hint.timer - dt
-				if t <= 0 then
-					table.remove(hints, i)
-				else
-					hint.timer = t
-				end
-			end
 		end
 	end
 end
@@ -127,7 +113,7 @@ function server.circleHint()
 			shared.hint.circleHint[#shared.hint.circleHint].transform = hintTransform
 			shared.hint.circleHint[#shared.hint.circleHint].diameter = diameter
 			shared.hint.circleHint[#shared.hint.circleHint].playerid = hiderId
-			shared.hint.circleHint[#shared.hint.circleHint].timer = 29
+			shared.hint.circleHint[#shared.hint.circleHint].timer = GetTime() + server.gameConfig.hunterHintTimer / 1.75
 		end
     end
 end

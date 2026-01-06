@@ -114,45 +114,6 @@ function client.clippingText()
 	UiPop()
 end
 
-function client.showHint()
-	if client.hint.closestPlayerHint.timer > 0 then
-		if client.hint.closestPlayerHint.detailed then detail =  client.hint.closestPlayerHint.detailed end
-		hudDrawInformationMessage(client.hint.closestPlayerHint.message)
-		client.hint.closestPlayerHint.timer = client.hint.closestPlayerHint.timer - GetTimeStep()
-	end
-
-    if client.hint.closestPlayerArrowHint.timer > 0 then
-		local pos
-		if teamsGetTeamId(GetLocalPlayer()) == 1 then
-			pos = TransformToParentPoint(GetPlayerTransform(client.hint.closestPlayerArrowHint.player), Vec(0,1, -2))
-		elseif  teamsGetTeamId(GetLocalPlayer()) == 2 then
-			pos = TransformToParentPoint(GetPlayerTransform(GetLocalPlayer()), Vec(0,1, -2))
-		end
-
-		local rot = QuatAlignXZ(VecNormalize(VecSub(pos, client.hint.closestPlayerArrowHint.transform.pos)), VecNormalize(VecSub(pos, GetCameraTransform().pos)))
-		DrawSprite(client.assets.arrow, Transform(pos, rot), 0.7, 0.7, 0.7 ,0.7,1,1,1,false,false,false)
-
-		if VecLength(VecSub(pos, client.hint.closestPlayerArrowHint.transform.pos)) < 40 then
-			client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()*10
-		end
-
-    	client.hint.closestPlayerArrowHint.timer = client.hint.closestPlayerArrowHint.timer - GetTimeStep()
-    end
-
-	-- Loop through all circle hints. Remove after they expire but not in the same loop
-	for i=1, #shared.hint.circleHint do
-		if shared.hint.circleHint[i].timer > 0 then
-			for j=1, 5 do
-				local c = j
-				if j % 2 == 0 then c = j*-1 end
-				local rot = QuatRotateQuat(QuatAxisAngle(Vec(0,1,0), GetTime()*c), shared.hint.circleHint[i].transform.rot)
-				local pos = VecAdd(shared.hint.circleHint[i].transform.pos, Vec(0, -j, 0))
-				DrawSprite(client.assets.circle, Transform(pos, rot), shared.hint.circleHint[i].radius, shared.hint.circleHint[i].radius, 1 , 0, 0, shared.hint.circleHint[i].timer/30 , false, false, false)
-			end
-		end
-	end
-end
-
 function client.spectator()
 	UiPush()
 	UiColor(1,1,1)
