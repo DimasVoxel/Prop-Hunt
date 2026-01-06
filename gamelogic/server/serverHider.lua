@@ -136,12 +136,8 @@ function server.taunt(pos, id)
 end
 
 function server.handleHiderTaunts(hiderIds)
-    local dt = GetTimeStep()
-
-    server.timers.hiderTauntReloadTimer = server.timers.hiderTauntReloadTimer - dt
-
-    if server.timers.hiderTauntReloadTimer < 0 then
-        server.timers.hiderTauntReloadTimer = server.gameConfig.hiderTauntReloadTimer
+    if server.timers.hiderTauntReloadTimer <= GetTime() then
+        server.timers.hiderTauntReloadTimer = GetTime() + server.gameConfig.hiderTauntReloadTimer
 
         for _, id in ipairs(hiderIds) do
             -- If the player has 10 taunts already, force them to taunt.
@@ -230,6 +226,7 @@ function server.propRegenerate(playerid)
 		SetProperty(newShape, "emissiveScale", emissiveScale * 2)
 
 		--SetInt('options.game.thirdperson',1, true)
+		return newBody
 	end
 end
 
