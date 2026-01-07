@@ -80,6 +80,13 @@ function client.hiderDraw(dt)
 	DebugWatch("HP", shared.players.hiders[GetLocalPlayer()].hp)
 	DebugWatch("Health", shared.players.hiders[GetLocalPlayer()].health)
 
+	
+	local totalWaterTime = 10
+	local tickDamageTime = totalWaterTime/(1/shared.players.hiders[GetLocalPlayer()].damageValue) + 1
+	local nextTick = math.floor((shared.players.hiders[GetLocalPlayer()].damageTick + tickDamageTime) - shared.serverTime)
+
+	DebugWatch("Next Water Damage",nextTick)
+
 	if not helperIsGameOver() then
 
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
