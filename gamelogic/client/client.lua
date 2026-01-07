@@ -132,7 +132,7 @@ end
 function client.highlightPlayer(body)
 	client.player.hurtOutline[#client.player.hurtOutline+1] = { }
 	client.player.hurtOutline[#client.player.hurtOutline].body = body
-	client.player.hurtOutline[#client.player.hurtOutline].timer = shared.serverTime + 1
+	client.player.hurtOutline[#client.player.hurtOutline].timer = GetTime() + 2
 end
 
 function client.hintShowMessage(message, timer)

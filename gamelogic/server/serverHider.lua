@@ -71,6 +71,17 @@ function server.hiderUpdate()
 					end
 				end
 
+				if InputDown("shift", id) and not helperIsPlayerHidden(id) and shared.players.hiders[id].staminaCoolDown < GetTime() then 
+					SetPlayerParam("walkingSpeed", 12, id)
+					shared.players.hiders[id].stamina = math.max(shared.players.hiders[id].stamina - GetTimeStep(), 0)
+
+					if shared.players.hiders[id].stamina == 0 then 
+						shared.players.hiders[id].staminaCoolDown = GetTime() + 5
+					end
+				else
+					shared.players.hiders[id].stamina = math.min(shared.players.hiders[id].stamina + GetTimeStep()/3, 3)
+				end
+
 				server.handlePlayerProp(id)
 				SetLightEnabled(GetFlashlight(id), false)
 			end
