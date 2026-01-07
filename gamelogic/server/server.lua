@@ -201,6 +201,8 @@ function server.tick(dt)
 				shared.players.hiders[id].damageTick = 0
 				shared.players.hiders[id].damageValue = 0.33
 				shared.players.hiders[id].transformCooldown = 0
+				shared.players.hiders[id].stamina = 3 -- Players have 3 seconds of sprint
+				shared.players.hiders[id].staminaCoolDown = 0
 			end
 		end
 	end
@@ -280,6 +282,7 @@ function server.deadTick()
 				SetPlayerParam("healthRegeneration", true, id)
 				SetPlayerParam("collisionMask", 255, id)
 				SetPlayerParam("walkingSpeed", 1, id)
+				SetPlayerParam("godmode", false, id)
 			end
 		end
 	end

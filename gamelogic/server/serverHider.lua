@@ -41,6 +41,18 @@ function server.hiderTick(dt)
 
 		server.handleHiderPlayerDamage(id)
     end
+	
+	local eventCount = GetEventCount("playerhurt")
+	if eventCount ~= 0 then
+		local playerID, _,_, attackerID = GetEvent("playerhurt",1)
+		if helperIsPlayerHider(playerID) and not helperGetPlayerPropBody(playerID) then 
+			DebugPrint(GetPlayerName(playerID))
+
+			helperDecreasePlayerShots(playerID)
+			helperSetPlayerHealth(playerID, shared.players.hiders[playerID].health - shared.players.hiders[playerID].damageValue)
+			SetPlayerHealth(1, playerID)
+		end
+	end
 end
 
 function server.hiderUpdate()
@@ -57,6 +69,17 @@ function server.hiderUpdate()
 
 						hudShowBanner("Water will damage you, get out as soon as you can.", {0,0,0}) 
 					end
+				end
+
+				if InputDown("shift", id) and not helperIsPlayerHidden(id) and shared.players.hiders[id].staminaCoolDown < GetTime() then 
+					SetPlayerParam("walkingSpeed", 12, id)
+					shared.players.hiders[id].stamina = math.max(shared.players.hiders[id].stamina - GetTimeStep(), 0)
+
+					if shared.players.hiders[id].stamina == 0 then 
+						shared.players.hiders[id].staminaCoolDown = GetTime() + 5
+					end
+				else
+					shared.players.hiders[id].stamina = math.min(shared.players.hiders[id].stamina + GetTimeStep()/3, 3)
 				end
 
 				server.handlePlayerProp(id)
