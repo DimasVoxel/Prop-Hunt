@@ -13,7 +13,7 @@ function client.draw(dt)
 		return
 	end
 
-	hudDrawScoreboard(InputDown("shift") and not helperIsGameOver(), "", {{name="Time Survived", width=160, align="center"}}, getPlayerStats())
+	hudDrawScoreboard(InputDown("tab") and not helperIsGameOver(), "", {{name="Time Survived", width=160, align="center"}}, getPlayerStats())
 
 	if helperIsPlayerHunter() then
 		client.hunterDraw()
@@ -111,11 +111,17 @@ function client.hiderDraw(dt)
 				UiImageBox("MOD/assets/heart_graphic.png", 25, 25)
 			UiPop()
 
+			local maxStamina = 3
+			local stamina = shared.players.hiders[GetLocalPlayer()].stamina
+			local barolor = {0.02  ,0.49  ,0.82  ,1}
+			if math.max(shared.players.hiders[GetLocalPlayer()].staminaCoolDown - shared.serverTime, 0) ~= 0 then
+				barolor = {0.6, 0.2, 0.2, 1}
+			end
+
 			UiPush() --sprint
-				UiAlign("left middle")
 				UiRotate(180)
 				UiTranslate(110)
-				ProgressBar(25, 250, barFill, barMax, 10, {0.02,0.49,0.82,1}, 0, 10, dt) --TODO replace barfill w/ current stamina, barmax w/ max stamina
+				ProgressBar(25, 250, stamina, maxStamina, 10, barolor, 0, 10, dt) --TODO replace barfill w/ current stamina, barmax w/ max stamina
 				UiTranslate(260)
 				UiAlign("right middle")
 				UiRotate(180)
@@ -378,7 +384,7 @@ function client.SetupScreen(dt)
 end
 
 
-function getPlayerStats() -- This is for the Shift button scoreboard
+function getPlayerStats() -- This is for the tab button scoreboard
 	local stats
 	local hunterTable = {}
 	local hiderTable = {}
