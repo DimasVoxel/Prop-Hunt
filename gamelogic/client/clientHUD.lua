@@ -1,13 +1,5 @@
 #include "uiHelper.lua"
 
-<<<<<<< HEAD
-=======
---DEBUG \/ TODO remove this
-client.barfill = 10
-client.barmax = 10
---DEBUG /\
-
->>>>>>> 5778252 (Add Info HUD)
 function client.draw(dt)
 	hudTick(dt)
 	eventlogDraw(dt, teamsGetPlayerColorsList())
