@@ -153,7 +153,6 @@ function client.hiderDraw(dt)
 				UiText(cooldownText) --TODO replace with var for cooldown
 			UiPop()
 		UiPop()
-		DebugPrint(shared.players.hiders[GetLocalPlayer()].transformCooldown)
 	end
 end
 

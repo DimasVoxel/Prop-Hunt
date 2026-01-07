@@ -280,6 +280,7 @@ function server.deadTick()
 				SetPlayerParam("healthRegeneration", true, id)
 				SetPlayerParam("collisionMask", 255, id)
 				SetPlayerParam("walkingSpeed", 1, id)
+				SetPlayerParam("godmode", false, id)
 			end
 		end
 	end
