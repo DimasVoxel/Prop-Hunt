@@ -152,7 +152,7 @@ function server.start(settings)
 	--room has to be spawned here and not in init or the screens won't work
 	server.hasPlacedHuntersInRoom = false
 	if #server.game.spawnedForHunterRoom <= 0 then
-		server.game.spawnedForHunterRoom = Spawn("MOD/hunter_room.xml", Transform(Vec(0,600,0)), true)
+		server.game.spawnedForHunterRoom = Spawn("MOD/hunter_room.xml", Transform(Vec(0,1000,0)), true)
 	end
 
 	countdownInit(settings.hideTime, "hidersHiding")
