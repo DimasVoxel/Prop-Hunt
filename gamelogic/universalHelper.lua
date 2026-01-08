@@ -106,6 +106,13 @@ function helperSetPlayerHealth(id, health)
 	end
 end
 
+function helperIsPlayerInDangerEnvironment(id)
+	local id = id or GetLocalPlayer()
+	if helperIsPlayerHider(id) and shared.players.hiders[id] then
+		return shared.players.hiders[id].environmentalDamageTrigger
+	end
+end
+
 ----------------# Functions that are used by both client and server #------------------
 
 function checkPropClipping(id)

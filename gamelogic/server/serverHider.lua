@@ -122,11 +122,17 @@ function server.handleHiderPlayerDamage(id) -- In Tick
 
 		if not IsPointInWater(lowerHalf) then 
 			shared.players.hiders[id].damageTick = GetTime()
+			shared.players.hiders[id].environmentalDamageTrigger = false
+		else
+			shared.players.hiders[id].environmentalDamageTrigger = true
 		end
 	else
 		local playerTransform = GetPlayerTransform(id)
 		if not IsPointInWater(VecAdd(playerTransform.pos),Vec(0,0.5,0))  then 
 			shared.players.hiders[id].damageTick = GetTime()
+			shared.players.hiders[id].environmentalDamageTrigger = false
+		else
+			shared.players.hiders[id].environmentalDamageTrigger = true
 		end
 	end
 
