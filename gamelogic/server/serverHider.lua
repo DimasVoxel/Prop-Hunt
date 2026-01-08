@@ -81,7 +81,7 @@ function server.hiderUpdate()
 						shared.players.hiders[id].staminaCoolDown = GetTime() + 5
 					end
 				else
-					shared.players.hiders[id].stamina = math.min(shared.players.hiders[id].stamina + GetTimeStep()/3, 3)
+					shared.players.hiders[id].stamina = math.min(shared.players.hiders[id].stamina + GetTimeStep()/5, 3)
 				end
 
 				server.handlePlayerProp(id)
