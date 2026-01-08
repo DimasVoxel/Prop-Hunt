@@ -53,7 +53,6 @@ function client.init()
 end
 
 function client.tick()
-
 	SetBool("game.disablemap", true)
 	SetLowHealthBlurThreshold(0.01)
 
