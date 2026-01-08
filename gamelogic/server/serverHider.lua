@@ -71,7 +71,9 @@ function server.hiderUpdate()
 					end
 				end
 
-				if InputDown("shift", id) and not helperIsPlayerHidden(id) and shared.players.hiders[id].staminaCoolDown < GetTime() then 
+				local speed = VecLength(GetPlayerVelocity(id))
+
+				if InputDown("shift", id) and not helperIsPlayerHidden(id) and shared.players.hiders[id].staminaCoolDown < GetTime() and speed > 0.1 then 
 					SetPlayerParam("walkingSpeed", 12, id)
 					shared.players.hiders[id].stamina = math.max(shared.players.hiders[id].stamina - GetTimeStep(), 0)
 
