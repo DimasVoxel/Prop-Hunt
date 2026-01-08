@@ -141,7 +141,7 @@ function server.handleHiderPlayerDamage(id) -- In Tick
 			server.propRegenerate(id)
 			shared.players.hiders[id].isPropPlaced = false
 
-			ClientCall(0, "client.highlightPlayer", shared.players.hiders[id].propBody)
+			ClientCall(0, "client.highlightPlayer", id)
 		end
 		local lowerHalf = Vec(center[1],AutoLerp(center[2], aa[2],0.5),center[3])
 

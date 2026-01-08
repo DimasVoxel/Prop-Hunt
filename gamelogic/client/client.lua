@@ -88,13 +88,15 @@ end
 
 
 function client.highlightHurtHider()
+	
 	-- If a hider gets damaged the server sends a ClientCall to highlight a player body.
 	-- The code bellow handles drawing and removing the highlight.
 	for i = 1, #client.player.hurtOutline do
-		if client.player.hurtOutline[i].timer <= GetTime() then
-			local intensity = math.max(0, client.player.hurtOutline[i].timer - GetTime())
-			DrawBodyHighlight(client.player.hurtOutline[i].body, intensity) 
-			DrawBodyOutline(client.player.hurtOutline[i].body,1,0,0, intensity)
+		if client.player.hurtOutline[i].timer >= GetTime() then
+			local intensity = math.max(0, 1 - 0.2/(client.player.hurtOutline[i].timer - GetTime())) 
+			
+			DrawBodyHighlight(helperGetPlayerPropBody(client.player.hurtOutline[i].id), intensity) 
+			DrawBodyOutline(helperGetPlayerPropBody(client.player.hurtOutline[i].id),1,0,0, intensity/3)
 		end
 	end
 
@@ -128,10 +130,10 @@ function client.showHint()
 end
 
 
-function client.highlightPlayer(body)
+function client.highlightPlayer(id)
 	client.player.hurtOutline[#client.player.hurtOutline+1] = { }
-	client.player.hurtOutline[#client.player.hurtOutline].body = body
-	client.player.hurtOutline[#client.player.hurtOutline].timer = GetTime() + 2
+	client.player.hurtOutline[#client.player.hurtOutline].id = id
+	client.player.hurtOutline[#client.player.hurtOutline].timer = GetTime() + 0.9
 end
 
 function client.hintShowMessage(message, timer)
