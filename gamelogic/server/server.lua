@@ -90,9 +90,6 @@ shared.players = {
 }
 
 function server.init()
-	RegisterTool("taunt", "taunt", "", 1)
-	server.assets.taunt = LoadSound('MOD/assets/taunt0.ogg')
-
 	hudInit(true)
 	hudAddUnstuckButton()
 	teamsInit(3)
@@ -105,7 +102,7 @@ function server.init()
 	toolsSetDropToolsOnDeath(false)
 
 	--- spawnSetDefaultLoadoutForTeam was modified to support per team loadouts
-	spawnSetDefaultLoadoutForTeam(1, { {"taunt", 1} })                  				  -- Hiders
+	spawnSetDefaultLoadoutForTeam(1, {  })                  				  -- Hiders
 	spawnSetDefaultLoadoutForTeam(2, {{ "gun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }}) -- Hunters
 
 	spawnSetRespawnTime(10)
@@ -203,6 +200,7 @@ function server.tick(dt)
 				shared.players.hiders[id].transformCooldown = 0
 				shared.players.hiders[id].stamina = 3 -- Players have 3 seconds of sprint
 				shared.players.hiders[id].staminaCoolDown = 0
+				shared.players.hiders[id].taunts = 1
 			end
 		end
 	end
@@ -310,9 +308,7 @@ function server.newPlayerJoinRoutine()
 
 			-- build a quick lookup table for loadout tools
 			local loadout = {}
-			if helperIsPlayerHider(id) then
-				loadout = { {"taunt", 1} }
-			elseif helperIsPlayerHunter(id) then
+			if helperIsPlayerHunter(id) then
 				loadout = { { "gun", 3 }, { "pipebomb", 0 }, { "steroid", 0 } }
 			end
 

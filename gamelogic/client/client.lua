@@ -27,7 +27,8 @@ client.player = {
 
 client.assets = {
 	rect = nil,
-	circle = nil
+	circle = nil,
+	taunt = nil,
 }
 
 client.camera = {}
@@ -50,6 +51,7 @@ client.hint = {
 function client.init()
 	client.assets.rect = LoadSprite("gfx/white.png")
 	client.assets.circle = LoadSprite("gfx/ring.png")
+	client.assets.taunt = LoadSound('MOD/assets/taunt0.ogg')
 end
 
 function client.tick()
@@ -129,6 +131,10 @@ function client.showHint()
 	end
 end
 
+function client.tauntBroadcast(pos)
+	PlaySound(client.assets.taunt,pos,2,true,1)
+	DebugPrint("meow")
+end
 
 function client.highlightPlayer(id)
 	client.player.hurtOutline[#client.player.hurtOutline+1] = { }

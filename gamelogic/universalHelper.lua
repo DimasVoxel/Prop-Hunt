@@ -62,6 +62,12 @@ function helperGetHiderDamageValue(id)
 	if not helperGetPlayerPropBody(id) then return 0.30 end -- Base Damage
 	return shared.players.hiders[id].damageValue
 end
+
+function helperGetHiderTauntsAmount(id)
+	id = id or GetLocalPlayer()
+	if not helperIsPlayerHider(id) then return false end
+	return shared.players.hiders[id].taunts
+end
 ------------
 
 function helperIsHuntersReleased()
