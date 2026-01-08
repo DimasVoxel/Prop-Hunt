@@ -46,8 +46,6 @@ function server.hiderTick(dt)
 	if eventCount ~= 0 then
 		local playerID, _,_, attackerID = GetEvent("playerhurt",1)
 		if helperIsPlayerHider(playerID) and not helperGetPlayerPropBody(playerID) then 
-			DebugPrint(GetPlayerName(playerID))
-
 			helperDecreasePlayerShots(playerID)
 			helperSetPlayerHealth(playerID, shared.players.hiders[playerID].health - shared.players.hiders[playerID].damageValue)
 			SetPlayerHealth(1, playerID)

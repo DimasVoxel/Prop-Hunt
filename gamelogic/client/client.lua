@@ -1,10 +1,15 @@
 --[[
 #include clientHider.lua
 #include clientHUD.lua
+#include clientOnlyHelpers.lua
 ]]
 
 client.state = {
 	matchEnded = false
+}
+
+client.gameConfig = {
+	tauntChargeTime = 0.5
 }
 
 
@@ -22,7 +27,8 @@ client.player = {
 	hider = {
 		hidingAttempt = false
 	},
-	lookAtShape = -1
+	lookAtShape = -1,
+	tauntChargeCount = 0
 }
 
 client.assets = {
@@ -133,7 +139,6 @@ end
 
 function client.tauntBroadcast(pos)
 	PlaySound(client.assets.taunt,pos,2,true,1)
-	DebugPrint("meow")
 end
 
 function client.highlightPlayer(id)
