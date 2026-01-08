@@ -199,6 +199,7 @@ function server.tick(dt)
 				shared.players.hiders[id].health = 1 -- Health is a float the server requires for health math 
 				shared.players.hiders[id].stamina = 1
 				shared.players.hiders[id].damageTick = 0
+				shared.players.hiders[id].environmentalDamageTrigger = false 
 				shared.players.hiders[id].damageValue = 0.33
 				shared.players.hiders[id].transformCooldown = 0
 				shared.players.hiders[id].stamina = 3 -- Players have 3 seconds of sprint
