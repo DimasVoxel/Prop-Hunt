@@ -171,8 +171,8 @@ function server.update()
 end
 
 function server.tick(dt)
-	shared.serverTime = math.floor(GetTime())
-
+	shared.serverTime = AutoRound(GetTime(),0.1)
+	DebugPrint(shared.serverTime)
 	server.newPlayerJoinRoutine()
 	for id in PlayersRemoved() do -- Didnt want to make a whole function just for this
 		eventlogPostMessage({id, "Left the game"})
