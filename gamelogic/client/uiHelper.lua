@@ -18,44 +18,49 @@ end
 -- @param[type=number] thickness Thickness of the bar to draw as a whole.
 -- @param[type=number] length    Length of the bar to draw as a whole.
 -- @param[type=number] curVal    Current value to display.
--- @param[type=number] maxVal    Max value it can display (used for math, will not truncate bar).
+-- @param[type=number] maxVal    Max value it can display (used for math, will not truncate bar and does not normalize curVal).
 -- @param[opt,type=number] opt_rounding     Rounding for corners of bar.
 -- @param[opt,type=table] opt_barColor      Table of {r,g,b,a} to use for bar color. Default white.
 -- @param[opt,type=number] opt_numDivisions Number of divisions to draw. Purely visual; You will need to make sure the other values align properly.
--- @param[opt,type=number] opt_smoothing    Exponential value of smoothing to occur.
--- @param[opt,type=number] opt_dt           Delta time; Required if using smoothing, can be left blank if not.
-function ProgressBar(thickness, length, curVal, maxVal, opt_rounding, opt_barColor, opt_numDivisions, opt_smoothing, opt_dt)
+-- @param[opt,type=number] opt_flashAmount  Make a certain length at the end of the bar flash. For example if the maxVal is 10 and you set this to 1, 1/10th of the end of the bar will flash white.
+function ProgressBar(thickness, length, curVal, maxVal, opt_rounding, opt_barColor, opt_numDivisions, opt_flashAmount)
     opt_rounding = opt_rounding or 0
     opt_barColor = opt_barColor or {1,1,1,1}
-    opt_numDivisions = opt_numDivisions or false
-    opt_smoothing = opt_smoothing or 0
-
-    --used for smoothing
-    if not curActualFill then
-        curActualFill = 0
-    end
+    opt_numDivisions = opt_numDivisions or 0
+    opt_flashAmount = opt_flashAmount or 0
 
     UiPush()
         UiAlign("left middle")
 
+        --bg
         UiColor(0,0,0,1)
         UiRoundedRect(length, thickness, opt_rounding)
 
+        --fill
         UiColor(opt_barColor[1],opt_barColor[2],opt_barColor[3],opt_barColor[4])
-        if opt_smoothing == 0 then
-            UiRoundedRect(length*(curVal/maxVal), thickness, opt_rounding)
-        else
-            curActualFill = expDecay(curActualFill, length*(curVal/maxVal), opt_smoothing, opt_dt)
-            UiRoundedRect(curActualFill, thickness, opt_rounding)
-        end
+        UiRoundedRect(length*(curVal/maxVal), thickness, opt_rounding)
 
-        if opt_numDivisions then
-            UiAlign("center middle")
-            UiColor(0,0,0,1)
-            for i=1, opt_numDivisions-1 do
-                UiTranslate(length/opt_numDivisions)
-                UiRect(2, thickness)
+        --divs
+        UiPush()
+            if opt_numDivisions > 1 then
+                UiAlign("center middle")
+                UiColor(0,0,0,1)
+                for i=1, opt_numDivisions-1 do
+                    UiTranslate(length/opt_numDivisions)
+                    UiRect(2, thickness)
+                end
             end
-        end
+        UiPop()
+
+        --flash
+        UiPush()
+            if opt_flashAmount > 0 then
+                UiTranslate(length*(curVal/maxVal))
+                UiAlign("right middle")
+                local alpha = (math.sin((GetTime()*7))/2)+0.5
+                UiColor(1,1,1,alpha)
+                UiRoundedRect(length*(opt_flashAmount/maxVal), thickness, opt_rounding)
+            end
+        UiPop()
     UiPop()
 end
