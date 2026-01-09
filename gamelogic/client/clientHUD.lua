@@ -84,7 +84,7 @@ function client.hiderDraw(dt)
 	if not helperIsGameOver() then
 
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
-		hudDrawGameModeHelpText("You are a Hider", "Search a prop and press ( E ) to transform. And press ( F ) to hide. Water will kill you!")
+		hudDrawGameModeHelpText("You are a Hider", "- Press ( E ) to transform. \n- Press ( F ) to hide. \n- Press ( L-Mouse ) to Taunt. \n- Water will kill you!")
 		client.clippingText()
 		client.tauntForce()
 

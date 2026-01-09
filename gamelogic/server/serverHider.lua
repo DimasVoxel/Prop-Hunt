@@ -15,7 +15,7 @@ function server.hiderTick(dt)
         -- Hiders should not be able to enter vehicles
         SetPlayerVehicle(0, id) 
         -- Sometimes other mods can mess with the tools we just set it to be taunt so they are unable to use other ones
-        SetPlayerTool("taunt", id) 
+        SetPlayerTool("", id) 
 
         local propBody = helperGetPlayerPropBody(id)
         if propBody then
@@ -46,8 +46,6 @@ function server.hiderTick(dt)
 	if eventCount ~= 0 then
 		local playerID, _,_, attackerID = GetEvent("playerhurt",1)
 		if helperIsPlayerHider(playerID) and not helperGetPlayerPropBody(playerID) then 
-			DebugPrint(GetPlayerName(playerID))
-
 			helperDecreasePlayerShots(playerID)
 			helperSetPlayerHealth(playerID, shared.players.hiders[playerID].health - shared.players.hiders[playerID].damageValue)
 			SetPlayerHealth(1, playerID)
@@ -71,7 +69,9 @@ function server.hiderUpdate()
 					end
 				end
 
-				if InputDown("shift", id) and not helperIsPlayerHidden(id) and shared.players.hiders[id].staminaCoolDown < GetTime() then 
+				local speed = VecLength(GetPlayerVelocity(id))
+
+				if InputDown("shift", id) and not helperIsPlayerHidden(id) and shared.players.hiders[id].staminaCoolDown < GetTime() and speed > 0.1 then 
 					SetPlayerParam("walkingSpeed", 12, id)
 					shared.players.hiders[id].stamina = math.max(shared.players.hiders[id].stamina - GetTimeStep(), 0)
 
@@ -79,7 +79,7 @@ function server.hiderUpdate()
 						shared.players.hiders[id].staminaCoolDown = GetTime() + 5
 					end
 				else
-					shared.players.hiders[id].stamina = math.min(shared.players.hiders[id].stamina + GetTimeStep()/3, 3)
+					shared.players.hiders[id].stamina = math.min(shared.players.hiders[id].stamina + GetTimeStep()/5, 3)
 				end
 
 				server.handlePlayerProp(id)
@@ -139,17 +139,23 @@ function server.handleHiderPlayerDamage(id) -- In Tick
 			server.propRegenerate(id)
 			shared.players.hiders[id].isPropPlaced = false
 
-			ClientCall(0, "client.highlightPlayer", shared.players.hiders[id].propBody)
+			ClientCall(0, "client.highlightPlayer", id)
 		end
 		local lowerHalf = Vec(center[1],AutoLerp(center[2], aa[2],0.5),center[3])
 
 		if not IsPointInWater(lowerHalf) then 
 			shared.players.hiders[id].damageTick = GetTime()
+			shared.players.hiders[id].environmentalDamageTrigger = false
+		else
+			shared.players.hiders[id].environmentalDamageTrigger = true
 		end
 	else
 		local playerTransform = GetPlayerTransform(id)
 		if not IsPointInWater(VecAdd(playerTransform.pos),Vec(0,0.5,0))  then 
 			shared.players.hiders[id].damageTick = GetTime()
+			shared.players.hiders[id].environmentalDamageTrigger = false
+		else
+			shared.players.hiders[id].environmentalDamageTrigger = true
 		end
 	end
 
@@ -173,9 +179,9 @@ end
 
 -- Gets Called by clients.
 -- #TODO: Some say that the server sound sync sucks and its recommended to use ClientCall to execute a playsound locally
-function server.taunt(pos, id)
-	SetToolAmmo("taunt", math.max(GetToolAmmo("taunt", id) - 3 ,1), id)
-	PlaySound(server.assets.taunt,pos,2,true,1)
+function server.tauntBroadcast(pos, id)
+	shared.players.hiders[id].taunts = helperGetHiderTauntsAmount(id) - 1
+	ClientCall(0, "client.tauntBroadcast", pos)
 end
 
 function server.handleHiderTaunts(hiderIds)
@@ -184,11 +190,11 @@ function server.handleHiderTaunts(hiderIds)
 
         for _, id in ipairs(hiderIds) do
             -- If the player has 10 taunts already, force them to taunt.
-            if GetToolAmmo("taunt", id) == 10 then
+            if helperGetHiderTauntsAmount(id) == 10 then
                 server.taunt(GetPlayerTransform(id).pos, id)
-                SetToolAmmo("taunt", 6, id)
+                shared.players.hiders[id].taunts = 6
             else
-                SetToolAmmo("taunt", math.min(GetToolAmmo("taunt", id) + 1, 10), id)
+				math.min(shared.players.hiders[id].taunts + 1, 10)
             end
         end
     end

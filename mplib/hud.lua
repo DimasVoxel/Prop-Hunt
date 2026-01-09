@@ -1401,7 +1401,7 @@ function hudDrawGameModeHelpText(header, text, headerColor)
 	
 	UiPush()
 		local padding = 20
-		local width = 300
+		local width = 350
 		local textOffset = 0
 		local textMaxWidth = width - 2 * padding
 

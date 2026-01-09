@@ -90,9 +90,6 @@ shared.players = {
 }
 
 function server.init()
-	RegisterTool("taunt", "taunt", "", 1)
-	server.assets.taunt = LoadSound('MOD/assets/taunt0.ogg')
-
 	hudInit(true)
 	hudAddUnstuckButton()
 	teamsInit(3)
@@ -105,7 +102,7 @@ function server.init()
 	toolsSetDropToolsOnDeath(false)
 
 	--- spawnSetDefaultLoadoutForTeam was modified to support per team loadouts
-	spawnSetDefaultLoadoutForTeam(1, { {"taunt", 1} })                  				  -- Hiders
+	spawnSetDefaultLoadoutForTeam(1, {  })                  				  -- Hiders
 	spawnSetDefaultLoadoutForTeam(2, {{ "gun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }}) -- Hunters
 
 	spawnSetRespawnTime(10)
@@ -152,7 +149,7 @@ function server.start(settings)
 	--room has to be spawned here and not in init or the screens won't work
 	server.hasPlacedHuntersInRoom = false
 	if #server.game.spawnedForHunterRoom <= 0 then
-		server.game.spawnedForHunterRoom = Spawn("MOD/hunter_room.xml", Transform(Vec(0,600,0)), true)
+		server.game.spawnedForHunterRoom = Spawn("MOD/hunter_room.xml", Transform(Vec(0,1000,0)), true)
 	end
 
 	countdownInit(settings.hideTime, "hidersHiding")
@@ -171,8 +168,7 @@ function server.update()
 end
 
 function server.tick(dt)
-	shared.serverTime = math.floor(GetTime())
-
+	shared.serverTime = AutoRound(GetTime(),0.1)
 	server.newPlayerJoinRoutine()
 	for id in PlayersRemoved() do -- Didnt want to make a whole function just for this
 		eventlogPostMessage({id, "Left the game"})
@@ -199,10 +195,12 @@ function server.tick(dt)
 				shared.players.hiders[id].health = 1 -- Health is a float the server requires for health math 
 				shared.players.hiders[id].stamina = 1
 				shared.players.hiders[id].damageTick = 0
+				shared.players.hiders[id].environmentalDamageTrigger = false 
 				shared.players.hiders[id].damageValue = 0.33
 				shared.players.hiders[id].transformCooldown = 0
 				shared.players.hiders[id].stamina = 3 -- Players have 3 seconds of sprint
 				shared.players.hiders[id].staminaCoolDown = 0
+				shared.players.hiders[id].taunts = 1
 			end
 		end
 	end
@@ -310,9 +308,7 @@ function server.newPlayerJoinRoutine()
 
 			-- build a quick lookup table for loadout tools
 			local loadout = {}
-			if helperIsPlayerHider(id) then
-				loadout = { {"taunt", 1} }
-			elseif helperIsPlayerHunter(id) then
+			if helperIsPlayerHunter(id) then
 				loadout = { { "gun", 3 }, { "pipebomb", 0 }, { "steroid", 0 } }
 			end
 

@@ -1,10 +1,15 @@
 --[[
 #include clientHider.lua
 #include clientHUD.lua
+#include clientOnlyHelpers.lua
 ]]
 
 client.state = {
 	matchEnded = false
+}
+
+client.gameConfig = {
+	tauntChargeTime = 0.5
 }
 
 
@@ -22,12 +27,14 @@ client.player = {
 	hider = {
 		hidingAttempt = false
 	},
-	lookAtShape = -1
+	lookAtShape = -1,
+	tauntChargeCount = 0
 }
 
 client.assets = {
 	rect = nil,
-	circle = nil
+	circle = nil,
+	taunt = nil,
 }
 
 client.camera = {}
@@ -50,10 +57,10 @@ client.hint = {
 function client.init()
 	client.assets.rect = LoadSprite("gfx/white.png")
 	client.assets.circle = LoadSprite("gfx/ring.png")
+	client.assets.taunt = LoadSound('MOD/assets/taunt0.ogg')
 end
 
 function client.tick()
-
 	SetBool("game.disablemap", true)
 	SetLowHealthBlurThreshold(0.01)
 
@@ -89,13 +96,15 @@ end
 
 
 function client.highlightHurtHider()
+	
 	-- If a hider gets damaged the server sends a ClientCall to highlight a player body.
 	-- The code bellow handles drawing and removing the highlight.
 	for i = 1, #client.player.hurtOutline do
-		if client.player.hurtOutline[i].timer <= GetTime() then
-			local intensity = math.max(0, client.player.hurtOutline[i].timer - GetTime())
-			DrawBodyHighlight(client.player.hurtOutline[i].body, intensity) 
-			DrawBodyOutline(client.player.hurtOutline[i].body,1,0,0, intensity)
+		if client.player.hurtOutline[i].timer >= GetTime() then
+			local intensity = math.max(0, 1 - 0.2/(client.player.hurtOutline[i].timer - GetTime())) 
+			
+			DrawBodyHighlight(helperGetPlayerPropBody(client.player.hurtOutline[i].id), intensity) 
+			DrawBodyOutline(helperGetPlayerPropBody(client.player.hurtOutline[i].id),1,0,0, intensity/3)
 		end
 	end
 
@@ -128,11 +137,14 @@ function client.showHint()
 	end
 end
 
+function client.tauntBroadcast(pos)
+	PlaySound(client.assets.taunt,pos,2,true,1)
+end
 
-function client.highlightPlayer(body)
+function client.highlightPlayer(id)
 	client.player.hurtOutline[#client.player.hurtOutline+1] = { }
-	client.player.hurtOutline[#client.player.hurtOutline].body = body
-	client.player.hurtOutline[#client.player.hurtOutline].timer = GetTime() + 2
+	client.player.hurtOutline[#client.player.hurtOutline].id = id
+	client.player.hurtOutline[#client.player.hurtOutline].timer = GetTime() + 0.9
 end
 
 function client.hintShowMessage(message, timer)

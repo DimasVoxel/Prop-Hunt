@@ -56,8 +56,16 @@ function client.hiderUpdate()
     if helperIsPlayerHider() and teamsIsSetup() then
 		client.sendHideRequest()
         client.SelectProp()
-		if client.hint.tauntCooldown == 0 and GetString("game.player.tool", GetLocalPlayer()) == "taunt" and InputPressed("usetool", GetLocalPlayer()) then
-			ServerCall("server.taunt", GetPlayerTransform(GetLocalPlayer()).pos, GetLocalPlayer())
+
+		if client.hint.tauntCooldown == 0 and InputDown("usetool", GetLocalPlayer()) then
+			client.player.taunting = true
+		else
+			client.player.taunting = false
+			client.player.tauntChargeCount = GetTime() + client.gameConfig.tauntChargeTime
+		end
+
+		if client.player.tauntChargeCount <= GetTime() then 
+			ServerCall("server.tauntBroadcast", GetPlayerTransform(GetLocalPlayer()).pos, GetLocalPlayer())
 			client.hint.tauntCooldown = 5
 		end
 
