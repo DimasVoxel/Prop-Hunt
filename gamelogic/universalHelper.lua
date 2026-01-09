@@ -45,7 +45,11 @@ end
 function helperGetPlayerPropBody(id)
     id = id or GetLocalPlayer()
     if not helperIsPlayerHider(id) then return false end
-    if shared.players.hiders[id] and shared.players.hiders[id].propBody == -1 then return false end
+    if shared.players.hiders[id] then
+		if shared.players.hiders[id].propBody == -1 or shared.players.hiders[id].propBody == nil then 
+			return false 
+		end
+	end
     return shared.players.hiders[id].propBody
 end
 

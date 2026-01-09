@@ -93,7 +93,7 @@ function client.sendHideRequest()
 
     if InputPressed("flashlight") then
 		local playerID = GetLocalPlayer()
-        if not shared.players.hiders[playerID].isPropClipping and shared.players.hiders[playerID].propBody ~= -1 then
+        if not shared.players.hiders[playerID].isPropClipping and helperGetPlayerPropBody() then
             ServerCall("server.clientHideRequest", playerID)
 			client.player.hider.hidingAttempt = false
 		end
