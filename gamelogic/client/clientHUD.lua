@@ -64,6 +64,8 @@ function client.hunterDraw()
 end
 
 local healthBarActualFill = 0
+--local lowHealthSoundEffect = false
+--local lowHealthSfxVol = 3
 function client.hiderDraw(dt)
 	if shared.ui.currentCountDownName == "hidersHiding" then
 		countdownDraw("Hide! Hunters start in")
@@ -84,7 +86,7 @@ function client.hiderDraw(dt)
 	if not helperIsGameOver() then
 
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
-		hudDrawGameModeHelpText("You are a Hider", "- Press ( E ) to transform. \n- Press ( F ) to hide. \n- Press ( L-Mouse ) to Taunt. \n- Water will kill you!")
+		hudDrawGameModeHelpText("You are a Hider", "- Press ( E ) to transform. \n- Press ( F ) to hide. \n- Press & hold ( LMB ) to Taunt. \n- Water will kill you!")
 		client.clippingText()
 		client.tauntForce()
 
@@ -92,29 +94,11 @@ function client.hiderDraw(dt)
 
 		--Below is the HUD for health, sprint, taunts, and cooldown
 		UiPush()
-			local barMax = math.max(AutoRound(1/shared.players.hiders[GetLocalPlayer()].damageValue),1)
-			local barFill = helperGetPlayerShotsLeft()
-			healthBarActualFill = expDecay(healthBarActualFill, barFill, 10, dt)
-
-			if helperGetPlayerShotsLeft() == 1 then
-				--TODO low health sfx
-			end
-			
-			--TODO this is some temporary fuckery till I get a proper bool \/
-			--and this NEEDS a proper bool too, it flashes on clients even when not being damaged
-			local barBlink = 0
-			damageTickPreviousFrame = damageTickPreviousFrame or 0
-			if damageTickPreviousFrame == shared.players.hiders[GetLocalPlayer()].damageTick then
-				barBlink = 1
-			end
-			damageTickPreviousFrame = shared.players.hiders[GetLocalPlayer()].damageTick
-			--TODO this is some temporary fuckery till I get a proper bool /\
-
 			UiAlign("center middle")
 			UiTextAlignment("center")
 			UiColor(1,1,1,1)
 
-			UiTranslate(UiCenter(),UiHeight()-90)--change this to raise/lower the bottom hud; should be raised if you decide to leave the hint system as a tool and don't get rid of the name and ammo count. Don't forget to also raise the tauntforce
+			UiTranslate(UiCenter(),UiHeight()-90)
 
 			RoundedBlurredRect(800, 35, 10, 0.5, {0,0,0,0.6})
 
@@ -122,36 +106,49 @@ function client.hiderDraw(dt)
 			UiPush()
 				UiAlign("left middle")
 				UiTranslate(110)
-				ProgressBar(25, 250, healthBarActualFill, barMax, 13, {0.82,0.08,0.02,1}, barMax, barBlink)
-				if barBlink > 0 then --text warning TODO use actual hurt bool
+
+				local barBlink = 0
+				if helperIsPlayerInDangerEnvironment(GetLocalPlayer()) then --text warning, bar blink, danger sound
 					UiPush()
 						UiFont("regular.ttf", 25)
-						UiTextAlignment("left")
-						UiTranslate(0, -35)
+						UiAlign("center middle")
+						UiTextAlignment("center")
+						UiTranslate(140, -35)
 						local alpha = (math.sin((GetTime()*7))/2)+0.5
 						UiColor(1,1,1,alpha)
-						UiText("Taking environmental damage!")
-
-						--TODO Ui Sound for currently taking damage
+						UiText("Taking water damage!") --TODO make say what type of damage when fire dmg implemented
+						
+						UiSoundLoop("MOD/assets/taking_env_damage.ogg")
 					UiPop()
+
+					barBlink = 1
 				end
+
+				do
+					local barMax = math.max(AutoRound(1/shared.players.hiders[GetLocalPlayer()].damageValue),1)
+					local barFill = helperGetPlayerShotsLeft()
+					healthBarActualFill = expDecay(healthBarActualFill, barFill, 10, dt)
+					ProgressBar(true, 25, 250, healthBarActualFill, barMax, 13, {0.82,0.08,0.02,1}, barMax, barBlink)
+				end
+
 				UiTranslate(256)
 				UiColor(1,1,1,1)
 				UiImageBox("MOD/assets/heart_graphic.png", 25, 25)
 			UiPop()
 
 			--sprint
-			local maxStamina = 3
-			local stamina = shared.players.hiders[GetLocalPlayer()].stamina
-			local barColor = {0.02, 0.49, 0.82, 1}
-			if math.max(shared.players.hiders[GetLocalPlayer()].staminaCoolDown - shared.serverTime, 0) ~= 0 then
-				barColor = {0.6, 0.2, 0.2, 1}
-			end
-
 			UiPush()
 				UiRotate(180)
 				UiTranslate(110)
-				ProgressBar(25, 250, stamina, maxStamina, 13, barColor, 0, 0)
+				do
+					local maxStamina = 3
+					local stamina = shared.players.hiders[GetLocalPlayer()].stamina
+					local barColor = {0.02, 0.49, 0.82, 1}
+					if math.max(shared.players.hiders[GetLocalPlayer()].staminaCoolDown - shared.serverTime, 0) ~= 0 then
+						barColor = {0.6, 0.2, 0.2, 1}
+					end
+					ProgressBar(true, 25, 250, stamina, maxStamina, 13, barColor, 0, 0)
+				end
 				UiTranslate(256)
 				UiAlign("right middle")
 				UiRotate(180)
@@ -161,21 +158,33 @@ function client.hiderDraw(dt)
 
 			--center info
 			RoundedBlurredRect(200, 70, 15, 0.5, {0,0,0,0.6})
-			UiRect(3, 62)
+			UiRect(3, 55)
 
 			--taunts
 			UiPush()
-				UiTranslate(50, -20)
+				UiTranslate(50)
+
+				UiPush()
+					UiTranslate(0,35)
+					UiRotate(90)
+					do
+						local barFill = client.helperGetTauntProgress()
+						if barFill < dt then barFill = 0 end
+						ProgressBar(false, 100, 70, barFill, 1, 15, {1,1,1,0.3})
+					end
+				UiPop()
+
+				UiTranslate(0, -20)
 				UiFont("regular.ttf", 20)
 				UiText("Taunts:")
 				UiTranslate(0, 30)
 				UiFont("bold.ttf", 40)
-				UiText(GetToolAmmo("taunt", GetLocalPlayer())) --TODO replace with actual var for taunts
+				UiText(helperGetHiderTauntsAmount(GetLocalPlayer()))
 			UiPop()
 
 			--cooldown
 			local cooldownText = ""
-			local cooldownTimer = AutoClamp(math.floor(shared.players.hiders[GetLocalPlayer()].transformCooldown-shared.serverTime+0.4),0,3)
+			local cooldownTimer = AutoClamp(math.floor(shared.players.hiders[GetLocalPlayer()].transformCooldown-shared.serverTime+0.4),0,3) --TODO these need to use the server's max cooldown, no? maybe make a func to get the current (real, not floored) cooldown
 			if not helperIsHuntersReleased() then
 				cooldown = 0
 			end
@@ -189,7 +198,19 @@ function client.hiderDraw(dt)
 			end
 
 			UiPush()
-				UiTranslate(-50, -20)
+				UiTranslate(-50)
+
+				UiPush()
+					UiTranslate(0,35)
+					UiRotate(90)
+					do
+						local barFill = AutoClamp(shared.players.hiders[GetLocalPlayer()].transformCooldown-shared.serverTime,0,3) --TODO these need to use the server's max cooldown, no? maybe make a func to get the current (real, not floored) cooldown
+						local barMax = 3 --TODO needs a shared int that I don't think exists yet
+						ProgressBar(false, 100, 70, barFill, barMax, 15, {1,1,1,0.3})
+					end
+				UiPop()
+
+				UiTranslate(0, -20)
 				UiFont("regular.ttf", 20)
 				UiText("Cooldown:")
 				UiTranslate(0, 30)
@@ -197,6 +218,9 @@ function client.hiderDraw(dt)
 				UiText(cooldownText)
 			UiPop()
 		UiPop()
+	else
+		lowHealthSoundEffect = false
+		lowHealthSfxVol = 10
 	end
 end
 
