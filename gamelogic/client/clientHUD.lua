@@ -63,6 +63,7 @@ function client.hunterDraw()
 	end
 end
 
+local healthBarActualFill = 0
 function client.hiderDraw(dt)
 	if shared.ui.currentCountDownName == "hidersHiding" then
 		countdownDraw("Hide! Hunters start in")
@@ -78,6 +79,7 @@ function client.hiderDraw(dt)
 	local nextTick = math.floor((shared.players.hiders[GetLocalPlayer()].damageTick + tickDamageTime) - shared.serverTime)
 
 	DebugWatch("Next Water Damage",nextTick)
+	DebugWatch("player damage tick", shared.players.hiders[GetLocalPlayer()].damageTick)
 
 	if not helperIsGameOver() then
 
@@ -92,6 +94,21 @@ function client.hiderDraw(dt)
 		UiPush()
 			local barMax = math.max(AutoRound(1/shared.players.hiders[GetLocalPlayer()].damageValue),1)
 			local barFill = helperGetPlayerShotsLeft()
+			healthBarActualFill = expDecay(healthBarActualFill, barFill, 10, dt)
+
+			if helperGetPlayerShotsLeft() == 1 then
+				--TODO low health sfx
+			end
+			
+			--TODO this is some temporary fuckery till I get a proper bool \/
+			--and this NEEDS a proper bool too, it flashes on clients even when not being damaged
+			local barBlink = 0
+			damageTickPreviousFrame = damageTickPreviousFrame or 0
+			if damageTickPreviousFrame == shared.players.hiders[GetLocalPlayer()].damageTick then
+				barBlink = 1
+			end
+			damageTickPreviousFrame = shared.players.hiders[GetLocalPlayer()].damageTick
+			--TODO this is some temporary fuckery till I get a proper bool /\
 
 			UiAlign("center middle")
 			UiTextAlignment("center")
@@ -99,30 +116,43 @@ function client.hiderDraw(dt)
 
 			UiTranslate(UiCenter(),UiHeight()-90)--change this to raise/lower the bottom hud; should be raised if you decide to leave the hint system as a tool and don't get rid of the name and ammo count. Don't forget to also raise the tauntforce
 
-			--bars
 			RoundedBlurredRect(800, 35, 10, 0.5, {0,0,0,0.6})
 
-			UiPush() --health
+			--health
+			UiPush()
 				UiAlign("left middle")
 				UiTranslate(110)
-				ProgressBar(25, 250, barFill, barMax, 10, {0.82,0.08,0.02,1}, barMax, 10, dt) --TODO replace barfill w/ current health, barmax w/ max health
-				UiTranslate(260)
+				ProgressBar(25, 250, healthBarActualFill, barMax, 13, {0.82,0.08,0.02,1}, barMax, barBlink)
+				if barBlink > 0 then --text warning TODO use actual hurt bool
+					UiPush()
+						UiFont("regular.ttf", 25)
+						UiTextAlignment("left")
+						UiTranslate(0, -35)
+						local alpha = (math.sin((GetTime()*7))/2)+0.5
+						UiColor(1,1,1,alpha)
+						UiText("Taking environmental damage!")
+
+						--TODO Ui Sound for currently taking damage
+					UiPop()
+				end
+				UiTranslate(256)
 				UiColor(1,1,1,1)
 				UiImageBox("MOD/assets/heart_graphic.png", 25, 25)
 			UiPop()
 
+			--sprint
 			local maxStamina = 3
 			local stamina = shared.players.hiders[GetLocalPlayer()].stamina
-			local barolor = {0.02  ,0.49  ,0.82  ,1}
+			local barColor = {0.02, 0.49, 0.82, 1}
 			if math.max(shared.players.hiders[GetLocalPlayer()].staminaCoolDown - shared.serverTime, 0) ~= 0 then
-				barolor = {0.6, 0.2, 0.2, 1}
+				barColor = {0.6, 0.2, 0.2, 1}
 			end
 
-			UiPush() --sprint
+			UiPush()
 				UiRotate(180)
 				UiTranslate(110)
-				ProgressBar(25, 250, stamina, maxStamina, 10, barolor, 0, 10, dt) --TODO replace barfill w/ current stamina, barmax w/ max stamina
-				UiTranslate(260)
+				ProgressBar(25, 250, stamina, maxStamina, 13, barColor, 0, 0)
+				UiTranslate(256)
 				UiAlign("right middle")
 				UiRotate(180)
 				UiColor(1,1,1,1)
@@ -133,16 +163,17 @@ function client.hiderDraw(dt)
 			RoundedBlurredRect(200, 70, 15, 0.5, {0,0,0,0.6})
 			UiRect(3, 62)
 
-			UiPush()--taunts
-				UiTranslate(-50, -20)
+			--taunts
+			UiPush()
+				UiTranslate(50, -20)
 				UiFont("regular.ttf", 20)
 				UiText("Taunts:")
 				UiTranslate(0, 30)
 				UiFont("bold.ttf", 40)
-				UiText("#") --TODO replace with var for taunts
+				UiText(GetToolAmmo("taunt", GetLocalPlayer())) --TODO replace with actual var for taunts
 			UiPop()
 
-
+			--cooldown
 			local cooldownText = ""
 			local cooldownTimer = AutoClamp(math.floor(shared.players.hiders[GetLocalPlayer()].transformCooldown-shared.serverTime+0.4),0,3)
 			if not helperIsHuntersReleased() then
@@ -157,13 +188,13 @@ function client.hiderDraw(dt)
 				cooldownText = cooldownTimer
 			end
 
-			UiPush()--cooldown
-				UiTranslate(50, -20)
+			UiPush()
+				UiTranslate(-50, -20)
 				UiFont("regular.ttf", 20)
 				UiText("Cooldown:")
 				UiTranslate(0, 30)
 				UiFont("bold.ttf", textSize)
-				UiText(cooldownText) --TODO replace with var for cooldown
+				UiText(cooldownText)
 			UiPop()
 		UiPop()
 	end
