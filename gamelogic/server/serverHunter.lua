@@ -3,44 +3,39 @@ function server.hunterTick()
     server.huntersDuringHideTime()
     server.friendlyFireRoutine()
 
-    if server.timers.hunterBulletReloadTimer < 0 then
-		server.timers.hunterBulletReloadTimer = server.gameConfig.hunterBulletReloadTimer
-	end
-
-	if server.timers.hunterPipebombReloadTimer < 0 then
-		server.timers.hunterPipebombReloadTimer = server.gameConfig.hunterPipebombReloadTimer
-	end
-
-	if server.timers.hunterBluetideReloadTimer < 0 then
-		server.timers.hunterBluetideReloadTimer = server.gameConfig.hunterBluetideReloadTimer
-	end
-
-    local dt = GetTimeStep()
-	server.timers.hunterBulletReloadTimer = server.timers.hunterBulletReloadTimer - dt
-	server.timers.hunterPipebombReloadTimer = server.timers.hunterPipebombReloadTimer - dt
-	server.timers.hunterBluetideReloadTimer = server.timers.hunterBluetideReloadTimer - dt
-
     for id in Players() do
         if helperIsPlayerHunter(id) then
             if helperIsHuntersReleased() then
-                if server.timers.hunterBulletReloadTimer < 0 then
-                    SetToolAmmo("gun", math.min(GetToolAmmo("gun", id) + 1, 10), id)
+                if server.timers.hunterBulletReloadTimer <= GetTime() then
+                    SetToolAmmo("shotgun", math.min(GetToolAmmo("shotgun", id) + 1, 10), id)
                 end
 
-                if server.timers.hunterPipebombReloadTimer < 0 then
+                if server.timers.hunterPipebombReloadTimer <= GetTime() then
                     SetToolAmmo("pipebomb", math.min(GetToolAmmo("pipebomb", id) + 1, 3), id)
                 end
 
-                if server.timers.hunterBluetideReloadTimer < 0 then
+                if server.timers.hunterBluetideReloadTimer <= GetTime() then
                     SetToolAmmo("steroid", math.min(GetToolAmmo("steroid", id) + 1, 3), id)
                 end
             else
-                SetToolAmmo("gun", 0, id)
+                SetToolAmmo("shotgun", 0, id)
                 SetToolAmmo("pipebomb", 0, id)
                 SetToolAmmo("steroid", 0, id)
             end
         end
     end
+
+    if server.timers.hunterBulletReloadTimer <= GetTime() then
+	    server.timers.hunterBulletReloadTimer = GetTime() + server.gameConfig.hunterBulletReloadTimer
+    end
+
+	if server.timers.hunterPipebombReloadTimer <= GetTime() then
+        server.timers.hunterPipebombReloadTimer = GetTime() + server.gameConfig.hunterPipebombReloadTimer
+	end
+
+	if server.timers.hunterBluetideReloadTimer <= GetTime() then
+        server.timers.hunterBluetideReloadTimer = GetTime() + server.gameConfig.hunterBluetideReloadTimer
+	end
 
 
 end
@@ -51,7 +46,6 @@ function server.huntersDuringHideTime()
 
         if data == "hidersHiding" and finished then
             spawnRespawnTeamPlayers(2)
-            DebugPrint("why")
             eventlogPostMessage({ "loc@EVENT_GLHF" })
 
             server.state.hunterFreed = true
@@ -61,7 +55,7 @@ function server.huntersDuringHideTime()
             --    SetPlayerParam("godMode", false, id)
             --end
 
-            DebugPrint(server.state.hunterFreed)
+            server.timers.hunterHintTimer = GetTime() + 15
         else
             local hunters = teamsGetTeamPlayers(2)
 

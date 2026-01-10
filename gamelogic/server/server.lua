@@ -22,11 +22,13 @@ server.gameConfig = {
 
 	randomTeams = false,
 	enableHunterHints = true,
-	enableSizeLimits = true
+	enableSizeLimits = true,
+	transformCooldown = 5
 }
 
 shared.gameConfig = {
-	enableSizeLimits = true
+	enableSizeLimits = true,
+	transformCooldown = 5
 }
 
 -- Match state (game logic and so on)
@@ -46,9 +48,10 @@ server.timers = {
 }
 
 server.players = {
-	hunter = {},
-	hider = {},
-	Spectator = {}
+	hunter = {}, -- Contains only Hider Specifc data
+	hider = {}, -- Contains only Hunter Specifc data
+	spectator = {}, --Contains only Spectator specific data
+	all = {} -- Contains health and stamina stats
 }
 
 server.moderation = {}
@@ -70,6 +73,8 @@ shared.ui.stats = {
 	wasHider = {}
 }
 
+shared.serverTime = 0
+
 shared.hint = {
 	circleHint = {},
 }
@@ -82,13 +87,18 @@ shared.state = {
 
 shared.players = {
 	hiders = {},
-	hunters = {}
+	hunters = {},
+}
+
+server.shotgunDefaults = {
+	damage = 0,
+	range = 0,
+	spread = 0,
+	fallOffDamage = 0,
+	fallOffStart = 0
 }
 
 function server.init()
-	RegisterTool("taunt", "taunt", "", 1)
-	server.assets.taunt = LoadSound('MOD/assets/taunt0.ogg')
-
 	hudInit(true)
 	hudAddUnstuckButton()
 	teamsInit(3)
@@ -101,10 +111,20 @@ function server.init()
 	toolsSetDropToolsOnDeath(false)
 
 	--- spawnSetDefaultLoadoutForTeam was modified to support per team loadouts
-	spawnSetDefaultLoadoutForTeam(1, { {"taunt", 1} })                  				  -- Hiders
-	spawnSetDefaultLoadoutForTeam(2, {{ "gun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }}) -- Hunters
+	spawnSetDefaultLoadoutForTeam(1, {  })                  				  -- Hiders
+	spawnSetDefaultLoadoutForTeam(2, {{ "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }}) -- Hunters
 
 	spawnSetRespawnTime(10)
+
+	server.shotgunDefaults.damage = GetInt('game.tool.shotgun.damage')
+	server.shotgunDefaults.range = GetInt('game.tool.shotgun.range')
+	server.shotgunDefaults.spread = GetInt('game.tool.shotgun.spread')
+	server.shotgunDefaults.fallOffDamage = GetInt('game.tool.shotgun.falloffDamage')
+
+	SetInt('game.tool.shotgun.damage', 2, true)
+	SetInt('game.tool.shotgun.range', 10, true)
+	SetInt('game.tool.shotgun.falloffDamage', 0.02, true)
+
 end
 
 function server.start(settings)
@@ -119,6 +139,8 @@ function server.start(settings)
 	server.gameConfig.hunterBluetideReloadTimer = settings.hunterBluetideReloadTimer
 	server.gameConfig.hunterHintTimer = settings.hunterHintTimer
 	server.gameConfig.hiderTauntReloadTimer = settings.hiderTauntReloadTimer
+	server.gameConfig.transformCooldown = settings.transformCooldown
+	
 
 	-- The gameConfig function doesnt support bools? Therefor I am converting them here
 	server.gameConfig.midGameJoin = settings.midGameJoin == 1
@@ -127,7 +149,9 @@ function server.start(settings)
 	server.gameConfig.enforceGameStartHunterAmount = settings.enforceGameStartHunterAmount == 1
 	server.gameConfig.randomTeams = settings.randomTeams == 1
 	server.gameConfig.enableHunterHints = settings.enableHints == 1
-	server.gameConfig.enableSizeLimits = settings.enableSizeLimits == 1
+
+	shared.gameConfig.transformCooldown = settings.transformCooldown
+	shared.gameConfig.enableSizeLimits = settings.enableSizeLimits == 1
 
 	server.timers.hunterHintTimer = 15  -- First hint will be triggered in 15 seconds 
 
@@ -147,7 +171,7 @@ function server.start(settings)
 	--room has to be spawned here and not in init or the screens won't work
 	server.hasPlacedHuntersInRoom = false
 	if #server.game.spawnedForHunterRoom <= 0 then
-		server.game.spawnedForHunterRoom = Spawn("MOD/hunter_room.xml", Transform(Vec(0,600,0)), true)
+		server.game.spawnedForHunterRoom = Spawn("MOD/hunter_room.xml", Transform(Vec(0,1000,0)), true)
 	end
 
 	countdownInit(settings.hideTime, "hidersHiding")
@@ -158,13 +182,6 @@ function server.start(settings)
 	SetBool("level.unlimitedammo", false, true)
 	SetBool("level.spawn", false, true)
 	SetBool("level.creative", false, true)
-
-	for id in Players() do
-		shared.players.hiders[id] = {}
-		shared.players.hiders[id].propBody = -1
-		shared.players.hiders[id].propBackupShape = -1
-		shared.players.hiders[id].isPropPlaced = false
-	end
 end
 
 function server.update()
@@ -173,7 +190,7 @@ function server.update()
 end
 
 function server.tick(dt)
-
+	shared.serverTime = AutoRound(GetTime(),0.1)
 	server.newPlayerJoinRoutine()
 	for id in PlayersRemoved() do -- Didnt want to make a whole function just for this
 		eventlogPostMessage({id, "Left the game"})
@@ -187,11 +204,25 @@ function server.tick(dt)
 		for id in Players() do
 			if helperIsPlayerHunter(id) then -- We save this for the end screen statistic
 				shared.ui.stats.originalHunters[#shared.ui.stats.originalHunters+1] = id
+				SetPlayerParam("healthRegeneration", true, id)
+				SetPlayerParam("godmode", false, id)
 			end
 
 			if helperIsPlayerHider(id) then 
 				SetPlayerParam("healthRegeneration", false, id)
+				SetPlayerParam("godmode", true, id)
 				SetPlayerTool("taunt", id)
+				shared.players.hiders[id] = {}
+				shared.players.hiders[id].hp = 3 -- HP Is the amount of shots a hider can take will be changed depending on prop size
+				shared.players.hiders[id].health = 1 -- Health is a float the server requires for health math 
+				shared.players.hiders[id].stamina = 1
+				shared.players.hiders[id].damageTick = 0
+				shared.players.hiders[id].environmentalDamageTrigger = false 
+				shared.players.hiders[id].damageValue = 0.33
+				shared.players.hiders[id].transformCooldown = 0
+				shared.players.hiders[id].stamina = 3 -- Players have 3 seconds of sprint
+				shared.players.hiders[id].staminaCoolDown = 0
+				shared.players.hiders[id].taunts = 1
 			end
 		end
 	end
@@ -252,8 +283,7 @@ end
 function server.deadTick()
 	for id in Players() do
 		if helperIsPlayerHider(id) then
-			local health = GetPlayerHealth(id)
-			if health == 0 and helperIsHuntersReleased() then
+			if helperGetPlayerShotsLeft(id) == 0 and helperIsHuntersReleased() then
 				eventlogPostMessage({id, " Was found"  })
 				Delete(shared.players.hiders[id].propBody)
 				Delete(shared.players.hiders[id].propBackupShape)
@@ -272,6 +302,8 @@ function server.deadTick()
 				SetPlayerParam("healthRegeneration", true, id)
 				SetPlayerParam("collisionMask", 255, id)
 				SetPlayerParam("walkingSpeed", 1, id)
+				SetPlayerParam("godmode", false, id)
+				SetPlayerHealth(0,id) -- We need to kill the player artificially to make the respawn logic work
 			end
 		end
 	end
@@ -299,10 +331,8 @@ function server.newPlayerJoinRoutine()
 
 			-- build a quick lookup table for loadout tools
 			local loadout = {}
-			if helperIsPlayerHider(id) then
-				loadout = { {"taunt", 1} }
-			elseif helperIsPlayerHunter(id) then
-				loadout = { { "gun", 3 }, { "pipebomb", 0 }, { "steroid", 0 } }
+			if helperIsPlayerHunter(id) then
+				loadout = { { "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 } }
 			end
 
 			local loadoutSet = {}
@@ -360,4 +390,8 @@ function server.destroy()
 	server.game.hasPlacedHuntersInRoom = false
 
 	eventlogPostMessage({"Leave a review for Prophunt on the Workshop!"}, 10) -- Wont be actually displayed because the script for handling it will be destroyed
+
+	SetInt('game.tool.shotgun.damage', server.shotgunDefaults.damage, true)
+	SetInt('game.tool.shotgun.range', server.shotgunDefaults.range, true)
+	SetInt('game.tool.shotgun.falloffDamage', server.shotgunDefaults.fallOffDamage, true)
 end
