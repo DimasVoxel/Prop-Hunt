@@ -24,6 +24,19 @@ function server.handleHints(dt)
 
             server.circleHint()
 		end
+
+		local hints = shared.hint.circleHint
+		for i = #hints, 1, -1 do
+			local hint = hints[i]
+			if hint and hint.timer then
+				local t = hint.timer - dt
+				if t <= 0 then
+					table.remove(hints, i)
+				else
+					hint.timer = t
+				end
+			end
+		end
 	end
 end
 
