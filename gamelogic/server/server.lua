@@ -24,7 +24,9 @@ server.gameConfig = {
 	randomTeams = false,
 	enableHunterHints = true,
 	enableSizeLimits = true,
-	transformCooldown = 5
+	transformCooldown = 5,
+
+	unhideCooldown = 0.6 -- Cant be configured
 }
 
 shared.gameConfig = {
@@ -50,7 +52,7 @@ server.timers = {
 
 server.players = {
 	hunter = {}, -- Contains only Hider Specifc data
-	hider = {}, -- Contains only Hunter Specifc data
+	hiders = {}, -- Contains only Hunter Specifc data
 	spectator = {}, --Contains only Spectator specific data
 	all = {} -- Contains health and stamina stats
 }
@@ -213,6 +215,7 @@ function server.tick(dt)
 				SetPlayerParam("healthRegeneration", false, id)
 				SetPlayerParam("godmode", true, id)
 				SetPlayerTool("taunt", id)
+				-- Data the hider also needs
 				shared.players.hiders[id] = {}
 				shared.players.hiders[id].hp = 3 -- HP Is the amount of shots a hider can take will be changed depending on prop size
 				shared.players.hiders[id].health = 1 -- Health is a float the server requires for health math 
@@ -224,6 +227,10 @@ function server.tick(dt)
 				shared.players.hiders[id].stamina = 3 -- Players have 3 seconds of sprint
 				shared.players.hiders[id].staminaCoolDown = 0
 				shared.players.hiders[id].taunts = 1
+
+				-- Server Side information only
+				server.players.hiders[id] = {}
+				server.players.hiders[id].unhideCooldown = 0 -- How quickly a player can get unhiden
 			end
 		end
 	end

@@ -1,6 +1,11 @@
 function server.clientHideRequest(playerid)
     if not shared.players.hiders[playerid].isPropClipping then
         shared.players.hiders[playerid].isPropPlaced = true
+		server.players.hiders[playerid].unhideCooldown = GetTime() + server.gameConfig.unhideCooldown
+
+		local body = helperGetPlayerPropBody(playerid)
+		server.disableBodyCollission(body, false)
+		SetBodyVelocity(body, GetPlayerVelocity(playerid))
     end
 end
 
@@ -55,6 +60,8 @@ function server.hiderTick(dt)
 	end
 end
 
+
+
 function server.hiderUpdate()
 	if teamsIsSetup() then
 		for id in Players() do
@@ -62,7 +69,11 @@ function server.hiderUpdate()
 				if helperIsPlayerHidden(id) then
 					local aa,bb = GetBodyBounds(helperGetPlayerPropBody(id))
 					local center = VecLerp(aa, bb, 0.5)
-					if (IsPointInWater(center) or InputDown('down', id) or InputDown('up', id) or InputDown('left', id) or InputDown('right', id) or InputDown('jump', id)) and shared.players.hiders[id].isPropPlaced == true then
+
+					local input = (InputDown('down', id) or InputDown('up', id) or InputDown('left', id) or InputDown('right', id) or InputDown('jump', id))
+					local timer = server.players.hiders[id].unhideCooldown < GetTime()
+
+					if (IsPointInWater(center) or (input and timer)) and shared.players.hiders[id].isPropPlaced == true then
 						shared.players.hiders[id].isPropPlaced = false
 						SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.2, 0)),GetPlayerCameraTransform(id).rot), id)
 						-- You shouldnt spam this function because every call will put the message in a queue
@@ -105,9 +116,7 @@ function server.handlePlayerProp(id) -- In Update
 	local propBody = helperGetPlayerPropBody(id)
 
 	if propBody ~= -1 then
-		if shared.players.hiders[id].isPropPlaced then
-			server.disableBodyCollission(propBody, false)
-		else
+		if not shared.players.hiders[id].isPropPlaced then
 			server.disableBodyCollission(propBody, true)
 
 			local playerTransform = GetPlayerTransform(id)
@@ -253,7 +262,9 @@ function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 		shared.players.hiders[playerid].propBackupShape = backUpShape
 
 		-- Make sure Prop isnt fragile
-		SetProperty(newShape, "strength", 5) -- Shapes only get destroyed by weapons
+		SetProperty(newShape, "strength", 10) -- Shapes only get destroyed by weapons
+		SetProperty(newShape, "density", 500/GetBodyMass(newBody))
+
 		SetPlayerParam("godmode", true, playerid)
 
 		-- Note Down the damage values of the prop
@@ -282,7 +293,7 @@ function server.propRegenerate(playerid)
 
 		shared.players.hiders[playerid].propBody = newBody
 
-		SetProperty(newShape, "strength", 5)
+		SetProperty(newShape, "strength", 10)
 		SetProperty(newShape, "density", 1)
 
 		local emissiveScale = GetProperty(backupShape, "emissiveScale")
