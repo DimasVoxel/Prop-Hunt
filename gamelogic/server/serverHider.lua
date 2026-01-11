@@ -240,11 +240,13 @@ function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 		SetBodyTransform(newBody, Transform(VecAdd(GetPlayerTransform(playerid).pos, Vec(0, 0, 2)), bodyTransform.rot))
 		SetBodyDynamic(newBody, true)
 		server.disableBodyCollission(newBody, true)
+		server.makePropBreakable(newBody)
 
 		-- Move Backup shape away
 		SetBodyTransform(backUpBody, Transform(Vec(-1000, 10, 0)))
 		SetBodyDynamic(backUpBody, false)
 		server.disableBodyCollission(backUpBody, false)
+		server.makePropBreakable(backUpBody)
 
 		-- Note down Prop IDs
 		shared.players.hiders[playerid].propBody = newBody
@@ -320,7 +322,8 @@ function server.cloneShape(shape, collisison)
 	Delete(FindShape("deleteTempShape", true))
 
 	SetShapeBody(pieces[1], newBody, true)
-	SetShapeLocalTransform(pieces[1], GetShapeLocalTransform(shape))
+	local middle = Vec(x / 2, 0, z / 2)
+	SetShapeLocalTransform(pieces[1], Transform(middle, Quat()))
 
 	return newBody, pieces[1]
 end
@@ -337,3 +340,22 @@ function server.disableBodyCollission(body, bool)
 	end
 end
 
+function server.makePropBreakable( body )
+	local lookUpTable = {}
+	lookUpTable["hardmetal"] = "weakmetal"
+	lookUpTable["heavymetal"] = "weakmetal"
+	lookUpTable["hardmasonry"] = "masonry"
+	lookUpTable["rock"] = "plastic"
+
+	local shape = GetBodyShapes(body)[1]
+	local palette = GetShapePaletteContent(shape)
+
+	for i = 1, #palette do
+		local mat = palette[i].material
+		if lookUpTable[mat] then
+			palette[i].material = lookUpTable[mat]
+		end
+	end
+
+	SetShapePaletteContent(shape, palette)
+end

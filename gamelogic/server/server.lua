@@ -2,6 +2,7 @@
 #include serverHider.lua
 #include serverHunter.lua
 #include serverAllPlayer.lua
+#include shape_utils.lua
 ]]
 
 
