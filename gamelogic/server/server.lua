@@ -26,7 +26,8 @@ server.gameConfig = {
 	minimumSizeLimit = true,
 	transformCooldown = 5,
 
-	unhideCooldown = 0.6 -- Cant be configured
+	unhideCooldown = 0.6, -- Cant be configured
+	outOfBoundsCoolDown = 5 -- Cant be configured
 }
 
 shared.gameConfig = {
@@ -231,6 +232,7 @@ function server.tick(dt)
 				-- Server Side information only
 				server.players.hiders[id] = {}
 				server.players.hiders[id].unhideCooldown = 0 -- How quickly a player can get unhiden
+				server.players.hiders[id].outOfBoundsTimer = 0
 			end
 		end
 	end
@@ -291,8 +293,8 @@ end
 function server.deadTick()
 	for id in Players() do
 		if helperIsPlayerHider(id) then
-			if helperGetPlayerShotsLeft(id) == 0 and helperIsHuntersReleased() then
-				eventlogPostMessage({id, " Was found"  })
+			if helperGetPlayerShotsLeft(id) == 0 then
+				eventlogPostMessage({id, "Was found"  })
 				Delete(shared.players.hiders[id].propBody)
 				Delete(shared.players.hiders[id].propBackupShape)
 				-- shared.players.hiders[id] = {}

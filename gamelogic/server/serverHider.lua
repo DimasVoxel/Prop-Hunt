@@ -12,6 +12,8 @@ end
 function server.hiderTick(dt)
     local hiders = teamsGetTeamPlayers(1)
 
+	
+
     if helperIsHuntersReleased() then
         server.handleHiderTaunts(hiders)
     end
@@ -59,8 +61,6 @@ function server.hiderTick(dt)
 		end
 	end
 end
-
-
 
 function server.hiderUpdate()
 	if teamsIsSetup() then
@@ -134,6 +134,29 @@ function server.handleHiderPlayerDamage(id) -- In Tick
 	if propBody then
 		local aa,bb = GetBodyBounds(propBody)
 		local center = VecLerp(aa, bb, 0.5)
+		local transform = GetBodyTransform(propBody)
+		if transform.pos[2] < -15 then 
+			local speed = VecLength(GetBodyVelocity(propBody))
+			if speed > 0.1 then 
+				server.players.hiders[id].outOfBoundsTimer = GetTime() + server.gameConfig.outOfBoundsCoolDown
+			end
+		else
+			server.players.hiders[id].outOfBoundsTimer = GetTime() + server.gameConfig.outOfBoundsCoolDown
+		end
+
+		if server.players.hiders[id].outOfBoundsTimer < GetTime() then
+			helperDecreasePlayerShots(id)
+			helperDecreasePlayerShots(id)
+			helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
+			helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
+			server.propRegenerate(id)
+			shared.players.hiders[id].isPropPlaced = false
+			ClientCall(id, "client.notify", "Hiding out of bounds is not allowed." )
+
+			if helperGetPlayerShotsLeft(id) == 0 then 
+				eventlogPostMessage({id, "Tried hiding out of bounds"  })
+			end
+		end
 
 		if IsBodyBroken(propBody) then
 			helperDecreasePlayerShots(id)
