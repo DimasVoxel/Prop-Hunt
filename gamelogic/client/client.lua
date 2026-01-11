@@ -37,6 +37,7 @@ client.assets = {
 	rect = nil,
 	circle = nil,
 	taunt = nil,
+	propGuy = nil
 }
 
 client.camera = {}
@@ -60,6 +61,7 @@ function client.init()
 	client.assets.rect = LoadSprite("gfx/white.png")
 	client.assets.circle = LoadSprite("gfx/ring.png")
 	client.assets.taunt = LoadSound('MOD/assets/taunt0.ogg')
+	client.assets.taunt = LoadSound('MOD/assets/propguy0.ogg')
 end
 
 function client.tick()
@@ -143,8 +145,13 @@ function client.notify(text)
 	hudShowBanner(text, {0,0,0}) 
 end
 
-function client.tauntBroadcast(pos)
-	PlaySound(client.assets.taunt,pos,2,true,1)
+function client.tauntBroadcast(pos, id)
+	if GetPlayerName(id) == "The Mafia" and math.random(1,5) ~= 1 then 
+		PlaySound(client.assets.propGuy,pos,2,true,1)
+	end
+	if math.random(1, 100) == 50 then 
+		PlaySound(client.assets.taunt,pos,2,true,1)
+	end
 end
 
 function client.highlightPlayer(id)

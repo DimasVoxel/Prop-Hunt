@@ -198,7 +198,7 @@ end
 -- #TODO: Some say that the server sound sync sucks and its recommended to use ClientCall to execute a playsound locally
 function server.tauntBroadcast(pos, id)
 	shared.players.hiders[id].taunts = math.max(helperGetHiderTauntsAmount(id) - 1, 1)
-	ClientCall(0, "client.tauntBroadcast", pos)
+	ClientCall(0, "client.tauntBroadcast", pos, id)
 end
 
 function server.handleHiderTaunts(hiderIds)
