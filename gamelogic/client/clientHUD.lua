@@ -75,7 +75,6 @@ function client.hiderDraw(dt)
 
 	if not helperIsHuntersReleased() then
 		for id in Players() do
-			DebugPrint(helperIsPlayerHidden(id))
 			if not helperIsPlayerHidden(id) then 
 				local body = helperGetPlayerPropBody(id)
 				if body and IsBodyVisible(body,20,false) then
