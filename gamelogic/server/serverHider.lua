@@ -322,8 +322,8 @@ function server.cloneShape(shape, collisison)
 	Delete(FindShape("deleteTempShape", true))
 
 	SetShapeBody(pieces[1], newBody, true)
-	local middle = Vec(x / 2, 0, z / 2)
-	SetShapeLocalTransform(pieces[1], Transform(middle, Quat()))
+
+	SetShapeLocalTransform(pieces[1], GetShapeLocalTransform(shape))
 
 	return newBody, pieces[1]
 end
