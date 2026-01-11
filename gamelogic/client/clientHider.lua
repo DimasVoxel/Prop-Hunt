@@ -104,10 +104,6 @@ function client.sendHideRequest()
     end
 end
 
-function client.playTaunt(pos)
---	PlaySound(taunt,GetPlayerTransform().pos,10,true,1)
-end
-
 function client.HighlightDynamicBodies()
 	if helperIsPlayerHidden() then return end
 	local playerTransform = GetPlayerTransform()
@@ -141,32 +137,33 @@ function client.HighlightDynamicBodies()
 					local voxelCount = GetShapeVoxelCount(shape)
 
 					local unqualified = false
-					if shared.gameConfig.enableSizeLimits then
+					if shared.gameConfig.minimumSizeLimit then
 						-- 70 is large enough for containers and 150 is reasonably large to still see easily
-						if (x > 70 or y > 70 or z > 70 or voxelCount < 150) then
+						if voxelCount < 150 then
 							unqualified = true
-						else
-							DrawShapeOutline(shape, 1, 1, 1, 1)
 						end
 					else
-						-- Even if players deactivate size limit we make sure that you cant just become a 
-						-- Single voxel objects, or a very thin stick
 						if voxelCount < 20
 							or not ((x > 1 and y > 1)
 								or (x > 1 and z > 1)
 								or (y > 1 and z > 1))
 						then
 							unqualified = true
-						else
-							DrawShapeOutline(shape, 1, 1, 1, 1)
+						end
+					end
+					if shared.gameConfig.maximumSizeLimit then 
+						if (x > 70 or y > 70 or z > 70) then 
+							unqualified = true
 						end
 					end
 
 					local lookAtShape = playerGetLookAtShape(10, GetLocalPlayer())
-
-					if lookAtShape == shape and unqualified == false then
-						DrawShapeHighlight(shape, 0.8)
-						client.player.lookAtShape = shape
+					if unqualified == false then 
+						DrawShapeOutline(shape, 1, 1, 1, 1)
+						if lookAtShape == shape then
+							DrawShapeHighlight(shape, 0.8)
+							client.player.lookAtShape = shape
+						end
 					end
 				end
 			end

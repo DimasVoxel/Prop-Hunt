@@ -305,6 +305,7 @@ function client.SetupScreen(dt)
 
 		if not hudGameIsSetup() then
 			local maxHunters = {}
+			maxHunters[1] = { label = "Auto", value = -1 }
 			local players = GetMaxPlayers()
 			for i = 1, math.max(players - 1, 12) do
 				maxHunters[#maxHunters + 1] = { label = tostring(i) .. " Hunter", value = i }
@@ -354,7 +355,7 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.serverRandomTeams",
 							label = "Random Hunters",
 							info ="The server will randomize each team no matter if someone already joined hunters or hiders.",
-							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+							options = {{ label = "Disable", value = 0 },  { label = "Enable", value = 1 } }
 						},
 						{
 							key = "savegame.mod.settings.hintTimer",
@@ -390,12 +391,18 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.hiderTauntReloadTimer",
 							label = "Forced taunt",
 							info ="Players get a taunt every X seconds. After reaching 10 they will be forced to taunt. Configure how quickly a player Recieves a new taunt.",
-							options = { { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "60 Seconds", value = 60}, { label = "Disable Forced Taunt", value = 1000000} ,{ label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15}}
+							options = {{ label = "15 Seconds", value = 15}, { label = "20 Seconds", value = 20}, { label = "30 Seconds", value = 30}, { label = "60 Seconds", value = 60}, { label = "Disable Forced Taunt", value = 1000000} ,{ label = "10 Seconds", value = 10}}
 						},
 						{
-							key = "savegame.mod.settings.enableSizeLimits",
-							label = "Size Limits",
-							info ="Enable Size limits.",
+							key = "savegame.mod.settings.minimumSizeLimit",
+							label = "Min. Size Limits",
+							info ="Enables the minimum Size limit.",
+							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+						},
+						{
+							key = "savegame.mod.settings.maximumSizeLimit",
+							label = "Max. Size Limits",
+							info ="Enables the max Size limit.",
 							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
@@ -429,7 +436,8 @@ function client.SetupScreen(dt)
 					hidersJoinHunters = GetInt("savegame.mod.settings.hidersJoinHunters"),
 					midGameJoin = GetInt("savegame.mod.settings.midGameJoin"),
 					enableHints = GetInt("savegame.mod.settings.enableHunterHints"),
-					enableSizeLimits = GetInt("savegame.mod.settings.enableSizeLimits"),
+					minimumSizeLimit = GetInt("savegame.mod.settings.minimumSizeLimit"),
+					maximumSizeLimit = GetInt("savegame.mod.settings.maximumSizeLimit"),
 					allowFriendlyFire = GetInt("savegame.mod.settings.allowFriendlyFire"),
 					transformCooldown = GetInt("savegame.mod.settings.transformCooldown"),
 				})

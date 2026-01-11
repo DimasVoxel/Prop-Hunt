@@ -23,14 +23,14 @@ server.gameConfig = {
 
 	randomTeams = false,
 	enableHunterHints = true,
-	enableSizeLimits = true,
+	minimumSizeLimit = true,
 	transformCooldown = 5,
 
 	unhideCooldown = 0.6 -- Cant be configured
 }
 
 shared.gameConfig = {
-	enableSizeLimits = true,
+	minimumSizeLimit = true,
 	transformCooldown = 5
 }
 
@@ -134,8 +134,8 @@ function server.start(settings)
 	server.state.time = settings.time
 	shared.state.time = math.floor(server.state.time)
 
-	server.gameConfig.roundLength = settings.time 
-	server.gameConfig.huntersStartAmount = settings.huntersStartAmount 
+	server.gameConfig.roundLength = settings.time
+	server.gameConfig.huntersStartAmount = settings.huntersStartAmount
 
 	server.gameConfig.hunterBulletReloadTimer = settings.hunterBulletReloadTimer
 	server.gameConfig.hunterPipebombReloadTimer = settings.hunterPipebombReloadTimer
@@ -154,7 +154,8 @@ function server.start(settings)
 	server.gameConfig.enableHunterHints = settings.enableHints == 1
 
 	shared.gameConfig.transformCooldown = settings.transformCooldown
-	shared.gameConfig.enableSizeLimits = settings.enableSizeLimits == 1
+	shared.gameConfig.minimumSizeLimit = settings.minimumSizeLimit == 1
+	shared.gameConfig.maximumSizeLimit = settings.maximumSizeLimit == 1
 
 	server.timers.hunterHintTimer = 15  -- First hint will be triggered in 15 seconds 
 
@@ -202,7 +203,7 @@ function server.tick(dt)
 	eventlogTick(dt)
 
 	if teamsTick(dt) then -- This handles the Join/Leave button in the join a team HUD
-		-- Executes only once after teams get configured
+	-- Executes only once after teams get configured
 		spawnRespawnAllPlayers()
 		for id in Players() do
 			if helperIsPlayerHunter(id) then -- We save this for the end screen statistic
@@ -219,7 +220,6 @@ function server.tick(dt)
 				shared.players.hiders[id] = {}
 				shared.players.hiders[id].hp = 3 -- HP Is the amount of shots a hider can take will be changed depending on prop size
 				shared.players.hiders[id].health = 1 -- Health is a float the server requires for health math 
-				shared.players.hiders[id].stamina = 1
 				shared.players.hiders[id].damageTick = 0
 				shared.players.hiders[id].environmentalDamageTrigger = false 
 				shared.players.hiders[id].damageValue = 0.33
@@ -295,7 +295,7 @@ function server.deadTick()
 				eventlogPostMessage({id, " Was found"  })
 				Delete(shared.players.hiders[id].propBody)
 				Delete(shared.players.hiders[id].propBackupShape)
-				shared.players.hiders[id] = {}
+				-- shared.players.hiders[id] = {}
 				if server.gameConfig.hidersJoinHunters == true then
 					 -- #TODO: There seems to be an issue switching teams imidiately after death. Players are "dead" but dont ragdoll
 					 -- They just stand around until they respawn.
