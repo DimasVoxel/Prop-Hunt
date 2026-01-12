@@ -150,6 +150,8 @@ function client.tauntBroadcast(pos, id)
 		PlaySound(client.assets.propGuy,pos,2,true,1)
 	end
 	if math.random(1, 100) == 50 then 
+		PlaySound(client.assets.propGuy,pos,2,true,1)
+	else
 		PlaySound(client.assets.taunt,pos,2,true,1)
 	end
 end
