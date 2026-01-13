@@ -10,6 +10,7 @@ function client.hiderTick()
 	end
 	client.highlightClippingProps()
 	client.HighlightDynamicBodies()
+	
 end
 
 
@@ -49,6 +50,20 @@ function client.hiderCamera()
 
 			local sm_transform = Transform(AutoSM_Get(client.camera.SM.pos), AutoSM_Get(client.camera.SM.rot))
 			SetCameraTransform(sm_transform)
+		else
+			local playerTransform = GetPlayerTransform()
+			local aa = VecAdd(playerTransform.pos, Vec(10, 5, 10))
+			local bb = VecAdd(playerTransform.pos, Vec(-10, -5, -10))
+
+			QueryRequire("physical visible")
+			QueryInclude("player")
+			QueryRejectBody(body)
+
+			local bodies = QueryAabbBodies(bb, aa)
+			SetPivotClipBody(bodies[1], 0)
+			for i = 1, #bodies do
+				SetPivotClipBody(bodies[i])
+			end
 		end
 	end
 end
@@ -119,6 +134,7 @@ function client.HighlightDynamicBodies()
 		QueryRejectVehicle(vehicles[i])
 	end
 
+	QueryRejectBody(helperGetPlayerPropBody())
 	local bodies = QueryAabbBodies(bb, aa)
 
 	client.player.lookAtShape = -1
@@ -158,6 +174,7 @@ function client.HighlightDynamicBodies()
 					end
 
 					local lookAtShape = playerGetLookAtShape(10, GetLocalPlayer())
+					
 					if unqualified == false then 
 						DrawShapeOutline(shape, 1, 1, 1, 1)
 						if lookAtShape == shape then
@@ -306,4 +323,49 @@ function client.calculatePlayerHurtValue(shape)
 
 	-- Clamp to 2 - 10 Health
 	return damage
+end
+
+function client.grab() -- Is being used in client.draw 
+	if InputDown("grab") and not helperIsPlayerHidden() then 
+		local x,y = UiGetMousePos()
+		local dir = UiPixelToWorld(x, y)
+		local pos = GetCameraTransform().pos
+		QueryRejectBody(helperGetPlayerPropBody())
+		QueryRequire("physical dynamic")
+		local hit, dist,_, shape = QueryRaycast(pos, dir, 10)
+		if hit and not shared.players.hiders[GetLocalPlayer()].grabbing then
+			local hitPoint = VecAdd(pos, VecScale(dir, dist))
+			local localPoint = TransformToLocalPoint(GetBodyTransform(GetShapeBody(shape)), hitPoint)
+
+			client.player.grab = {
+				grabBody = GetShapeBody(shape),
+				dist = dist,
+				localPoint = localPoint
+			}
+
+			ServerCall("server.clientGrabRequest", GetLocalPlayer(), GetShapeBody(shape), localPoint, dist, dir)
+		end
+		if InputDown("grab") and shared.players.hiders[GetLocalPlayer()].grabbing then
+			SetPivotClipBody(client.player.grab.grabBody, 0)
+
+			local body = client.player.grab.grabBody
+			local targetDist = client.player.grab.dist
+			local localPos = client.player.grab.localPoint
+			local playerT = GetPlayerCameraTransform()
+			local targetPoint = VecAdd(playerT.pos, VecScale(dir, targetDist))
+			local worldPoint = TransformToParentPoint(GetBodyTransform(body), localPos)
+			local pointDist = VecLength(VecSub(worldPoint, targetPoint))
+
+			local xAxis = VecNormalize(VecSub(targetPoint, playerT.pos))
+			local zAxis = VecNormalize(VecSub(playerT.pos, worldPoint))
+
+			local quat = QuatAlignXZ(xAxis, zAxis)
+
+			DrawSprite(client.assets.grabHand, Transform(worldPoint,quat), 0.4, 0.4, 1,1,1,1 ,false, false)
+			local d = pointDist / 4
+			DrawLine(worldPoint, targetPoint, 1, 1 - d, 1 - d , 1 - d)
+
+			ServerCall("server.updateClientGrab", GetLocalPlayer(), dir)
+		end
+	end
 end

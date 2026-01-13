@@ -19,6 +19,7 @@ function client.draw(dt)
 		client.hunterDraw()
 	elseif helperIsPlayerHider() then
 		client.hiderDraw(dt)
+		client.grab(dt)
 	else
 		client.spectator()
 	end
