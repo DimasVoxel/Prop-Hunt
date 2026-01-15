@@ -30,14 +30,23 @@ client.player = {
 	},
 	lookAtShape = -1,
 	tauntChargeCount = 0,
-	hideCoolDown = 0
+	hideCoolDown = 0,
+
+	grab = {
+		grabbing = false, 
+		grabBody = 0,
+		dist = 0,
+		localPos = 0
+	}
 }
 
 client.assets = {
 	rect = nil,
 	circle = nil,
 	taunt = nil,
-	propGuy = nil
+	propGuy = nil,
+	grabHand = nil,
+	openHand = nil
 }
 
 client.camera = {}
@@ -61,10 +70,13 @@ function client.init()
 	client.assets.rect = LoadSprite("gfx/white.png")
 	client.assets.circle = LoadSprite("gfx/ring.png")
 	client.assets.taunt = LoadSound('MOD/assets/taunt0.ogg')
-	client.assets.taunt = LoadSound('MOD/assets/propguy0.ogg')
+	client.assets.propGuy = LoadSound('MOD/assets/propguy0.ogg')
+	client.assets.grabHand = LoadSprite("MOD/assets/grab.png")
 end
 
 function client.tick()
+
+
 	SetBool("game.disablemap", true)
 	SetLowHealthBlurThreshold(0.01)
 
@@ -149,6 +161,7 @@ function client.tauntBroadcast(pos, id)
 	if GetPlayerName(id) == "The Mafia" and math.random(1,5) ~= 1 then 
 		PlaySound(client.assets.propGuy,pos,2,true,1)
 	end
+
 	if math.random(1, 100) == 50 then 
 		PlaySound(client.assets.propGuy,pos,2,true,1)
 	else

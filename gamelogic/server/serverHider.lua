@@ -99,6 +99,39 @@ function server.hiderUpdate()
 				server.handlePlayerProp(id)
 				SetLightEnabled(GetFlashlight(id), false)
 			end
+
+		--AutoInspectWatch(shared.players.hiders,"2", 2," ", 0)
+
+		--AutoInspectWatch(server.players.hiders,"1", 2," ", 0)
+
+			if shared.players.hiders[id] and shared.players.hiders[id].grabbing then 
+				if InputDown("grab", id) then
+					local body = server.players.hiders[id].grabbing.body
+					local dir = server.players.hiders[id].grabbing.dir
+					local dist = server.players.hiders[id].grabbing.dist
+
+					local localPos = server.players.hiders[id].grabbing.localPos
+					local playerT = GetPlayerCameraTransform(id)
+					local targetPoint = VecAdd(playerT.pos, VecScale(dir, dist - 0.2)) -- I do - 0.2 to make a slight natural pulling force
+					local worldPoint = TransformToParentPoint(GetBodyTransform(body), localPos)
+
+					local dist = VecLength(VecSub(worldPoint, targetPoint))
+
+					if dist < 4 then 
+						local velocity = AutoClamp(math.pow(dist,3), -6, 6)
+						local strength = AutoClamp(dist*40, -150, 150)
+
+						ConstrainPosition(body, 0, worldPoint, targetPoint, velocity, strength)
+					else
+						shared.players.hiders[id].grabbing = false
+					end
+
+					ReleasePlayerGrab(id)
+					SetPlayerParam("walkingSpeed", 7 * ( 1 - dist / 4 ), id)
+				else
+					shared.players.hiders[id].grabbing = false
+				end
+			end
 		end
 	end
 end
@@ -118,7 +151,7 @@ function server.handlePlayerProp(id) -- In Update
 	if propBody ~= -1 then
 		if not shared.players.hiders[id].isPropPlaced then
 			server.disableBodyCollission(propBody, true)
-
+			
 			local playerTransform = GetPlayerTransform(id)
 			local playerBhnd = TransformToParentVec(playerTransform, Vec(0, 0.5, 0))
 
@@ -392,4 +425,16 @@ function server.makePropBreakable( body )
 	end
 
 	SetShapePaletteContent(shape, palette)
+end
+
+function server.clientGrabRequest(playerid, shape, localPoint, dist, dir)
+	server.players.hiders[playerid].grabbing.body = shape
+	server.players.hiders[playerid].grabbing.localPos = localPoint
+	server.players.hiders[playerid].grabbing.dist = dist
+	server.players.hiders[playerid].grabbing.dir = dir
+	shared.players.hiders[playerid].grabbing = true
+end
+
+function server.updateClientGrab(playerid, dir)
+	server.players.hiders[playerid].grabbing.dir = dir
 end

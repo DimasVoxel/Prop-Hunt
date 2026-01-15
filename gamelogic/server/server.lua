@@ -61,7 +61,8 @@ server.players = {
 server.moderation = {}
 
 server.assets = {
-	taunt = 0
+	taunt = 0,
+	handSprite = 0
 }
 
 -- All other game related variables
@@ -128,7 +129,6 @@ function server.init()
 	SetInt('game.tool.shotgun.damage', 2, true)
 	SetInt('game.tool.shotgun.range', 10, true)
 	SetInt('game.tool.shotgun.falloffDamage', 0.02, true)
-
 end
 
 function server.start(settings)
@@ -179,7 +179,10 @@ function server.start(settings)
 		server.game.spawnedForHunterRoom = Spawn("MOD/hunter_room.xml", Transform(Vec(0,1000,0)), true)
 	end
 
-	countdownInit(settings.hideTime, "hidersHiding")
+	local hideTime = settings.hideTime
+	if GetPlayerCount() == 2 and GetPlayerName(0) == "Host" then hideTime = 2 end 
+
+	countdownInit(hideTime, "hidersHiding")
 
 	teamsStart(false)
 
@@ -195,6 +198,34 @@ function server.update()
 end
 
 function server.tick(dt)
+
+--	local maps = {}
+--
+--    for _, id in ipairs(ListKeys("mods.available")) do
+--        local isPlayable = GetBool("mods.available." .. id .. ".playable")
+--        local isMultiplayer = GetBool("mods.available." .. id .. ".multiplayer")
+--        local name = GetString("mods.available." .. id .. ".name")
+--        local isLocal = GetInt("mods.available." .. id .. ".local")
+--        local path = GetString("mods.available." .. id .. ".path")
+--
+--        if isMultiplayer and isPlayable and isLocal == 0 then
+--            table.insert(maps, {
+--                id = id,
+--                name = name,
+--                path = path,
+--            })
+--        end
+--    end
+--
+--    AutoInspectWatch(maps,"213", 2," ")
+--	if InputPressed("a") then
+--		SetString("game.lobby.level.mod", mod)
+--		SetString("game.gamemode", "asdasd")
+--		DebugPrint(maps[1].id)
+--		Command("mods.testplay", 2, maps[1].id, "", "")
+--	end
+
+
 	shared.serverTime = AutoRound(GetTime(),0.1)
 	server.newPlayerJoinRoutine()
 	for id in PlayersRemoved() do -- Didnt want to make a whole function just for this
@@ -228,11 +259,16 @@ function server.tick(dt)
 				shared.players.hiders[id].stamina = 3 -- Players have 3 seconds of sprint
 				shared.players.hiders[id].staminaCoolDown = 0
 				shared.players.hiders[id].taunts = 1
+				shared.players.hiders[id].grabbing = false
 
 				-- Server Side information only
 				server.players.hiders[id] = {}
 				server.players.hiders[id].unhideCooldown = 0 -- How quickly a player can get unhiden
 				server.players.hiders[id].outOfBoundsTimer = 0
+				server.players.hiders[id].grabbing = {}
+				server.players.hiders[id].grabbing.body = 0
+				server.players.hiders[id].grabbing.localPos = 0
+				server.players.hiders[id].grabbing.dist = 0
 			end
 		end
 	end
@@ -311,7 +347,6 @@ function server.deadTick()
 
 				SetPlayerParam("healthRegeneration", true, id)
 				SetPlayerParam("collisionMask", 255, id)
-				SetPlayerParam("walkingSpeed", 1, id)
 				SetPlayerParam("godmode", false, id)
 				SetPlayerHealth(0,id) -- We need to kill the player artificially to make the respawn logic work
 			end
@@ -399,7 +434,7 @@ function server.destroy()
 	end
 	server.game.hasPlacedHuntersInRoom = false
 
-	eventlogPostMessage({"Leave a review for Prophunt on the Workshop!"}, 10) -- Wont be actually displayed because the script for handling it will be destroyed
+	eventlogPostMessage({"Leave a review for Prophunt on the Workshop!"}, 10) -- Will be displayed on restart of the gamemode
 
 	SetInt('game.tool.shotgun.damage', server.shotgunDefaults.damage, true)
 	SetInt('game.tool.shotgun.range', server.shotgunDefaults.range, true)
