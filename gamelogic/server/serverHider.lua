@@ -104,7 +104,7 @@ function server.hiderUpdate()
 
 		--AutoInspectWatch(server.players.hiders,"1", 2," ", 0)
 
-			if shared.players.hiders[id] and shared.players.hiders[id].grabbing then 
+			if shared.players.hiders[id] and shared.players.hiders[id].grabbing and not helperIsPlayerHidden(id) then 
 				if InputDown("grab", id) then
 					local body = server.players.hiders[id].grabbing.body
 					local dir = server.players.hiders[id].grabbing.dir
@@ -151,13 +151,14 @@ function server.handlePlayerProp(id) -- In Update
 	if propBody ~= -1 then
 		if not shared.players.hiders[id].isPropPlaced then
 			server.disableBodyCollission(propBody, true)
-			
+
 			local playerTransform = GetPlayerTransform(id)
-			local playerBhnd = TransformToParentVec(playerTransform, Vec(0, 0.5, 0))
+			local pos = TransformToParentPoint(playerTransform, VecScale(shared.players.hiders[id].offset,-1))
+			pos = VecAdd(pos, Vec(0, 0.2, 0))
 
 			-- We move the prop body to player on the server. Player Camera is in handeled in client.hiderTick()
 			SetBodyVelocity(propBody, Vec(0, 0, 0))
-			SetBodyTransform(propBody, Transform(VecAdd(playerTransform.pos, playerBhnd), playerTransform.rot))
+			SetBodyTransform(propBody, Transform(pos, playerTransform.rot))
 		end
 	end
 end
@@ -312,6 +313,13 @@ function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 		SetBodyDynamic(backUpBody, false)
 		server.disableBodyCollission(backUpBody, false)
 		server.makePropBreakable(backUpBody)
+
+		local bodyTransform = GetBodyTransform(backUpBody)
+		local aa,bb = GetBodyBounds(backUpBody)
+		local center = TransformToLocalPoint(bodyTransform, VecLerp(aa, bb, 0.5))
+		center[2] = 0
+
+		shared.players.hiders[playerid].offset = VecScale(center, 1)
 
 		-- Note down Prop IDs
 		shared.players.hiders[playerid].propBody = newBody

@@ -50,7 +50,7 @@ function client.hiderCamera()
 
 			local sm_transform = Transform(AutoSM_Get(client.camera.SM.pos), AutoSM_Get(client.camera.SM.rot))
 			SetCameraTransform(sm_transform)
-		else
+		elseif helperGetPlayerPropBody() then
 			local playerTransform = GetPlayerTransform()
 			local aa = VecAdd(playerTransform.pos, Vec(10, 5, 10))
 			local bb = VecAdd(playerTransform.pos, Vec(-10, -5, -10))
@@ -58,6 +58,7 @@ function client.hiderCamera()
 			QueryRequire("physical visible")
 			QueryInclude("player")
 			QueryRejectBody(body)
+			DrawBodyOutline(body,  0, 0.95, 0.85, 0.6)
 
 			local bodies = QueryAabbBodies(bb, aa)
 			SetPivotClipBody(bodies[1], 0)
