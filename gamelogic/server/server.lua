@@ -48,7 +48,8 @@ server.timers = {
 	hunterPipebombReloadTimer = 0,
 	hunterBluetideReloadTimer = 0,
 	hunterHintTimer = 15,
-	hiderTauntReloadTimer = 0
+	hiderTauntReloadTimer = 0,
+	nextMapTimer = 0,
 }
 
 server.players = {
@@ -87,7 +88,8 @@ shared.hint = {
 shared.state = {
 	hunterFreed = false,
 	time = 0, -- We only send floored time to the clients
-	gameOver = false
+	gameOver = false,
+	loadNextMap = false
 }
 
 shared.players = {
@@ -197,40 +199,22 @@ function server.update()
 	server.hiderUpdate()
 end
 
+function server.nextMap()
+	if shared.state.loadNextMap == true then 
+		if server.timers.nextMapTimer <= GetTime() then
+			StartLevel("","RAW:"..GetString("level.randomMap.path").."/main.xml")
+		end
+	end
+end
+
 function server.tick(dt)
-
---	local maps = {}
---
---    for _, id in ipairs(ListKeys("mods.available")) do
---        local isPlayable = GetBool("mods.available." .. id .. ".playable")
---        local isMultiplayer = GetBool("mods.available." .. id .. ".multiplayer")
---        local name = GetString("mods.available." .. id .. ".name")
---        local isLocal = GetInt("mods.available." .. id .. ".local")
---        local path = GetString("mods.available." .. id .. ".path")
---
---        if isMultiplayer and isPlayable and isLocal == 0 then
---            table.insert(maps, {
---                id = id,
---                name = name,
---                path = path,
---            })
---        end
---    end
---
---    AutoInspectWatch(maps,"213", 2," ")
---	if InputPressed("a") then
---		SetString("game.lobby.level.mod", mod)
---		SetString("game.gamemode", "asdasd")
---		DebugPrint(maps[1].id)
---		Command("mods.testplay", 2, maps[1].id, "", "")
---	end
-
-
 	shared.serverTime = AutoRound(GetTime(),0.1)
 	server.newPlayerJoinRoutine()
 	for id in PlayersRemoved() do -- Didnt want to make a whole function just for this
 		eventlogPostMessage({id, "Left the game"})
 	end
+
+	server.nextMap()
 
 	eventlogTick(dt)
 
@@ -360,7 +344,7 @@ function server.newPlayerJoinRoutine()
 			if server.gameConfig.midGameJoin then
 				if helperIsHuntersReleased() then
 					spawnRespawnPlayer(id)
-				else
+				elseif helperIsPlayerHunter(id) then
 					local hunter_room_spawn = FindLocation("hunter_spawn_waiting", true)
 					local spawn_transform = GetLocationTransform(hunter_room_spawn)
 					if IsHandleValid(hunter_room_spawn) then
@@ -439,4 +423,55 @@ function server.destroy()
 	SetInt('game.tool.shotgun.damage', server.shotgunDefaults.damage, true)
 	SetInt('game.tool.shotgun.range', server.shotgunDefaults.range, true)
 	SetInt('game.tool.shotgun.falloffDamage', server.shotgunDefaults.fallOffDamage, true)
+end
+
+function server.loadRandomMap()
+	
+	local maps = {}
+	local blackList = {
+		"builtin-simplehouse",
+		"builtin-contentgamemodeexample",
+	}
+
+	local contains = function(tab, val)
+		for index, value in ipairs(tab) do
+			if value == val then
+				return true
+			end
+		end
+		return false
+	end
+
+	for _, id in ipairs(ListKeys("mods.available")) do
+		local isPlayable = GetBool("mods.available." .. id .. ".playable")
+		local isMultiplayer = GetBool("mods.available." .. id .. ".multiplayer")
+		local name = GetString("mods.available." .. id .. ".name")
+		local isLocal = GetInt("mods.available." .. id .. ".local")
+		local path = GetString("mods.available." .. id .. ".path")
+
+		DebugPrint(id) 
+		DebugPrint(contains(blackList, id))
+		if isMultiplayer and isPlayable and isLocal == 0 and not contains(blackList, id) then
+			table.insert(maps, {
+				id = id,
+				name = name,
+				path = path,
+			})
+		end
+	end
+
+	local map = maps[math.random(1, #maps)]
+	DebugPrint("set")
+	SetString("level.randomMap.name", map.name, true)
+	SetString("level.randomMap.path", map.path)
+	SetString("level.randomMap.id", map.id)
+
+	ClientCall(0, "client.nextMapBanner")
+	shared.state.loadNextMap = true
+	server.timers.nextMapTimer = GetTime() + 7
+end
+
+function server.cancelNextMap()
+	shared.state.loadNextMap = false
+	server.timers.nextMapTimer = 0
 end

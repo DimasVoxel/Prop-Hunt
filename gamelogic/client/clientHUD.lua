@@ -4,6 +4,11 @@ function client.draw(dt)
 	hudTick(dt)
 	eventlogDraw(dt, teamsGetPlayerColorsList())
 
+	if shared.state.loadNextMap == true then
+		hudDrawBanner(dt)
+		hudDrawTitle(dt, "Loading next Map: ".. GetString('level.randomMap.name'), true)
+	end
+
     if not gameInit(dt) then return end -- Dont Proceed while game is not setup
 
 	if helperIsGameOver() then 
@@ -41,8 +46,10 @@ end
 
 function gameInit(dt)
 	-- In the beginning of the game draw Title and banner
-    hudDrawBanner(dt)
-    hudDrawTitle(dt, "Prophunt!")
+	if not shared.state.loadNextMap == true then
+    	hudDrawBanner(dt)
+    	hudDrawTitle(dt, "Prophunt!")
+	end
 
 	return client.SetupScreen(dt)
 end
@@ -562,4 +569,9 @@ function getEndResults() -- This is for the end game scoreboard. Perhaps players
 	end
 
 	return stats
+end
+
+function client.nextMapBanner()
+	_titleState.time = 0
+	client.ui.switchingMap = true
 end

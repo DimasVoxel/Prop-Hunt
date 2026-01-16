@@ -16,7 +16,8 @@ client.gameConfig = {
 
 client.ui = {
 	finalHiderRevealDelay = 0, -- Used for the white beams at the end
-	finalRevealRectSize = 0
+	finalRevealRectSize = 0,
+	switchingMap = false
 }
 
 client.hint = {
@@ -75,8 +76,6 @@ function client.init()
 end
 
 function client.tick()
-
-
 	SetBool("game.disablemap", true)
 	SetLowHealthBlurThreshold(0.01)
 

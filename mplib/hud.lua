@@ -341,7 +341,7 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 			local gap = 10
 			local padding = 20
 
-			uiDrawPanel(buttonWidth + 2*padding, padding + buttonHeight + gap + buttonHeight + padding, 16)
+			uiDrawPanel(buttonWidth + 2*padding, buttonHeight + gap + padding + buttonHeight + gap + buttonHeight + padding, 16)
 
 			UiPush()
 				UiTranslate(0, 20)
@@ -351,11 +351,23 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 
 				UiTranslate(0, buttonHeight + gap)
 
-				if uiDrawPrimaryButton(continueLabel, buttonWidth) then
-					if continueFunction ~= nil then
-						continueFunction()
-					else
-						SetString("game.gamemode.next", GetString("game.gamemode"))
+				if uiDrawSecondaryButton("Play new Random Map", buttonWidth) then
+					ServerCall("server.loadRandomMap")
+				end
+
+				UiTranslate(0, buttonHeight + gap)
+
+				if shared.state.loadNextMap == true then
+					if uiDrawPrimaryButton("Cancel", buttonWidth) then
+						ServerCall("server.cancelNextMap")
+					end
+				else
+					if uiDrawPrimaryButton(continueLabel, buttonWidth) then
+						if continueFunction ~= nil then
+							continueFunction()
+						else
+							SetString("game.gamemode.next", GetString("game.gamemode"))
+						end
 					end
 				end
 
@@ -366,7 +378,7 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 
 	UiPop()
 
-	return boardWith, boardHeight, _scoreresults_anim.param
+	return boardWith, boardHeight, _scoreresults_anim.param, random_map
 end
 
 
@@ -1259,7 +1271,7 @@ function hudDrawGameSetup(settings)
 		_hud.settings.initiated = true
 		
 		local width = 330
-		local height = 166
+		local height = 206
 		if not hasSettings then
 			height = height - 50
 		end
@@ -1288,12 +1300,23 @@ function hudDrawGameSetup(settings)
 			UiTranslate(0, 40 + 10)
 		end
 
-		if uiDrawPrimaryButton("Start", 290) then
-			if GetPlayerCount() == 1 then --# DimaCustom
-				hudShowBanner ("Atleast 2 players are required to start game.", {0,0,0})
-			else
-				ServerCall("server.hudPlayPressed")
-				playPressed = true
+		if uiDrawSecondaryButton("Play new Random Map", 290) then
+			ServerCall("server.loadRandomMap")
+		end
+		UiTranslate(0, 40 + 10)
+
+		if shared.state.loadNextMap == true then
+			if uiDrawPrimaryButton("Cancel", 290) then
+				ServerCall("server.cancelNextMap")
+			end
+		else
+			if uiDrawPrimaryButton("Start", 290) then
+				if GetPlayerCount() == 1 then --# DimaCustom
+					hudShowBanner ("Atleast 2 players are required to start game.", {0,0,0})
+				else
+					ServerCall("server.hudPlayPressed")
+					playPressed = true
+				end
 			end
 		end
 
