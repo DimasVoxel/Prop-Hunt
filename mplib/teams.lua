@@ -21,7 +21,7 @@ _COUNTDOWN = 2
 _LOCKED = 3
 _DONE = 4
 
-_COUNTDOWNTIME = 3.0
+_COUNTDOWNTIME = 10
 _LOCKTIME = 2.5
 
 #include "script/include/player.lua"
@@ -482,7 +482,7 @@ function _teamsAssignPlayers()
             end
         end
 
-        -- Rejoining players or new players will always be hunters 
+        -- Spectator join
         for _, player in ipairs(neutralPlayers) do
             shared._teamState.teams[3].players[#shared._teamState.teams[3].players + 1] = player
         end
@@ -493,10 +493,16 @@ function _teamsAssignPlayers()
                 neutralPlayers[#neutralPlayers + 1] = p
             end
         end
-
-        -- Rejoining players or new players will always be hunters 
-        for _, player in ipairs(neutralPlayers) do
-            shared._teamState.teams[2].players[#shared._teamState.teams[2].players + 1] = player
+        if shared.countdownTimer > 20 then
+            DebugPrint("humm")
+            for _, player in ipairs(neutralPlayers) do
+                shared._teamState.teams[1].players[#shared._teamState.teams[1].players + 1] = player
+            end
+        else
+            -- Rejoining players or new players will always be hunters 
+            for _, player in ipairs(neutralPlayers) do
+                shared._teamState.teams[2].players[#shared._teamState.teams[2].players + 1] = player
+            end
         end
     end
 
@@ -513,6 +519,8 @@ function _teamsDrawTeamBox(teamId, width, height)
         
         local playerNames = {}
 
+        local maxPlayer = 8
+
         local players = shared._teamState.teams[teamId].players;
         for i=1,#players do
             playerNames[1 + #playerNames] = GetPlayerName(players[i])
@@ -526,12 +534,12 @@ function _teamsDrawTeamBox(teamId, width, height)
         UiRoundedRectOutline(width, height, 12, 4)
 
         UiTranslate(8,8)
-        UiRoundedRect(width - 2 * 8, 36, 4)
+        UiRoundedRect(width - 2 * maxPlayer, 36, 4)
         
         UiFont("bold.ttf", 32)
         UiColor(COLOR_WHITE)
         UiPush()
-            UiTranslate((width - 2 * 8)/2, 18)
+            UiTranslate((width - 2 * maxPlayer)/2, 18)
             UiAlign("center middle")
             UiText(teamName)
         UiPop()
@@ -554,11 +562,11 @@ function _teamsDrawTeamBox(teamId, width, height)
                 UiColor(1,1,1,0.1)
             end
             
-            UiRoundedRect(width - 2 * 8, 32, 4)
+            UiRoundedRect(width - 2 * maxPlayer, 32, 4)
 
             UiPush()
             UiTranslate(0, -32/2)
-            uiDrawPlayerRow(players[i], 32,width - 2 * 8, bgCol)
+            uiDrawPlayerRow(players[i], 32,width - 2 * maxPlayer, bgCol)
             UiPop()
             
             UiPop()
@@ -568,7 +576,7 @@ function _teamsDrawTeamBox(teamId, width, height)
 
         for i = 1, 8 - #players do
             UiColor(1,1,1,0.1)
-            UiRoundedRect(width - 2 * 8, 32, 4)
+            UiRoundedRect(width - 2 * maxPlayer, 32, 4)
             UiTranslate(0, 32 + 2)
         end
 
@@ -578,12 +586,12 @@ function _teamsDrawTeamBox(teamId, width, height)
 
         local team = teamsGetTeamId(GetLocalPlayer())
         if team == teamId then
-            if uiDrawSecondaryButton("Leave", width - 2 * 8, shared._teamState.state and shared._teamState.state >= _LOCKED) then
+            if uiDrawSecondaryButton("Leave", width - 2 * maxPlayer, shared._teamState.state and shared._teamState.state >= _LOCKED) then
                 ServerCall("server._teamsJoinTeam", GetLocalPlayer(), 0)
             end
         else
 
-            if uiDrawSecondaryButton("Join", width - 2 * 8, team ~= 0 or (shared._teamState.state and shared._teamState.state >= _LOCKED)) then
+            if uiDrawSecondaryButton("Join", width - 2 * maxPlayer, team ~= 0 or (shared._teamState.state and shared._teamState.state >= _LOCKED)) then
                 ServerCall("server._teamsJoinTeam", GetLocalPlayer(), teamId)
 
             end

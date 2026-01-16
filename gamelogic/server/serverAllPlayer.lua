@@ -80,7 +80,7 @@ function server.circleHint()
     -- Determine diameter
     local diameter
     if #hiders == 1 and server.state.time <= 60 then
-        diameter = 25 + #teamsGetTeamPlayers(2) * 2 
+        diameter = 25 + #teamsGetTeamPlayers(2) * 2
     elseif server.state.time > 120 then      -- between 3 and 2 minutes left
         diameter = 60
     elseif server.state.time > 60 then       -- between 2 and 1 minutes left
@@ -165,6 +165,10 @@ function server.TriggerHint(id, teamId)
 		-- 2 hunters vs 2+ hiders → last 2 minutes
 		if hunters == 2 and hiders >= 2 then
 			return server.state.time <= 120
+		end
+
+		if server.state.time > 180 then 
+			return false
 		end
 
 		return true
