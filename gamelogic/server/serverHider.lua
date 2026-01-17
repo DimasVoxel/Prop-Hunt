@@ -152,11 +152,24 @@ function server.handlePlayerProp(id) -- In Update
 
 			local playerTransform = GetPlayerTransform(id)
 			local pos = TransformToParentPoint(playerTransform, VecScale(shared.players.hiders[id].offset,-1))
-			pos = VecAdd(pos, Vec(0, 0.2, 0))
+
+			local offset
+			if InputDown("crouch", id) then
+				offset = Vec()
+			else
+				offset = Vec(0, 0.3, 0)
+			end
+			pos = VecAdd(pos, offset)
 
 			-- We move the prop body to player on the server. Player Camera is in handeled in client.hiderTick()
 			SetBodyVelocity(propBody, Vec(0, 0, 0))
 			SetBodyTransform(propBody, Transform(pos, playerTransform.rot))
+
+			local dist = VecLength(VecSub(playerTransform.pos, server.players.hiders[id].standStillPosition))
+			if dist > 0.01 then 
+				shared.players.hiders[id].standStillTimer = shared.serverTime
+			end
+			server.players.hiders[id].standStillPosition = VecCopy(playerTransform.pos)
 		end
 	end
 end

@@ -75,6 +75,13 @@ function helperGetHiderTauntsAmount(id)
 	if not helperIsPlayerHider(id) then return false end
 	return shared.players.hiders[id].taunts
 end
+
+function helperGetHiderStandStillTime(id)
+	id = id or GetLocalPlayer()
+	if not helperIsPlayerHider(id) then return false end
+	return math.abs(shared.players.hiders[id].standStillTimer - shared.serverTime)
+end
+
 ------------
 
 function helperIsHuntersReleased()
