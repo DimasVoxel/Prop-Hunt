@@ -245,6 +245,10 @@ function teamsTick(dt)
 
         for p in Players() do
             local team = teamsGetTeamId(p)
+            if team == 0 then 
+                teamsAssignToTeam(p, 2)
+                team = 2
+            end
             local color = teamsGetColor(team)
             SetPlayerColor(color[1], color[2], color[3], p)
         end
