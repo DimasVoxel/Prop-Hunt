@@ -209,7 +209,6 @@ end
 
 function server.tick(dt)
 	shared.serverTime = AutoRound(GetTime(),0.1)
-	server.newPlayerJoinRoutine()
 	for id in PlayersRemoved() do -- Didnt want to make a whole function just for this
 		eventlogPostMessage({id, "Left the game"})
 	end
@@ -257,6 +256,8 @@ function server.tick(dt)
 		end
 	end
 
+	server.newPlayerJoinRoutine() -- Needs to happen after teamstick so that players gets assigned first
+
 	-- Everything below is game logic
 	if not teamsIsSetup() then
 		for p in Players() do
@@ -295,11 +296,12 @@ function server.tick(dt)
 
 	spawnTick(dt, teamsGetPlayerTeamsList())
 	countdownTick(dt, 0, false)
-	
-	server.hiderTick(dt) -- Logic in serverHiderLogic.lua
-	server.hunterTick(dt) -- Logic in serverHunterLogic.lua
-	server.playersTick(dt) -- Logic in serverPlayerLogic.lua
-	server.deadTick(dt) -- Handles found players
+	if teamsIsSetup() then
+		server.hiderTick(dt) -- Logic in serverHiderLogic.lua
+		server.hunterTick(dt) -- Logic in serverHunterLogic.lua
+		server.playersTick(dt) -- Logic in serverPlayerLogic.lua
+		server.deadTick(dt) -- Handles found players
+	end
 
 	for id in Players() do 
 		if helperIsPlayerSpectator(id) then
@@ -356,6 +358,33 @@ function server.newPlayerJoinRoutine()
 				eventlogPostMessage({ id, " Joined the game" }, 5)
 			else
 				eventlogPostMessage({ id, " Joined as a spectator" }, 5)
+			end
+
+			if helperIsPlayerHider(id) then 
+				SetPlayerParam("healthRegeneration", false, id)
+				SetPlayerParam("godmode", true, id)
+				SetPlayerTool("taunt", id)
+				-- Data the hider also needs
+				shared.players.hiders[id] = {}
+				shared.players.hiders[id].hp = 3 -- HP Is the amount of shots a hider can take will be changed depending on prop size
+				shared.players.hiders[id].health = 1 -- Health is a float the server requires for health math 
+				shared.players.hiders[id].damageTick = 0
+				shared.players.hiders[id].environmentalDamageTrigger = false 
+				shared.players.hiders[id].damageValue = 0.33
+				shared.players.hiders[id].transformCooldown = 0
+				shared.players.hiders[id].stamina = 3 -- Players have 3 seconds of sprint
+				shared.players.hiders[id].staminaCoolDown = 0
+				shared.players.hiders[id].taunts = 1
+				shared.players.hiders[id].grabbing = false
+
+				-- Server Side information only
+				server.players.hiders[id] = {}
+				server.players.hiders[id].unhideCooldown = 0 -- How quickly a player can get unhiden
+				server.players.hiders[id].outOfBoundsTimer = 0
+				server.players.hiders[id].grabbing = {}
+				server.players.hiders[id].grabbing.body = 0
+				server.players.hiders[id].grabbing.localPos = 0
+				server.players.hiders[id].grabbing.dist = 0
 			end
 
 			-- build a quick lookup table for loadout tools

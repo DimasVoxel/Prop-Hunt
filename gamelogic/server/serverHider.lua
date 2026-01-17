@@ -12,8 +12,6 @@ end
 function server.hiderTick(dt)
     local hiders = teamsGetTeamPlayers(1)
 
-	
-
     if helperIsHuntersReleased() then
         server.handleHiderTaunts(hiders)
     end
@@ -254,7 +252,7 @@ end
 -- Gets Called by clients.
 -- #TODO: Some say that the server sound sync sucks and its recommended to use ClientCall to execute a playsound locally
 function server.tauntBroadcast(pos, id)
-	shared.players.hiders[id].taunts = math.max(helperGetHiderTauntsAmount(id) - 1, 1)
+	shared.players.hiders[id].taunts = math.max(helperGetHiderTauntsAmount(id) - 2, 1)
 	ClientCall(0, "client.tauntBroadcast", pos, id)
 end
 

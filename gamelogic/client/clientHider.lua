@@ -16,7 +16,7 @@ end
 
 function client.hiderCamera()
 	local body = helperGetPlayerPropBody()
-	if body ~= -1 then
+	if body ~= -1 and body ~= false then
 		if helperIsPlayerHidden() then
 			local body_center = AutoBodyCenter(body)
 			local dt = GetTimeStep()
@@ -50,7 +50,7 @@ function client.hiderCamera()
 
 			local sm_transform = Transform(AutoSM_Get(client.camera.SM.pos), AutoSM_Get(client.camera.SM.rot))
 			SetCameraTransform(sm_transform)
-		elseif helperGetPlayerPropBody() then
+		else
 			local playerTransform = GetPlayerTransform()
 			local aa = VecAdd(playerTransform.pos, Vec(10, 5, 10))
 			local bb = VecAdd(playerTransform.pos, Vec(-10, -5, -10))
