@@ -327,7 +327,7 @@ function client.calculatePlayerHurtValue(shape)
 end
 
 function client.grab() -- Is being used in client.draw 
-	if InputDown("grab") and not helperIsPlayerHidden() then 
+	if InputDown("grab") and not helperIsPlayerHidden() and helperGetPlayerPropBody() then 
 		local x,y = UiGetMousePos()
 		local dir = UiPixelToWorld(x, y)
 		local pos = GetCameraTransform().pos

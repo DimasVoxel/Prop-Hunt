@@ -102,7 +102,7 @@ function server.hiderUpdate()
 
 		--AutoInspectWatch(server.players.hiders,"1", 2," ", 0)
 
-			if shared.players.hiders[id] and shared.players.hiders[id].grabbing and not helperIsPlayerHidden(id) then 
+			if shared.players.hiders[id] and shared.players.hiders[id].grabbing and not helperIsPlayerHidden(id) and helperGetPlayerPropBody(id) then 
 				if InputDown("grab", id) then
 					local body = server.players.hiders[id].grabbing.body
 					local dir = server.players.hiders[id].grabbing.dir

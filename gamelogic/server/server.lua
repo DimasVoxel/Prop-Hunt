@@ -463,8 +463,6 @@ function server.loadRandomMap()
 		local isLocal = GetInt("mods.available." .. id .. ".local")
 		local path = GetString("mods.available." .. id .. ".path")
 
-		DebugPrint(id) 
-		DebugPrint(contains(blackList, id))
 		if isMultiplayer and isPlayable and isLocal == 0 and not contains(blackList, id) then
 			table.insert(maps, {
 				id = id,
@@ -475,7 +473,6 @@ function server.loadRandomMap()
 	end
 
 	local map = maps[math.random(1, #maps)]
-	DebugPrint("set")
 	SetString("level.randomMap.name", map.name, true)
 	SetString("level.randomMap.path", map.path)
 	SetString("level.randomMap.id", map.id)

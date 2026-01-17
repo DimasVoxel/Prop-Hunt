@@ -494,7 +494,6 @@ function _teamsAssignPlayers()
             end
         end
         if shared.countdownTimer > 20 then
-            DebugPrint("humm")
             for _, player in ipairs(neutralPlayers) do
                 shared._teamState.teams[1].players[#shared._teamState.teams[1].players + 1] = player
             end
