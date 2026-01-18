@@ -21,7 +21,7 @@ function client.draw(dt)
 	hudDrawScoreboard(InputDown("tab") and not helperIsGameOver(), "", {{name="Time Survived", width=160, align="center"}}, getPlayerStats())
 
 	if helperIsPlayerHunter() then
-		client.hunterDraw()
+		client.hunterDraw(dt)
 	elseif helperIsPlayerHider() then
 		client.hiderDraw(dt)
 		client.grab(dt)
@@ -54,10 +54,73 @@ function gameInit(dt)
 	return client.SetupScreen(dt)
 end
 
-function client.hunterDraw()
+local helpTextHunter = { --tbh there was probably a better way to do this but it works so idc
+	open = true, 
+	actualW = 300, 
+	actualH = 250,
+	openA = 1,
+	closedA = -1
+}
+
+function client.hunterDraw(dt)
 	-- Draws The Image While hunters Wait
 
 	if not helperIsGameOver() then
+		--hudDrawGameModeHelpText("You are a Hunter", "Search players! Shoot at props, if you find a hider make sure to kill them.")
+		UiPush()--help text
+			UiAlign("right middle")
+			UiTranslate(UiWidth()-40, UiMiddle())
+
+			if InputPressed("G") then
+				helpTextHunter.open = not helpTextHunter.open
+			end
+
+			if helpTextHunter.open then
+				helpTextHunter.actualW = expDecay(helpTextHunter.actualW, 300, 10, dt)
+				helpTextHunter.actualH = expDecay(helpTextHunter.actualH, 250, 10, dt)
+				helpTextHunter.openA   = expDecay(helpTextHunter.openA,   1,   10, dt)
+				helpTextHunter.closedA = expDecay(helpTextHunter.closedA, -1,  10, dt)
+			else
+				helpTextHunter.actualW = expDecay(helpTextHunter.actualW, 50,  10, dt)
+				helpTextHunter.actualH = expDecay(helpTextHunter.actualH, 240, 10, dt)
+				helpTextHunter.openA   = expDecay(helpTextHunter.openA,   -1,  10, dt)
+				helpTextHunter.closedA = expDecay(helpTextHunter.closedA, 1,   10, dt)
+			end
+
+			RoundedBlurredRect(helpTextHunter.actualW, helpTextHunter.actualH, 10, 0.5, {0,0,0,0.6})
+			
+			--open text
+			UiPush()
+				UiTranslate(-150)
+				UiTextAlignment("center")
+				UiPush()
+					UiColor(0.94, 0.94, 0.47, helpTextHunter.openA)
+					UiFont("bold.ttf", 35)
+					UiAlign("center top")
+					UiTranslate(0,-110)
+					UiText("You are a hunter!")
+				UiPop()
+				UiPush()
+					UiColor(1, 1, 1, helpTextHunter.openA)
+					UiFont("regular.ttf", 30)
+					UiAlign("center bottom")
+					UiTranslate(7,110)
+					UiText("Search for players!\nShoot at props, if you\nfind a hider make\nsure to kill them.\n\nPress ( G ) to close.")
+				UiPop()
+			UiPop()
+
+			--closed text
+			UiPush()
+				UiTextAlignment("center")
+				UiTranslate(-25)
+				UiRotate(-90)
+				UiFont("regular.ttf", 30)
+				UiAlign("center middle")
+				UiColor(1, 1, 1, helpTextHunter.closedA)
+				UiText("Press ( G ) to open.")
+			UiPop()
+		UiPop()
+
 		if helperIsPlayerHunter() and not helperIsHuntersReleased() then
 			--UiImageBox("assets/placeholder.png", UiWidth(), UiHeight(), 0,0)
 			if shared.ui.currentCountDownName == "hidersHiding" then
@@ -66,12 +129,18 @@ function client.hunterDraw()
 		end
 
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
-		hudDrawGameModeHelpText("You are a Hunter", "Search players! Shoot at props, if you find a hider make sure to kill them.")
 		hudDrawPlayerWorldMarkers(teamsGetTeamPlayers(2), false, 100, teamsGetColor(2))
 	end
 end
 
 local healthBarActualFill = 0
+local helpTextHider = { --tbh there was probably a better way to do this but it works so idc
+	open = true, 
+	actualW = 400, 
+	actualH = 275,
+	openA = 1,
+	closedA = -1
+}
 --local lowHealthSoundEffect = false
 --local lowHealthSfxVol = 3
 function client.hiderDraw(dt)
@@ -95,9 +164,69 @@ function client.hiderDraw(dt)
 	end
 
 	if not helperIsGameOver() then
+		UiPush()--help text
+			UiAlign("right middle")
+			UiTranslate(UiWidth()-40, UiMiddle())
+
+			if InputPressed("G") then
+				helpTextHider.open = not helpTextHider.open
+			end
+
+			if helpTextHider.open then
+				helpTextHider.actualW = expDecay(helpTextHider.actualW, 400, 10, dt)
+				helpTextHider.actualH = expDecay(helpTextHider.actualH, 280, 10, dt)
+				helpTextHider.openA   = expDecay(helpTextHider.openA,   1,   10, dt)
+				helpTextHider.closedA = expDecay(helpTextHider.closedA, -1,  10, dt)
+			else
+				helpTextHider.actualW = expDecay(helpTextHider.actualW, 50,  10, dt)
+				helpTextHider.actualH = expDecay(helpTextHider.actualH, 240, 10, dt)
+				helpTextHider.openA   = expDecay(helpTextHider.openA,   -1,  10, dt)
+				helpTextHider.closedA = expDecay(helpTextHider.closedA, 1,   10, dt)
+			end
+
+			RoundedBlurredRect(helpTextHider.actualW, helpTextHider.actualH, 10, 0.5, {0,0,0,0.6})
+			
+			--open text
+			UiPush()
+				UiTranslate(-200)
+				UiTextAlignment("center")
+				UiPush()
+					UiColor(0.94, 0.94, 0.47, helpTextHider.openA)
+					UiFont("bold.ttf", 35)
+					UiAlign("center top")
+					UiTranslate(0,-125)
+					UiText("You are a hider!")
+				UiPop()
+				UiPush()
+					UiColor(1, 1, 1, helpTextHider.openA)
+					UiFont("regular.ttf", 30)
+					UiAlign("center bottom")
+					UiTranslate(7,125)
+					UiText("Press ( E ) to transform\n\nPress & hold ( LMB ) to Taunt\nPress & Hold ( Shift ) to Sprint\nWater will kill you!\n\nPress ( G ) to close.")
+					if helperGetHiderStandStillTime(GetLocalPlayer()) > 5 then
+						UiTextOutline(0.6, 0.6, 0.6, (math.sin((GetTime()*4))/2)-0.5+helpTextHider.openA, 0.4)
+					end
+					UiText("Press ( F ) to hide\n\n\n\n\n ")
+				UiPop()
+			UiPop()
+
+			--closed text
+			UiPush()
+				UiTextAlignment("center")
+				UiTranslate(-25)
+				UiRotate(-90)
+				UiFont("regular.ttf", 30)
+				UiAlign("center middle")
+				UiColor(1, 1, 1, helpTextHider.closedA)
+				if helperGetHiderStandStillTime(GetLocalPlayer()) > 5 then
+					UiTextOutline(0.6, 0.6, 0.6, (math.sin((GetTime()*4))/2)-0.5+helpTextHider.closedA, 0.4)
+				end
+				UiText("Press ( G ) to open.")
+			UiPop()
+		UiPop()
 
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
-		hudDrawGameModeHelpText("You are a Hider", "- Press ( E ) to transform\n- Press ( F ) to hide\n- Press & hold ( LMB ) to Taunt\n- Press & Hold ( Shift ) to Sprint\n- Water will kill you!",nil, 385)
+		--hudDrawGameModeHelpText("You are a Hider", "- Press ( E ) to transform\n- Press ( F ) to hide\n- Press & hold ( LMB ) to Taunt\n- Press & Hold ( Shift ) to Sprint\n- Water will kill you!",nil, 385)
 		client.clippingText()
 		client.tauntForce()
 
