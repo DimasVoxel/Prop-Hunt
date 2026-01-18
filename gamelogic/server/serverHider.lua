@@ -1,13 +1,55 @@
 function server.clientHideRequest(playerid)
-    if not shared.players.hiders[playerid].isPropClipping then
-        shared.players.hiders[playerid].isPropPlaced = true
-		server.players.hiders[playerid].unhideCooldown = GetTime() + server.gameConfig.unhideCooldown
+	local body = helperGetPlayerPropBody(playerid)
+	local playerTransform = GetPlayerTransform(playerid)
+	local pos = TransformToParentPoint(playerTransform, VecScale(shared.players.hiders[playerid].offset,-1))
+	pos = VecAdd(pos,  Vec(0, 0.05, 0))
 
-		local body = helperGetPlayerPropBody(playerid)
+	local function enableHideMode()
+		shared.players.hiders[playerid].isPropPlaced = true
+		server.players.hiders[playerid].unhideCooldown = GetTime() + server.gameConfig.unhideCooldown
 		server.disableBodyCollission(body, false)
 		SetBodyVelocity(body, GetPlayerVelocity(playerid))
-    end
+	end
+
+	local function checkLineOfSight(pos1,pos2)
+
+		local _,_,_, shape = QueryRaycast(pos1, Vec(0,-1,0), 1, 0.3, false)
+		QueryRejectShape(shape)
+		local dir = VecNormalize(VecSub(pos2, pos1))
+		QueryRejectBody(body)
+		local hit = QueryRaycast(pos1, dir, 2, 0, false)
+		if hit then return false else return true end
+	end
+
+	local clippingProps = checkPropClipping(playerid)
+	if #clippingProps == 0 then 
+		enableHideMode()
+		return
+	else
+		for i = 1, 10 do
+			local newPos = VecAdd(pos, Vec(0, (i / 10)  - 0.1, 0))
+			SetBodyTransform(body, Transform(newPos, playerTransform.rot))
+			local tempClipping = checkPropClipping(playerid)
+			local bool = checkLineOfSight(pos, newPos)
+			if bool == false then break end
+			if #tempClipping == 0 then
+				enableHideMode()
+				return
+			end
+		end
+	end
+
+	shared.players.hiders[playerid].clippingProps = clippingProps
+	-- If the server was unable to find a place to hide reset back to original pos
+	local offset
+	
+	pos = VecAdd(pos, Vec(0,0.05,0))
+
+	-- We move the prop body to player on the server. Player Camera is in handeled in client.hiderTick()
+	SetBodyVelocity(body, Vec(0, 0, 0))
+	SetBodyTransform(body, Transform(pos, playerTransform.rot))
 end
+
 
 function server.hiderTick(dt)
     local hiders = teamsGetTeamPlayers(1)
@@ -135,18 +177,9 @@ function server.hiderUpdate()
 end
 
 function server.handlePlayerProp(id) -- In Update
-	local clippingProps = checkPropClipping(id)
-    -- The server only needs to know if props are clipping or not. It doesnt matter which shapes in particular
-    -- On client we use the output to highlight shapes that are being clipped into
-	if #clippingProps == 0 then 
-		shared.players.hiders[id].isPropClipping = false
-	else
-		shared.players.hiders[id].isPropClipping = true
-	end
-
 	local propBody = helperGetPlayerPropBody(id)
 
-	if propBody ~= -1 then
+	if propBody ~= false then
 		if not shared.players.hiders[id].isPropPlaced then
 			server.disableBodyCollission(propBody, true)
 
@@ -157,7 +190,7 @@ function server.handlePlayerProp(id) -- In Update
 			if InputDown("crouch", id) then
 				offset = Vec()
 			else
-				offset = Vec(0, 0.3, 0)
+				offset = Vec(0, 0.05, 0)
 			end
 			pos = VecAdd(pos, offset)
 
@@ -174,7 +207,7 @@ function server.handlePlayerProp(id) -- In Update
 	end
 end
 
-function server.handleHiderPlayerDamage(id) -- In Tick
+function server.handleHiderPlayerDamage(id) -- In Tic
 	local propBody = helperGetPlayerPropBody(id)
 	if propBody then
 		local aa,bb = GetBodyBounds(propBody)
@@ -269,9 +302,18 @@ function server.tauntBroadcast(pos, id)
 	ClientCall(0, "client.tauntBroadcast", pos, id)
 end
 
-function server.handleHiderTaunts(hiderIds)
+function server.doubleJump(id)
+	if shared.players.hiders[id].stamina > 1.5 then
+		local vel = GetPlayerVelocity(id)
+		SetPlayerVelocity(VecAdd(Vec(0, 4 ,0 ), vel), id)
+		shared.players.hiders[id].stamina = math.max(shared.players.hiders[id].stamina - 1.55, 0)
+		if shared.players.hiders[id].stamina < 0.3 then 
+			shared.players.hiders[id].staminaCoolDown = GetTime() + 10
+		end
+	end
+end
 
-	
+function server.handleHiderTaunts(hiderIds)
     if server.timers.hiderTauntReloadTimer <= GetTime() then
         server.timers.hiderTauntReloadTimer = GetTime() + server.gameConfig.hiderTauntReloadTimer
 

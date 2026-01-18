@@ -1,7 +1,7 @@
 function client.hiderTick()
 	if not client.state.matchEnded then
 		if client.player.hider.hidingAttempt then
-			if shared.players.hiders[GetLocalPlayer()].isPropPlaced == true or shared.players.hiders[GetLocalPlayer()].isPropClipping == false then
+			if helperIsPlayerHidden() or #checkPropClipping(GetLocalPlayer()) == 0 then
 				client.player.hider.hidingAttempt = false
 			end
 		end
@@ -11,8 +11,23 @@ function client.hiderTick()
 	client.highlightClippingProps()
 	client.HighlightDynamicBodies()
 	
-end
+	if IsPlayerGrounded() and not IsPlayerJumping() then 
+		client.player.jumpTimer = client.player.jumpTimer - GetTimeStep() * 10
+	end
 
+	if InputPressed("jump") and client.player.jumpTimer < GetTime() and IsPlayerGrounded() then 
+		client.player.jumpTimer = GetTime() + 2
+	elseif InputPressed("jump") and client.player.jumpTimer > GetTime() and not IsPlayerGrounded() then
+		ServerCall("server.doubleJump", GetLocalPlayer())
+		client.player.jumpTimer = 0
+
+		if shared.players.hiders[GetLocalPlayer()].stamina > 1.5 then
+			local pos = GetPlayerTransform().pos
+			client.jumpCloud(-1, pos)
+			ServerCall("server.broadCastJump", GetLocalPlayer(), pos)
+		end
+	end
+end
 
 function client.hiderCamera()
 	local body = helperGetPlayerPropBody()
@@ -26,8 +41,8 @@ function client.hiderCamera()
 				client.camera.Rotation[1] = AutoClamp(client.camera.Rotation[1], -100, 20)
 
 				client.camera.dist = AutoClamp(client.camera.dist + InputValue("mousewheel") / -2, 2, 10)
-
 			end
+
 			local camera_rotation_quat = QuatEuler(unpack(client.camera.Rotation))
 
 			local target_position = VecCopy(body_center)
@@ -109,13 +124,10 @@ function client.sendHideRequest()
 
     if InputPressed("flashlight") and not helperIsPlayerHidden() then
 		local playerID = GetLocalPlayer()
-        if not shared.players.hiders[playerID].isPropClipping and helperGetPlayerPropBody() and client.player.hideCoolDown <= GetTime() then
+        if helperGetPlayerPropBody() and client.player.hideCoolDown <= GetTime() then
             ServerCall("server.clientHideRequest", playerID)
-			client.player.hider.hidingAttempt = false
-			client.player.hideCoolDown = GetTime() + client.gameConfig.hideCoolDown
-		end
-		if shared.players.hiders[playerID].isPropClipping then
 			client.player.hider.hidingAttempt = true
+			client.player.hideCoolDown = GetTime() + client.gameConfig.hideCoolDown
 		end
     end
 end
@@ -191,9 +203,10 @@ function client.HighlightDynamicBodies()
 end
 
 function client.highlightClippingProps()
-    if shared.players.hiders[GetLocalPlayer()].propBody ~= -1 and not shared.players.hiders[GetLocalPlayer()].isPropPlaced then
+    if shared.players.hiders[GetLocalPlayer()].propBody ~= -1 and not shared.players.hiders[GetLocalPlayer()].isPropPlaced and client.player.hider.hidingAttempt == true then
 		local clippingShapes = checkPropClipping(GetLocalPlayer())
         for i = 1, #clippingShapes do
+			DrawShapeHighlight(clippingShapes[i], math.sin(GetTime()*2)/4)
             DrawShapeOutline(clippingShapes[i], 1,0,0,1)
         end
     end

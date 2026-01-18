@@ -158,7 +158,7 @@ function client.hiderDraw(dt)
 					if math.max(shared.players.hiders[GetLocalPlayer()].staminaCoolDown - shared.serverTime, 0) ~= 0 then
 						barColor = {0.6, 0.2, 0.2, 1}
 					end
-					ProgressBar(true, 25, 250, stamina, maxStamina, 13, barColor, 0, 0)
+					ProgressBar(true, 25, 250, stamina, maxStamina, 13, barColor, 2, 0)
 				end
 				UiTranslate(256)
 				UiAlign("right middle")
@@ -269,7 +269,7 @@ function client.clippingText()
 	UiTranslate(UiWidth()/2, UiHeight()-160)
 	UiFont("bold.ttf",30)
 	UiAlign('center middle')
-	if client.player.hider.hidingAttempt then
+	if client.player.hider.hidingAttempt and not helperIsPlayerHidden() then
 		UiText("You're clipping into " .. #checkPropClipping(GetLocalPlayer()) .. " shapes. Can't hide.")
 	end
 	UiPop()

@@ -152,6 +152,7 @@ function server.initHider(id)
 	shared.players.hiders[id].taunts = 1
 	shared.players.hiders[id].grabbing = false
 	shared.players.hiders[id].standStillTimer = 0
+	shared.players.hiders[id].clippingProps = {}
 
 	-- Server Side information only
 	server.players.hiders[id] = {}

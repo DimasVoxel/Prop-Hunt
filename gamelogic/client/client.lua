@@ -38,7 +38,8 @@ client.player = {
 		grabBody = 0,
 		dist = 0,
 		localPos = 0
-	}
+	},
+	jumpTimer = 0
 }
 
 client.assets = {
@@ -188,4 +189,13 @@ function client.kick()
 	Menu()
 end
 
+function client.jumpCloud(id, pos)
+	if GetLocalPlayer() == id then return end
+	DebugPrint("fart")
+	ParticleReset()
+	ParticleType("smoke")
+	ParticleColor(0.8, 1, 0.8)
+	--Spawn particle at world origo with upwards velocity and a lifetime of ten seconds
+	SpawnParticle(pos, Vec(0, -0.5, 0), 2)
+end
 

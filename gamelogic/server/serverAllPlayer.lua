@@ -278,3 +278,8 @@ function server.GetClosestPlayer(id, teamId)
 
 	return closestPlayer, closestDist, closestTransform
 end
+
+function server.broadCastJump(id, pos)
+	DebugPrint("farts")
+	ClientCall(0, "client.jumpCloud", id, pos)
+end
