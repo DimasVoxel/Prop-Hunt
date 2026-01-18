@@ -1,5 +1,5 @@
 name = Prop Hunt
-author = DimasVoxel
+author = DimasVoxel and Luke Splyne
 description = A prop hunt mod[noupload]
 tags = gameplay
 version = 2
