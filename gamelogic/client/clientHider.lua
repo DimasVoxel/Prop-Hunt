@@ -135,6 +135,7 @@ function client.HighlightDynamicBodies()
 		QueryRejectVehicle(vehicles[i])
 	end
 
+	QueryRejectAnimator(GetWorldBody())
 	QueryRejectBody(helperGetPlayerPropBody())
 	local bodies = QueryAabbBodies(bb, aa)
 
@@ -175,7 +176,7 @@ function client.HighlightDynamicBodies()
 					end
 
 					local lookAtShape = playerGetLookAtShape(10, GetLocalPlayer())
-					
+
 					if unqualified == false then 
 						DrawShapeOutline(shape, 1, 1, 1, 1)
 						if lookAtShape == shape then
