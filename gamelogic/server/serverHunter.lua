@@ -17,10 +17,15 @@ function server.hunterTick()
                 if server.timers.hunterBluetideReloadTimer <= GetTime() then
                     SetToolAmmo("steroid", math.min(GetToolAmmo("steroid", id) + 1, 3), id)
                 end
+
+                if server.timers.hunterDoubleJumpTimer <= GetTime() then
+                    SetToolAmmo("doublejump", math.min(GetToolAmmo("doublejump", id) + 1, 2), id)
+                end
             else
                 SetToolAmmo("shotgun", 0, id)
                 SetToolAmmo("pipebomb", 0, id)
                 SetToolAmmo("steroid", 0, id)
+                SetToolAmmo("doublejump", 0, id)
             end
         end
     end
@@ -37,7 +42,9 @@ function server.hunterTick()
         server.timers.hunterBluetideReloadTimer = GetTime() + server.gameConfig.hunterBluetideReloadTimer
 	end
 
-
+    if server.timers.hunterDoubleJumpTimer <= GetTime() then
+        server.timers.hunterDoubleJumpTimer = GetTime() + server.gameConfig.hunterDoubleJumpReloadTimer
+    end
 end
 
 function server.huntersDuringHideTime()

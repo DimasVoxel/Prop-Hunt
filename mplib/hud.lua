@@ -33,7 +33,8 @@ _hud = {
 	healthBarData = {}, 
 	endSoundStarted = false, 
 	bannerQueue = {}, 
-	fade = { active = false, t = 0.0, fadeIn = 0.0, hold = 0.0, fadeOut = 0.0, alpha = 1.0} 
+	fade = { active = false, t = 0.0, fadeIn = 0.0, hold = 0.0, fadeOut = 0.0, alpha = 1.0},
+	randomOffset = math.random(1, 1000)
 }
 
 
@@ -1522,7 +1523,7 @@ function hudDrawResultsAnimation(time, text, backgroundColor)
 
 
 
-	local orbitOffset = VecScale(Vec(math.sin(_resultsAnimTime*0.025), 1.0, math.cos(_resultsAnimTime*0.025)), 50.0)
+	local orbitOffset = VecScale(Vec(math.sin(_resultsAnimTime*0.025+_hud.randomOffset), 1.0, math.cos(_resultsAnimTime*0.025+_hud.randomOffset)), 50.0)
 	local camPos = VecAdd(_resultsAnimCamPos, orbitOffset)
 	local camRot = QuatLookAt(camPos, _resultsAnimCamPos)
 

@@ -180,7 +180,8 @@ end
 --
 -- @param[type=bool] skipCountdown Whether to skip the team selection countdown.
 function teamsStart(skipCountdown)
-    if skipCountdown then
+    local localPlay = GetPlayerCount() == 2 and GetPlayerName(0) == "Host"
+    if skipCountdown or localPlay then
         _teamsAssignPlayers()
         shared._teamState.state = _DONE
         _teamState.skippedCountdown = true
@@ -245,6 +246,10 @@ function teamsTick(dt)
 
         for p in Players() do
             local team = teamsGetTeamId(p)
+            if team == 0 then 
+                teamsAssignToTeam(p, 2)
+                team = 2
+            end
             local color = teamsGetColor(team)
             SetPlayerColor(color[1], color[2], color[3], p)
         end
@@ -494,7 +499,6 @@ function _teamsAssignPlayers()
             end
         end
         if shared.countdownTimer > 20 then
-            DebugPrint("humm")
             for _, player in ipairs(neutralPlayers) do
                 shared._teamState.teams[1].players[#shared._teamState.teams[1].players + 1] = player
             end

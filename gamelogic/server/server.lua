@@ -26,13 +26,17 @@ server.gameConfig = {
 	minimumSizeLimit = true,
 	transformCooldown = 5,
 
+	--Server Config only
 	unhideCooldown = 0.6, -- Cant be configured
-	outOfBoundsCoolDown = 5 -- Cant be configured
+	outOfBoundsCoolDown = 5, -- Cant be configured
+	
 }
 
 shared.gameConfig = {
 	minimumSizeLimit = true,
-	transformCooldown = 5
+	transformCooldown = 5,
+	hiderStandStillWarnTime = 5,
+	staminaSeconds = 3, -- How long playes can sprint until the bar depleets completly
 }
 
 -- Match state (game logic and so on)
@@ -50,6 +54,7 @@ server.timers = {
 	hunterHintTimer = 15,
 	hiderTauntReloadTimer = 0,
 	nextMapTimer = 0,
+	hunterDoubleJumpTimer = 0
 }
 
 server.players = {
@@ -106,6 +111,8 @@ server.shotgunDefaults = {
 }
 
 function server.init()
+	RegisterTool("doublejump", "Double Jump", "MOD/assets/doublejump.vox", 2)
+
 	hudInit(true)
 	hudAddUnstuckButton()
 	teamsInit(3)
@@ -119,7 +126,7 @@ function server.init()
 
 	--- spawnSetDefaultLoadoutForTeam was modified to support per team loadouts
 	spawnSetDefaultLoadoutForTeam(1, {  })                  				  -- Hiders
-	spawnSetDefaultLoadoutForTeam(2, {{ "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }}) -- Hunters
+	spawnSetDefaultLoadoutForTeam(2, {{ "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }, { "doublejump", 0 }}) -- Hunters
 
 	spawnSetRespawnTime(10)
 
@@ -131,6 +138,36 @@ function server.init()
 	SetInt('game.tool.shotgun.damage', 2, true)
 	SetInt('game.tool.shotgun.range', 10, true)
 	SetInt('game.tool.shotgun.falloffDamage', 0.02, true)
+end
+
+function server.initHider(id)
+	SetPlayerParam("healthRegeneration", false, id)
+	SetPlayerParam("godmode", true, id)
+	SetPlayerTool("taunt", id)
+	-- Data the hider also needs
+	shared.players.hiders[id] = {}
+	shared.players.hiders[id].hp = 3 -- HP Is the amount of shots a hider can take will be changed depending on prop size
+	shared.players.hiders[id].health = 1 -- Health is a float the server requires for health math 
+	shared.players.hiders[id].damageTick = 0
+	shared.players.hiders[id].environmentalDamageTrigger = false 
+	shared.players.hiders[id].damageValue = 0.33
+	shared.players.hiders[id].transformCooldown = 0
+	shared.players.hiders[id].stamina = shared.gameConfig.staminaSeconds -- Players have 3 seconds of sprint
+	shared.players.hiders[id].staminaCoolDown = 0
+	shared.players.hiders[id].taunts = 1
+	shared.players.hiders[id].grabbing = false
+	shared.players.hiders[id].standStillTimer = 0
+	shared.players.hiders[id].clippingProps = {}
+
+	-- Server Side information only
+	server.players.hiders[id] = {}
+	server.players.hiders[id].unhideCooldown = 0 -- How quickly a player can get unhiden
+	server.players.hiders[id].outOfBoundsTimer = 0
+	server.players.hiders[id].grabbing = {}
+	server.players.hiders[id].grabbing.body = 0
+	server.players.hiders[id].grabbing.localPos = 0
+	server.players.hiders[id].grabbing.dist = 0
+	server.players.hiders[id].standStillPosition = Vec()
 end
 
 function server.start(settings)
@@ -146,7 +183,7 @@ function server.start(settings)
 	server.gameConfig.hunterHintTimer = settings.hunterHintTimer
 	server.gameConfig.hiderTauntReloadTimer = settings.hiderTauntReloadTimer
 	server.gameConfig.transformCooldown = settings.transformCooldown
-	
+	server.gameConfig.hunterDoubleJumpReloadTimer = settings.hunterJumpReload
 
 	-- The gameConfig function doesnt support bools? Therefor I am converting them here
 	server.gameConfig.midGameJoin = settings.midGameJoin == 1
@@ -228,30 +265,7 @@ function server.tick(dt)
 			end
 
 			if helperIsPlayerHider(id) then 
-				SetPlayerParam("healthRegeneration", false, id)
-				SetPlayerParam("godmode", true, id)
-				SetPlayerTool("taunt", id)
-				-- Data the hider also needs
-				shared.players.hiders[id] = {}
-				shared.players.hiders[id].hp = 3 -- HP Is the amount of shots a hider can take will be changed depending on prop size
-				shared.players.hiders[id].health = 1 -- Health is a float the server requires for health math 
-				shared.players.hiders[id].damageTick = 0
-				shared.players.hiders[id].environmentalDamageTrigger = false 
-				shared.players.hiders[id].damageValue = 0.33
-				shared.players.hiders[id].transformCooldown = 0
-				shared.players.hiders[id].stamina = 3 -- Players have 3 seconds of sprint
-				shared.players.hiders[id].staminaCoolDown = 0
-				shared.players.hiders[id].taunts = 1
-				shared.players.hiders[id].grabbing = false
-
-				-- Server Side information only
-				server.players.hiders[id] = {}
-				server.players.hiders[id].unhideCooldown = 0 -- How quickly a player can get unhiden
-				server.players.hiders[id].outOfBoundsTimer = 0
-				server.players.hiders[id].grabbing = {}
-				server.players.hiders[id].grabbing.body = 0
-				server.players.hiders[id].grabbing.localPos = 0
-				server.players.hiders[id].grabbing.dist = 0
+				server.initHider(id)
 			end
 		end
 	end
@@ -361,36 +375,13 @@ function server.newPlayerJoinRoutine()
 			end
 
 			if helperIsPlayerHider(id) then 
-				SetPlayerParam("healthRegeneration", false, id)
-				SetPlayerParam("godmode", true, id)
-				SetPlayerTool("taunt", id)
-				-- Data the hider also needs
-				shared.players.hiders[id] = {}
-				shared.players.hiders[id].hp = 3 -- HP Is the amount of shots a hider can take will be changed depending on prop size
-				shared.players.hiders[id].health = 1 -- Health is a float the server requires for health math 
-				shared.players.hiders[id].damageTick = 0
-				shared.players.hiders[id].environmentalDamageTrigger = false 
-				shared.players.hiders[id].damageValue = 0.33
-				shared.players.hiders[id].transformCooldown = 0
-				shared.players.hiders[id].stamina = 3 -- Players have 3 seconds of sprint
-				shared.players.hiders[id].staminaCoolDown = 0
-				shared.players.hiders[id].taunts = 1
-				shared.players.hiders[id].grabbing = false
-
-				-- Server Side information only
-				server.players.hiders[id] = {}
-				server.players.hiders[id].unhideCooldown = 0 -- How quickly a player can get unhiden
-				server.players.hiders[id].outOfBoundsTimer = 0
-				server.players.hiders[id].grabbing = {}
-				server.players.hiders[id].grabbing.body = 0
-				server.players.hiders[id].grabbing.localPos = 0
-				server.players.hiders[id].grabbing.dist = 0
+				 server.initHider(id)
 			end
 
 			-- build a quick lookup table for loadout tools
 			local loadout = {}
 			if helperIsPlayerHunter(id) then
-				loadout = { { "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 } }
+				loadout = { { "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }, { "doublejump", 0 } }
 			end
 
 			local loadoutSet = {}
@@ -478,8 +469,6 @@ function server.loadRandomMap()
 		local isLocal = GetInt("mods.available." .. id .. ".local")
 		local path = GetString("mods.available." .. id .. ".path")
 
-		DebugPrint(id) 
-		DebugPrint(contains(blackList, id))
 		if isMultiplayer and isPlayable and isLocal == 0 and not contains(blackList, id) then
 			table.insert(maps, {
 				id = id,
@@ -490,7 +479,6 @@ function server.loadRandomMap()
 	end
 
 	local map = maps[math.random(1, #maps)]
-	DebugPrint("set")
 	SetString("level.randomMap.name", map.name, true)
 	SetString("level.randomMap.path", map.path)
 	SetString("level.randomMap.id", map.id)

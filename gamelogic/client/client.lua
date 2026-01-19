@@ -1,6 +1,7 @@
 --[[
 #include clientOnlyHelpers.lua
 #include clientHider.lua
+#include clientHunter.lua
 #include clientHUD.lua
 ]]
 
@@ -38,7 +39,8 @@ client.player = {
 		grabBody = 0,
 		dist = 0,
 		localPos = 0
-	}
+	},
+	jumpTimer = 0
 }
 
 client.assets = {
@@ -83,6 +85,8 @@ function client.tick()
 
 	if helperIsPlayerHider() and teamsIsSetup() then
 		client.hiderTick()
+	elseif helperIsPlayerHunter() and teamsIsSetup() then
+		client.hunterTick()
 	end
 	local spectateList = {}
 	for _,i in pairs(teamsGetTeamPlayers(2)) do
@@ -188,4 +192,13 @@ function client.kick()
 	Menu()
 end
 
+function client.jumpCloud(id, pos)
+	if GetLocalPlayer() == id then return end
+	DebugPrint("fart")
+	ParticleReset()
+	ParticleType("smoke")
+	ParticleColor(0.8, 1, 0.8)
+	--Spawn particle at world origo with upwards velocity and a lifetime of ten seconds
+	SpawnParticle(pos, Vec(0, -0.5, 0), 2)
+end
 

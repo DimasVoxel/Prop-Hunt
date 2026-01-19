@@ -281,13 +281,13 @@ function client.hiderDraw(dt)
 				UiRotate(180)
 				UiTranslate(110)
 				do
-					local maxStamina = 3
+					local maxStamina = shared.gameConfig.staminaSeconds
 					local stamina = shared.players.hiders[GetLocalPlayer()].stamina
 					local barColor = {0.02, 0.49, 0.82, 1}
 					if math.max(shared.players.hiders[GetLocalPlayer()].staminaCoolDown - shared.serverTime, 0) ~= 0 then
 						barColor = {0.6, 0.2, 0.2, 1}
 					end
-					ProgressBar(true, 25, 250, stamina, maxStamina, 13, barColor, 0, 0)
+					ProgressBar(true, 25, 250, stamina, maxStamina, 13, barColor, 2, 0)
 				end
 				UiTranslate(256)
 				UiAlign("right middle")
@@ -398,7 +398,7 @@ function client.clippingText()
 	UiTranslate(UiWidth()/2, UiHeight()-160)
 	UiFont("bold.ttf",30)
 	UiAlign('center middle')
-	if client.player.hider.hidingAttempt then
+	if client.player.hider.hidingAttempt and not helperIsPlayerHidden() then
 		UiText("You're clipping into " .. #checkPropClipping(GetLocalPlayer()) .. " shapes. Can't hide.")
 	end
 	UiPop()
@@ -462,7 +462,7 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.hideTime",
 							label = "Hide Time",
 							info = "How much time hiders have to hide",
-							options = {{ label = "00:30", value = 30}, { label = "00:45", value = 45 }, { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 },  }
+							options = {{ label = "00:45", value = 45 }, { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 }, { label = "00:30", value = 30}}
 						},
 						{
 							key = "savegame.mod.settings.hidersJoinHunters",
@@ -505,6 +505,12 @@ function client.SetupScreen(dt)
 							label = "Hunter Hints",
 							info ="Enable or disable hints.",
 							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+						},
+						{
+							key = "savegame.mod.settings.doubleJumpReload",
+							label = "Hunter Jump Rel.",
+							info ="How quickly hunters can double jump.",
+							options = {{ label = "8 Seconds", value = 8},  { label = "10 Seconds", value = 10}, { label = "3 Seconds", value = 3}, { label = "5 Seconds", value = 5}}
 						},
 						{
 							key = "savegame.mod.settings.hunterBulletReloadTimer",
@@ -577,6 +583,7 @@ function client.SetupScreen(dt)
 					maximumSizeLimit = GetInt("savegame.mod.settings.maximumSizeLimit"),
 					allowFriendlyFire = GetInt("savegame.mod.settings.allowFriendlyFire"),
 					transformCooldown = GetInt("savegame.mod.settings.transformCooldown"),
+					hunterJumpReload = GetInt("savegame.mod.settings.doubleJumpReload"),
 				})
 			end
 		end
