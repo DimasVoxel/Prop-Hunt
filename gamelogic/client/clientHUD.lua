@@ -281,7 +281,7 @@ function client.hiderDraw(dt)
 				UiRotate(180)
 				UiTranslate(110)
 				do
-					local maxStamina = 3
+					local maxStamina = shared.gameConfig.staminaSeconds
 					local stamina = shared.players.hiders[GetLocalPlayer()].stamina
 					local barColor = {0.02, 0.49, 0.82, 1}
 					if math.max(shared.players.hiders[GetLocalPlayer()].staminaCoolDown - shared.serverTime, 0) ~= 0 then
@@ -507,6 +507,12 @@ function client.SetupScreen(dt)
 							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
+							key = "savegame.mod.settings.doubleJumpReload",
+							label = "Hunter Jump Rel.",
+							info ="How quickly hunters can double jump.",
+							options = {{ label = "8 Seconds", value = 8},  { label = "10 Seconds", value = 10}, { label = "3 Seconds", value = 3}, { label = "5 Seconds", value = 5}}
+						},
+						{
 							key = "savegame.mod.settings.hunterBulletReloadTimer",
 							label = "Bullet Reload",
 							info ="How quickly hunters get new bullets.",
@@ -577,6 +583,7 @@ function client.SetupScreen(dt)
 					maximumSizeLimit = GetInt("savegame.mod.settings.maximumSizeLimit"),
 					allowFriendlyFire = GetInt("savegame.mod.settings.allowFriendlyFire"),
 					transformCooldown = GetInt("savegame.mod.settings.transformCooldown"),
+					hunterJumpReload = GetInt("savegame.mod.settings.doubleJumpReload"),
 				})
 			end
 		end

@@ -180,7 +180,8 @@ end
 --
 -- @param[type=bool] skipCountdown Whether to skip the team selection countdown.
 function teamsStart(skipCountdown)
-    if skipCountdown then
+    local localPlay = GetPlayerCount() == 2 and GetPlayerName(0) == "Host"
+    if skipCountdown or localPlay then
         _teamsAssignPlayers()
         shared._teamState.state = _DONE
         _teamState.skippedCountdown = true

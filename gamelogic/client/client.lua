@@ -1,6 +1,7 @@
 --[[
 #include clientOnlyHelpers.lua
 #include clientHider.lua
+#include clientHunter.lua
 #include clientHUD.lua
 ]]
 
@@ -84,6 +85,8 @@ function client.tick()
 
 	if helperIsPlayerHider() and teamsIsSetup() then
 		client.hiderTick()
+	elseif helperIsPlayerHunter() and teamsIsSetup() then
+		client.hunterTick()
 	end
 	local spectateList = {}
 	for _,i in pairs(teamsGetTeamPlayers(2)) do

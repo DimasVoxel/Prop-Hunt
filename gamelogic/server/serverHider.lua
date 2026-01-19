@@ -126,14 +126,14 @@ function server.hiderUpdate()
 				local speed = VecLength(GetPlayerVelocity(id))
 
 				if InputDown("shift", id) and not helperIsPlayerHidden(id) and shared.players.hiders[id].staminaCoolDown < GetTime() and speed > 0.1 then 
-					SetPlayerParam("walkingSpeed", 9, id)
+					SetPlayerParam("walkingSpeed", 11, id)
 					shared.players.hiders[id].stamina = math.max(shared.players.hiders[id].stamina - GetTimeStep(), 0)
 
 					if shared.players.hiders[id].stamina == 0 then 
 						shared.players.hiders[id].staminaCoolDown = GetTime() + 10
 					end
 				else
-					shared.players.hiders[id].stamina = math.min(shared.players.hiders[id].stamina + GetTimeStep()/8, 3)
+					shared.players.hiders[id].stamina = math.min(shared.players.hiders[id].stamina + GetTimeStep()/8, shared.gameConfig.staminaSeconds)
 				end
 
 				server.handlePlayerProp(id)
@@ -300,17 +300,6 @@ end
 function server.tauntBroadcast(pos, id)
 	shared.players.hiders[id].taunts = math.max(helperGetHiderTauntsAmount(id) - 2, 1)
 	ClientCall(0, "client.tauntBroadcast", pos, id)
-end
-
-function server.doubleJump(id)
-	if shared.players.hiders[id].stamina > 1.5 then
-		local vel = GetPlayerVelocity(id)
-		SetPlayerVelocity(VecAdd(Vec(0, 4 ,0 ), vel), id)
-		shared.players.hiders[id].stamina = math.max(shared.players.hiders[id].stamina - 1.55, 0)
-		if shared.players.hiders[id].stamina < 0.3 then 
-			shared.players.hiders[id].staminaCoolDown = GetTime() + 10
-		end
-	end
 end
 
 function server.handleHiderTaunts(hiderIds)

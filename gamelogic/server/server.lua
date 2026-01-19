@@ -29,12 +29,14 @@ server.gameConfig = {
 	--Server Config only
 	unhideCooldown = 0.6, -- Cant be configured
 	outOfBoundsCoolDown = 5, -- Cant be configured
+	
 }
 
 shared.gameConfig = {
 	minimumSizeLimit = true,
 	transformCooldown = 5,
-	hiderStandStillWarnTime = 5
+	hiderStandStillWarnTime = 5,
+	staminaSeconds = 3, -- How long playes can sprint until the bar depleets completly
 }
 
 -- Match state (game logic and so on)
@@ -52,6 +54,7 @@ server.timers = {
 	hunterHintTimer = 15,
 	hiderTauntReloadTimer = 0,
 	nextMapTimer = 0,
+	hunterDoubleJumpTimer = 0
 }
 
 server.players = {
@@ -108,6 +111,8 @@ server.shotgunDefaults = {
 }
 
 function server.init()
+	RegisterTool("doublejump", "Double Jump", "MOD/assets/doublejump.vox", 2)
+
 	hudInit(true)
 	hudAddUnstuckButton()
 	teamsInit(3)
@@ -121,7 +126,7 @@ function server.init()
 
 	--- spawnSetDefaultLoadoutForTeam was modified to support per team loadouts
 	spawnSetDefaultLoadoutForTeam(1, {  })                  				  -- Hiders
-	spawnSetDefaultLoadoutForTeam(2, {{ "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }}) -- Hunters
+	spawnSetDefaultLoadoutForTeam(2, {{ "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }, { "doublejump", 0 }}) -- Hunters
 
 	spawnSetRespawnTime(10)
 
@@ -147,7 +152,7 @@ function server.initHider(id)
 	shared.players.hiders[id].environmentalDamageTrigger = false 
 	shared.players.hiders[id].damageValue = 0.33
 	shared.players.hiders[id].transformCooldown = 0
-	shared.players.hiders[id].stamina = 3 -- Players have 3 seconds of sprint
+	shared.players.hiders[id].stamina = shared.gameConfig.staminaSeconds -- Players have 3 seconds of sprint
 	shared.players.hiders[id].staminaCoolDown = 0
 	shared.players.hiders[id].taunts = 1
 	shared.players.hiders[id].grabbing = false
@@ -178,7 +183,7 @@ function server.start(settings)
 	server.gameConfig.hunterHintTimer = settings.hunterHintTimer
 	server.gameConfig.hiderTauntReloadTimer = settings.hiderTauntReloadTimer
 	server.gameConfig.transformCooldown = settings.transformCooldown
-	
+	server.gameConfig.hunterDoubleJumpReloadTimer = settings.hunterJumpReload
 
 	-- The gameConfig function doesnt support bools? Therefor I am converting them here
 	server.gameConfig.midGameJoin = settings.midGameJoin == 1
@@ -376,7 +381,7 @@ function server.newPlayerJoinRoutine()
 			-- build a quick lookup table for loadout tools
 			local loadout = {}
 			if helperIsPlayerHunter(id) then
-				loadout = { { "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 } }
+				loadout = { { "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }, { "doublejump", 0 } }
 			end
 
 			local loadoutSet = {}

@@ -283,3 +283,22 @@ function server.broadCastJump(id, pos)
 	DebugPrint("farts")
 	ClientCall(0, "client.jumpCloud", id, pos)
 end
+
+function server.doubleJump(id)
+	if helperIsPlayerHider(id) then
+		if shared.players.hiders[id].stamina > 1.5 then
+			local vel = GetPlayerVelocity(id)
+			SetPlayerVelocity(VecAdd(Vec(0, 4 ,0 ), vel), id)
+			shared.players.hiders[id].stamina = math.max(shared.players.hiders[id].stamina - 1.55, 0)
+			if shared.players.hiders[id].stamina < 0.3 then 
+				shared.players.hiders[id].staminaCoolDown = GetTime() + 10
+			end
+		end
+	elseif helperIsPlayerHunter(id) then
+		if GetToolAmmo("doublejump", id) ~= 0 then
+			local vel = GetPlayerVelocity(id)
+			SetPlayerVelocity(VecAdd(Vec(0, 5 ,0 ), vel), id) -- Hunters can jump a little higher. Seeking shouldnt be cumbersome
+			SetToolAmmo("doublejump", math.max(GetToolAmmo("doublejump", id) - 1,0), id)
+		end
+	end
+end
