@@ -5,6 +5,7 @@
 #include shape_utils.lua
 ]]
 
+shared.debug = true
 
 -- Match configuration (lobby / rules)
 server.gameConfig = {
@@ -219,7 +220,7 @@ function server.start(settings)
 	end
 
 	local hideTime = settings.hideTime
-	if GetPlayerCount() == 2 and GetPlayerName(0) == "Host" then hideTime = 2 end 
+	if GetPlayerCount() == 2 and GetPlayerName(0) == "Host" or shared.debug then hideTime = 2 end 
 
 	countdownInit(hideTime, "hidersHiding")
 
