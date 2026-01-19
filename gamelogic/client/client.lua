@@ -72,8 +72,19 @@ client.hint = {
 function client.init()
 	client.assets.rect = LoadSprite("gfx/white.png")
 	client.assets.circle = LoadSprite("gfx/ring.png")
-	client.assets.taunt = LoadSound('MOD/assets/taunt0.ogg')
-	client.assets.propGuy = LoadSound('MOD/assets/propguy0.ogg')
+
+	client.assets.taunt = {}
+	client.assets.taunt[1] = LoadSound('MOD/assets/taunt1.ogg')
+	client.assets.taunt[2] = LoadSound('MOD/assets/taunt2.ogg')
+	client.assets.taunt[3] = LoadSound('MOD/assets/taunt3.ogg')
+	client.assets.taunt[4] = LoadSound('MOD/assets/taunt4.ogg')
+
+	client.assets.propGuy = {}
+	client.assets.propGuy[1] = LoadSound('MOD/assets/propguy1.ogg')
+	client.assets.propGuy[2] = LoadSound('MOD/assets/propguy2.ogg')
+	client.assets.propGuy[3] = LoadSound('MOD/assets/propguy3.ogg')
+	client.assets.propGuy[4] = LoadSound('MOD/assets/propguy4.ogg')
+
 	client.assets.grabHand = LoadSprite("MOD/assets/grab.png")
 end
 
@@ -160,15 +171,11 @@ function client.notify(text)
 	hudShowBanner(text, {0,0,0}) 
 end
 
-function client.tauntBroadcast(pos, id)
-	if GetPlayerName(id) == "The Mafia" and math.random(1,5) ~= 1 then 
-		PlaySound(client.assets.propGuy,pos,2,true,1)
-	end
-
-	if math.random(1, 100) == 50 then 
-		PlaySound(client.assets.propGuy,pos,2,true,1)
+function client.tauntBroadcast(pos, soundID, propguy)
+	if propguy then 
+		PlaySound(client.assets.propGuy[soundID],pos,2,true,1)
 	else
-		PlaySound(client.assets.taunt,pos,2,true,1)
+		PlaySound(client.assets.taunt[soundID],pos,2,true,1)
 	end
 end
 
