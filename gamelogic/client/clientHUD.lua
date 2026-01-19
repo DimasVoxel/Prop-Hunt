@@ -599,13 +599,24 @@ function getPlayerStats() -- This is for the tab button scoreboard
 	local hiderTable = {}
 	local spectators = {}
 
+	local function wasHider(id)
+		for i = 1, #shared.ui.stats.wasHider do 
+		-- need to check if id is in the wasHider table
+			if  shared.ui.stats.wasHider[i][1] == id then
+				return true
+			end
+		end
+		return false
+	end
+
 	for id in Players() do
-		if teamsGetTeamId(id) == 2 then
+		if teamsGetTeamId(id) == 2 and not wasHider(id) then
 			hunterTable[#hunterTable+1] = {
 				player = id,
 				columns = { "Hunter" }
 			}
 		end
+
 
 		if teamsGetTeamId(id) == 1 then
 			hiderTable[#hiderTable+1] = {
@@ -616,9 +627,9 @@ function getPlayerStats() -- This is for the tab button scoreboard
 	end
 
 	for i = 1, #shared.ui.stats.wasHider do
-		hiderTable[#hiderTable+1] = {
+		hunterTable[#hunterTable+1] = {
 			player = shared.ui.stats.wasHider[i][1],
-			columns = { shared.ui.stats.wasHider[i][2] .. " seconds" }
+			columns = { "Found after " ..shared.ui.stats.wasHider[i][2] .."s" }
 		}
 	end
 	for id in Players() do
@@ -652,30 +663,61 @@ function getPlayerStats() -- This is for the tab button scoreboard
 end
 
 function getEndResults() -- This is for the end game scoreboard. Perhaps players found should be a statistic in the future
-	local stats
+	
+
+	local stats = shared.ui.stats
 
 	local hunterTable = {}
 	local hiderTable = {}
-	for i = 1, #shared.ui.stats.originalHunters do
-		hunterTable[#hunterTable+1] = {
-			player = shared.ui.stats.originalHunters[i],
+
+	-- Build lookup tables
+	local originalHunterLookup = {}
+	for i = 1, #stats.originalHunters do
+		originalHunterLookup[stats.originalHunters[i]] = true
+	end
+
+	local wasHiderLookup = {}
+	for i = 1, #stats.wasHider do
+		wasHiderLookup[stats.wasHider[i][1]] = stats.wasHider[i][2]
+	end
+
+	-- Original hunters
+	for i = 1, #stats.originalHunters do
+		hunterTable[#hunterTable + 1] = {
+			player = stats.originalHunters[i],
 			columns = { "Hunter" }
 		}
 	end
 
+	-- Hiders that survived
 	for id in Players() do
-		if teamsGetTeamId(id) == 1 then
-			hiderTable[#hiderTable+1] = {
+		if teamsGetTeamId(id) == 1 and not wasHiderLookup[id] then
+			hiderTable[#hiderTable + 1] = {
 				player = id,
-				columns = { "Survived"}
+				columns = { "Survived" }
 			}
 		end
 	end
-	for i = 1, #shared.ui.stats.wasHider do
-		hiderTable[#hiderTable+1] = {
-			player = shared.ui.stats.wasHider[i][1],
-			columns = { shared.ui.stats.wasHider[i][2] .. " seconds" }
+
+	-- Hiders that were found (with time)
+	for playerId, time in pairs(wasHiderLookup) do
+		hiderTable[#hiderTable + 1] = {
+			player = playerId,
+			columns = { time .. " seconds" }
 		}
+	end
+
+	-- Joined mid game hunters
+	for id in Players() do
+		if teamsGetTeamId(id) == 2
+			and not originalHunterLookup[id]
+			and not wasHiderLookup[id] then
+
+			hunterTable[#hunterTable + 1] = {
+				player = id,
+				columns = { "Joined mid game" }
+			}
+		end
 	end
 
 	if #teamsGetTeamPlayers(1) == 0 then
