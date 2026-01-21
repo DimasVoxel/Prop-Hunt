@@ -456,13 +456,13 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.time",
 							label = "Round Length",
 							info = "How long one round lasts",
-							options = { { label = "06:00", value = 6 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 3 * 60 } }
+							options = { { label = "Auto", value = -1 }, { label = "03:00", value = 3 * 60 }, { label = "06:00", value = 6 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, }
 						},
 						{
 							key = "savegame.mod.settings.hideTime",
 							label = "Hide Time",
 							info = "How much time hiders have to hide",
-							options = {{ label = "00:45", value = 45 }, { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 }, { label = "00:30", value = 30}}
+							options = {{ label = "Auto", value = -1 }, { label = "00:30", value = 30}, { label = "00:45", value = 45 }, { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 },}
 						},
 						{
 							key = "savegame.mod.settings.hidersJoinHunters",
@@ -495,16 +495,16 @@ function client.SetupScreen(dt)
 							options = {{ label = "Disable", value = 0 },  { label = "Enable", value = 1 } }
 						},
 						{
-							key = "savegame.mod.settings.hintTimer",
-							label = "Hunter Hints",
+							key = "savegame.mod.settings.distanceHintTimer",
+							label = "Distance Hints",
 							info = "Timer when Hunters get a hint",
-							options = {{ label = "45 Seconds", value = 45}, { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -1}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30}}
+							options = {{ label = "Auto", value = -1}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30},{ label = "45 Seconds", value = 45}, { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -2}}
 						},
 						{
-							key = "savegame.mod.settings.enableHunterHints",
+							key = "savegame.mod.settings.ringHintTimer",
 							label = "Hunter Hints",
 							info ="Enable or disable hints.",
-							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+							options = {{ label = "Auto", value = -1}, { label = "30 Seconds", value = 30}, { label = "45 Seconds", value = 45}, { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -2},}
 						},
 						{
 							key = "savegame.mod.settings.doubleJumpReload",
@@ -516,7 +516,7 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.hunterBulletReloadTimer",
 							label = "Bullet Reload",
 							info ="How quickly hunters get new bullets.",
-							options = {{ label = "4 Seconds", value = 4}, { label = "5 Seconds", value = 5},  { label = "6 Seconds", value = 6}, { label = "7 Seconds", value = 7}, { label = "8 Seconds", value = 8}, { label = "9 Seconds", value = 9}, { label = "10 Seconds", value = 10}, { label = "1 Second", value = 1}, { label = "2 Seconds", value = 2}, { label = "3 Seconds", value = 3}}
+							options = { { label = "Auto", value = -1}, { label = "1 Second", value = 1}, { label = "2 Seconds", value = 2}, { label = "3 Seconds", value = 3}, { label = "4 Seconds", value = 4}, { label = "5 Seconds", value = 5},  { label = "6 Seconds", value = 6}, { label = "7 Seconds", value = 7}, { label = "8 Seconds", value = 8}, { label = "9 Seconds", value = 9}, { label = "10 Seconds", value = 10}, }
 						},
 						{
 							key = "savegame.mod.settings.hunterPipebombReloadTimer",
@@ -540,25 +540,25 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.minimumSizeLimit",
 							label = "Min. Size Limits",
 							info ="Enables the minimum Size limit.",
-							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+							options = { { label = "Auto", value = -1 }, { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
 							key = "savegame.mod.settings.maximumSizeLimit",
 							label = "Max. Size Limits",
 							info ="Enables the max Size limit.",
-							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+							options = { { label = "Auto", value = -1 }, { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
 							key = "savegame.mod.settings.transformCooldown",
 							label = "Prop Cooldown",
 							info ="How quickly hiders can switch from one prop to another.",
-							options = { { label = "3 Seconds", value = 3}, { label = "5 Seconds", value = 5}, { label = "8 Seconds", value = 8}, { label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15} }
+							options = { { label = "8 Seconds", value = 8}, { label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15}, { label = "3 Seconds", value = 3}, { label = "5 Seconds", value = 5} }
 						},
 						{
 							key = "savegame.mod.settings.allowallowallowFriendlyFire",
 							label = "Kick Friendly Fire",
 							info ="If enabled players that kill too many players will be kicked.",
-							options = { { label = "Disable", value = 0 }, { label = "Enable", value = 1 } }
+							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 }, }
 						}
 					}
 				}
@@ -574,11 +574,11 @@ function client.SetupScreen(dt)
 					hunterBulletReloadTimer = GetInt("savegame.mod.settings.hunterBulletReloadTimer"),
 					hunterPipebombReloadTimer = GetInt("savegame.mod.settings.hunterPipebombReloadTimer"),
 					hunterBluetideReloadTimer = GetInt("savegame.mod.settings.blueTide"),
-					hunterHintTimer = GetInt("savegame.mod.settings.hintTimer"),
+					distanceHintTimer = GetInt("savegame.mod.settings.distanceHintTimer"),
+					ringHintTimer = GetInt("savegame.mod.settings.ringHintTimer"),
 					hiderTauntReloadTimer = GetInt("savegame.mod.settings.hiderTauntReloadTimer"),
 					hidersJoinHunters = GetInt("savegame.mod.settings.hidersJoinHunters"),
 					midGameJoin = GetInt("savegame.mod.settings.midGameJoin"),
-					enableHints = GetInt("savegame.mod.settings.enableHunterHints"),
 					minimumSizeLimit = GetInt("savegame.mod.settings.minimumSizeLimit"),
 					maximumSizeLimit = GetInt("savegame.mod.settings.maximumSizeLimit"),
 					allowFriendlyFire = GetInt("savegame.mod.settings.allowFriendlyFire"),

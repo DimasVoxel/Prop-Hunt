@@ -4,16 +4,18 @@ function server.playersTick(dt)
 end
 
 function server.handleHints(dt)
-	if helperIsHuntersReleased() and server.gameConfig.enableHunterHints then
 
+	local function lastHint()
+		if server.state.time < 30 then
+			-- We make sure that the last hint wont get spammed
+			server.state.triggerLastHint = true
+		end
+	end
+
+	if helperIsHuntersReleased() and server.gameConfig.distanceHintTimer ~= false then
 		-- We trigger a hint if hint timer gets to 0, and during the last 30 seconds we force one last hint.
-		if server.timers.hunterHintTimer <= GetTime() or server.state.time < 30 and server.state.triggerLastHint == false then
-			if server.state.time < 30 then
-				-- We make sure that the last hint wont get spammed
-				server.state.triggerLastHint = true
-			end
-
-			server.timers.hunterHintTimer = GetTime() + server.gameConfig.hunterHintTimer
+		if server.timers.distanceHintTimer <= GetTime() or server.state.time < 30 and server.state.triggerLastHint == false then
+			server.timers.distanceHintTimer = GetTime() + server.gameConfig.distanceHintTimer
 			for id in Players() do 
 				if helperIsPlayerHunter(id) then 
 					server.TriggerHint(id, 1)
@@ -21,20 +23,34 @@ function server.handleHints(dt)
 					server.TriggerHint(id, 2)
 				end
 			end
-
-            server.circleHint()
 		end
+		lastHint()
+	end
 
-		local hints = shared.hint.circleHint
-		for i = #hints, 1, -1 do
-			local hint = hints[i]
-			if hint and hint.timer then
-				local t = hint.timer - dt
-				if t <= 0 then
-					table.remove(hints, i)
-				else
-					hint.timer = t
-				end
+	if helperIsHuntersReleased() and server.gameConfig.ringHintTimer ~= false then
+		-- We trigger a hint if hint timer gets to 0, and during the last 30 seconds we force one last hint.
+		if server.timers.ringHintTimer <= GetTime() or server.state.time < 30 and server.state.triggerLastHint == false then
+			server.timers.ringHintTimer = GetTime() + server.gameConfig.ringHintTimer
+			server.circleHint()
+		end
+		lastHint()
+	end
+
+	
+	local hints = shared.hint.circleHint
+	for i = #hints, 1, -1 do
+		local hint = hints[i]
+		if hint and hint.timer then
+			local t
+			if helperIsPlayerHunter(hint.playerid) then
+				t = hint.timer - dt * 5
+			else
+				t = hint.timer - dt
+			end
+			if t <= 0 then
+				table.remove(hints, i)
+			else
+				hint.timer = t
 			end
 		end
 	end
@@ -42,7 +58,7 @@ end
 
 function server.noHunterSituation()
 	if #teamsGetTeamPlayers(2) == 0 and teamsIsSetup() then
-		local id = teamsGetTeamPlayers(1)[#teamsGetTeamPlayers(1)] -- TODO: Change this to chose a random hider instead
+		local id = teamsGetTeamPlayers(1)[math.random(1, #teamsGetTeamPlayers(1))]
 
 		eventlogPostMessage({id, "Was moved to Hunter because all hunters left"  })
 		Delete(shared.players.hiders[id].propBody)
@@ -125,7 +141,7 @@ function server.circleHint()
 			shared.hint.circleHint[#shared.hint.circleHint].transform = hintTransform
 			shared.hint.circleHint[#shared.hint.circleHint].diameter = diameter
 			shared.hint.circleHint[#shared.hint.circleHint].playerid = hiderId
-			shared.hint.circleHint[#shared.hint.circleHint].timer = shared.serverTime + server.gameConfig.hunterHintTimer / 1.5
+			shared.hint.circleHint[#shared.hint.circleHint].timer = shared.serverTime + server.gameConfig.ringHintTimer / 1.5
 		end
     end
 end

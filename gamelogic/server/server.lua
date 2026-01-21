@@ -1,11 +1,13 @@
 --[[
+#include serverMapAnalyser.lua
+#include serverSettings.lua
 #include serverHider.lua
 #include serverHunter.lua
 #include serverAllPlayer.lua
 #include shape_utils.lua
 ]]
 
-shared.debug = true
+shared.debug = false
 
 -- Match configuration (lobby / rules)
 server.gameConfig = {
@@ -14,8 +16,11 @@ server.gameConfig = {
 	hunterBulletReloadTimer = 5,
 	hunterPipebombReloadTimer = 10,
 	hunterBluetideReloadTimer = 20,
-	hunterHintTimer = 45,
+	distanceHintTimer = 45,
+	ringHintTimer = 45,
+
 	hiderTauntReloadTimer = 10,
+	hidetime = 45,
 
 	midGameJoin = true,
 	hidersJoinHunters = true,
@@ -27,6 +32,7 @@ server.gameConfig = {
 	minimumSizeLimit = true,
 	transformCooldown = 5,
 
+	
 	--Server Config only
 	unhideCooldown = 0.6, -- Cant be configured
 	outOfBoundsCoolDown = 5, -- Cant be configured
@@ -52,7 +58,8 @@ server.timers = {
 	hunterBulletReloadTimer = 0,
 	hunterPipebombReloadTimer = 0,
 	hunterBluetideReloadTimer = 0,
-	hunterHintTimer = 15,
+	distanceHintTimer = 15,
+	ringHintTimer = 30,
 	hiderTauntReloadTimer = 0,
 	nextMapTimer = 0,
 	hunterDoubleJumpTimer = 0
@@ -111,6 +118,8 @@ server.shotgunDefaults = {
 	fallOffStart = 0
 }
 
+server.mapdata = {}
+
 function server.init()
 	RegisterTool("doublejump", "Double Jump", "MOD/assets/doublejump.vox", 2)
 
@@ -139,6 +148,8 @@ function server.init()
 	SetInt('game.tool.shotgun.damage', 2, true)
 	SetInt('game.tool.shotgun.range', 10, true)
 	SetInt('game.tool.shotgun.falloffDamage', 0.02, true)
+
+	server.analysis()
 end
 
 function server.initHider(id)
@@ -171,70 +182,11 @@ function server.initHider(id)
 	server.players.hiders[id].standStillPosition = Vec()
 end
 
-function server.start(settings)
-	server.state.time = settings.time
-	shared.state.time = math.floor(server.state.time)
-
-	server.gameConfig.roundLength = settings.time
-	server.gameConfig.huntersStartAmount = settings.huntersStartAmount
-
-	server.gameConfig.hunterBulletReloadTimer = settings.hunterBulletReloadTimer
-	server.gameConfig.hunterPipebombReloadTimer = settings.hunterPipebombReloadTimer
-	server.gameConfig.hunterBluetideReloadTimer = settings.hunterBluetideReloadTimer
-	server.gameConfig.hunterHintTimer = settings.hunterHintTimer
-	server.gameConfig.hiderTauntReloadTimer = settings.hiderTauntReloadTimer
-	server.gameConfig.transformCooldown = settings.transformCooldown
-	server.gameConfig.hunterDoubleJumpReloadTimer = settings.hunterJumpReload
-
-	-- The gameConfig function doesnt support bools? Therefor I am converting them here
-	server.gameConfig.midGameJoin = settings.midGameJoin == 1
-	server.gameConfig.hidersJoinHunters = settings.hidersJoinHunters == 1
-	server.gameConfig.allowFriendlyFire = settings.allowFriendlyFire == 1
-	server.gameConfig.enforceGameStartHunterAmount = settings.enforceGameStartHunterAmount == 1
-	server.gameConfig.randomTeams = settings.randomTeams == 1
-	server.gameConfig.enableHunterHints = settings.enableHints == 1
-
-	shared.gameConfig.transformCooldown = settings.transformCooldown
-	shared.gameConfig.minimumSizeLimit = settings.minimumSizeLimit == 1
-	shared.gameConfig.maximumSizeLimit = settings.maximumSizeLimit == 1
-
-	server.timers.hunterHintTimer = 15  -- First hint will be triggered in 15 seconds 
-
-	if settings.hunterPipebombReloadTimer == -1 then
-		server.gameConfig.hunterPipeBombEnabled = false
-	else
-		server.gameConfig.hunterPipeBombEnabled = true
-	end
-
-	if settings.hunterBluetideReloadTimer == -1 then
-		server.gameConfig.bluetideEnabled = false
-	else
-		server.gameConfig.bluetideEnabled = true
-	end
-
-
-	--room has to be spawned here and not in init or the screens won't work
-	server.hasPlacedHuntersInRoom = false
-	if #server.game.spawnedForHunterRoom <= 0 then
-		server.game.spawnedForHunterRoom = Spawn("MOD/hunter_room.xml", Transform(Vec(0,1000,0)), true)
-	end
-
-	local hideTime = settings.hideTime
-	if GetPlayerCount() == 2 and GetPlayerName(0) == "Host" or shared.debug then hideTime = 2 end 
-
-	countdownInit(hideTime, "hidersHiding")
-
-	teamsStart(false)
-
-	SetBool("level.sandbox", false, true)
-	SetBool("level.unlimitedammo", false, true)
-	SetBool("level.spawn", false, true)
-	SetBool("level.creative", false, true)
-end
-
 function server.update()
 	if helperIsGameOver() then return end
 	server.hiderUpdate()
+
+	--AutoDrawAABB(dynamicProps.Mapaa, dynamicProps.Mapbb, 1,1,1,1,true,false)
 end
 
 function server.nextMap()

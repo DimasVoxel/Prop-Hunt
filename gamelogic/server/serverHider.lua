@@ -349,7 +349,13 @@ function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 
 		-- Create new Clone Shape and keep a backup copy to regenerate if damaged
 		local newBody, newShape = server.cloneShape(propid)
+		local t = GetShapeLocalTransform(shape)
+		SetShapeLocalTransform(newShape, Transform(Vec(0,0,0), t.rot))
+		
 		local backUpBody, backUpShape = server.cloneShape(propid) -- We clone twice if the prop gets damaged we regenerate using the backup
+		local t = GetShapeLocalTransform(shape)
+		SetShapeLocalTransform(backUpShape, Transform(Vec(0,0,0), t.rot))
+
 		local emissiveScale = GetProperty(shape, "emissiveScale")
 		SetProperty(backUpShape, "emissiveScale", emissiveScale * 2)
 		SetProperty(newShape, "emissiveScale", emissiveScale * 2)
@@ -469,20 +475,12 @@ function server.disableBodyCollission(body, bool)
 end
 
 function server.makePropBreakable( body )
-	local lookUpTable = {}
-	lookUpTable["hardmetal"] = "weakmetal"
-	lookUpTable["heavymetal"] = "weakmetal"
-	lookUpTable["hardmasonry"] = "masonry"
-	lookUpTable["rock"] = "plastic"
-
 	local shape = GetBodyShapes(body)[1]
 	local palette = GetShapePaletteContent(shape)
 
 	for i = 1, #palette do
 		local mat = palette[i].material
-		if lookUpTable[mat] then
-			palette[i].material = lookUpTable[mat]
-		end
+		palette[i].material = "wood" -- We make this so that props can burn
 	end
 
 	SetShapePaletteContent(shape, palette)

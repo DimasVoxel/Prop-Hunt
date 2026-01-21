@@ -419,18 +419,8 @@ function _teamsAssignPlayers()
         local allPlayers = GetAllPlayers()
         local totalPlayers = #allPlayers
 
-        -- Clamp hunters so at least one hider
-        local huntersStartAmount = 1
-        if server.gameConfig.huntersStartAmount == -1 then
-            local total = GetPlayerCount()
-            if total < 7 then 
-                huntersStartAmount = 1
-            else
-                huntersStartAmount = 2
-            end
-        else
-            huntersStartAmount = math.min(server.gameConfig.huntersStartAmount, totalPlayers - 1)
-        end
+        local huntersStartAmount = math.min(server.gameConfig.huntersStartAmount, totalPlayers - 1)
+        DebugPrint( huntersStartAmount)
 
         local randomTeams = server.gameConfig.randomTeams
         local enforceGameStartHunterAmount = server.gameConfig.enforceGameStartHunterAmount
