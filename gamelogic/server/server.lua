@@ -20,7 +20,7 @@ server.gameConfig = {
 	ringHintTimer = 45,
 
 	hiderTauntReloadTimer = 10,
-	hidetime = 45,
+	hideTime = 45,
 
 	midGameJoin = true,
 	hidersJoinHunters = true,
@@ -76,7 +76,9 @@ server.moderation = {}
 
 server.assets = {
 	taunt = 0,
-	handSprite = 0
+	handSprite = 0,
+	walkingSound = 0,
+	runningSound = 0,
 }
 
 -- All other game related variables
@@ -122,6 +124,9 @@ server.mapdata = {}
 
 function server.init()
 	RegisterTool("doublejump", "Double Jump", "MOD/assets/doublejump.vox", 2)
+
+	server.assets.walkingSound = LoadLoop("MOD/assets/walk.ogg", 8)
+	server.assets.runningSound = LoadLoop("MOD/assets/run.ogg", 8)
 
 	hudInit(true)
 	hudAddUnstuckButton()

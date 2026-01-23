@@ -74,16 +74,21 @@ function client.init()
 	client.assets.circle = LoadSprite("gfx/ring.png")
 
 	client.assets.taunt = {}
-	client.assets.taunt[1] = LoadSound('MOD/assets/taunt1.ogg')
-	client.assets.taunt[2] = LoadSound('MOD/assets/taunt2.ogg')
-	client.assets.taunt[3] = LoadSound('MOD/assets/taunt3.ogg')
-	client.assets.taunt[4] = LoadSound('MOD/assets/taunt4.ogg')
+	client.assets.taunt[1] = LoadSound('MOD/assets/taunt1.ogg', 3)
+	client.assets.taunt[2] = LoadSound('MOD/assets/taunt2.ogg', 3)
+	client.assets.taunt[3] = LoadSound('MOD/assets/taunt3.ogg', 3)
+	client.assets.taunt[4] = LoadSound('MOD/assets/taunt4.ogg', 3)
 
 	client.assets.propGuy = {}
-	client.assets.propGuy[1] = LoadSound('MOD/assets/propguy1.ogg')
-	client.assets.propGuy[2] = LoadSound('MOD/assets/propguy2.ogg')
-	client.assets.propGuy[3] = LoadSound('MOD/assets/propguy3.ogg')
-	client.assets.propGuy[4] = LoadSound('MOD/assets/propguy4.ogg')
+	client.assets.propGuy[1] = LoadSound('MOD/assets/propguy1.ogg', 3)
+	client.assets.propGuy[2] = LoadSound('MOD/assets/propguy2.ogg', 3)
+	client.assets.propGuy[3] = LoadSound('MOD/assets/propguy3.ogg', 3)
+	client.assets.propGuy[4] = LoadSound('MOD/assets/propguy4.ogg', 3)
+
+	client.assets.jumpSound = {}
+	client.assets.jumpSound[1] = LoadSound('MOD/assets/jump1.ogg', 3)
+	client.assets.jumpSound[2] = LoadSound('MOD/assets/jump2.ogg', 3)
+	client.assets.jumpSound[3] = LoadSound('MOD/assets/jump3.ogg', 3)
 
 	client.assets.grabHand = LoadSprite("MOD/assets/grab.png")
 end
@@ -199,7 +204,7 @@ function client.kick()
 	Menu()
 end
 
-function client.jumpCloud(id, pos)
+function client.jumpCloud(id, pos, soundID)
 	if GetLocalPlayer() == id then return end
 	DebugPrint("fart")
 	ParticleReset()
@@ -207,5 +212,6 @@ function client.jumpCloud(id, pos)
 	ParticleColor(0.8, 1, 0.8)
 	--Spawn particle at world origo with upwards velocity and a lifetime of ten seconds
 	SpawnParticle(pos, Vec(0, -0.5, 0), 2)
+	PlaySound(client.assets.jumpSound[soundID], pos, 1, true, 1)
 end
 
