@@ -1,4 +1,4 @@
-function IsLandAtXZ(x, z)
+function server.isLandAtXZ(x, z)
     local origin = Vec(x, 100, z)
     local dir = Vec(0, -1, 0)
     local maxDist = 2000
@@ -14,7 +14,7 @@ function IsLandAtXZ(x, z)
     return false
 end
 
-function SamplePlayableAreaGrid(gridStep)
+function server.samplePlayableAreaGrid(gridStep)
     gridStep = gridStep or 10
 
     local worldAA, worldBB = GetBodyBounds(GetWorldBody())
@@ -35,7 +35,7 @@ function SamplePlayableAreaGrid(gridStep)
                 if not Zneg or z < Zneg[3] then Zneg = Vec(x, 0, z) end
 
                 -- Land vs water
-                if IsLandAtXZ(x, z) then
+                if server.isLandAtXZ(x, z) then
                     landSamples = landSamples + 1
                 else
                     waterSamples = waterSamples + 1
@@ -55,7 +55,7 @@ function SamplePlayableAreaGrid(gridStep)
 end
 
 
-function DetectLevelsGaussian(heights, binSize, threshold)
+function server.detectLevelsGaussian(heights, binSize, threshold)
     binSize = binSize or 4      -- vertical bin size
     threshold = threshold or 10   -- minimum number of props to count as a level
 
@@ -95,7 +95,7 @@ function DetectLevelsGaussian(heights, binSize, threshold)
     return levelCount, bins
 end
 
-function CollectPropHeightsWithRefs()
+function server.collectPropHeightsWithRefs()
     local props = {}
 
 	local vehicle = FindVehicles("", true)
@@ -130,7 +130,7 @@ function CollectPropHeightsWithRefs()
     return props
 end
 
-function BuildHeightHistogram(heights, binSize)
+function server.buildHeightHistogram(heights, binSize)
     binSize = binSize or 1
 
     local minY, maxY = math.huge, -math.huge
@@ -152,7 +152,7 @@ function BuildHeightHistogram(heights, binSize)
     return bins, minY, binSize
 end
 
-function SmoothHistogram(bins, radius)
+function server.smoothHistogram(bins, radius)
     radius = radius or 3
     local smoothed = {}
 
@@ -172,7 +172,7 @@ function SmoothHistogram(bins, radius)
     return smoothed
 end
 
-function DetectDensityLevels(density)
+function server.detectDensityLevels(density)
     local avg = 0
     for i = 1, #density do avg = avg + density[i] end
     avg = avg / math.max(1, #density)
@@ -194,11 +194,11 @@ function DetectDensityLevels(density)
     return levelBins
 end
 
-function DetectPropLevelsWithProps(binSize, smoothRadius)
+function server.detectPropLevelsWithProps(binSize, smoothRadius)
     binSize = binSize or 1
     smoothRadius = smoothRadius or 3
 
-    local props = CollectPropHeightsWithRefs()
+    local props = server.collectPropHeightsWithRefs()
     if #props == 0 then
         return {
             levelCount = 0,
@@ -213,9 +213,9 @@ function DetectPropLevelsWithProps(binSize, smoothRadius)
     end
 
     -- Density analysis
-    local bins, minY, binSize = BuildHeightHistogram(heights, binSize)
-    local density = SmoothHistogram(bins, smoothRadius)
-    local levelBins = DetectDensityLevels(density)
+    local bins, minY, binSize = server.buildHeightHistogram(heights, binSize)
+    local density = server.smoothHistogram(bins, smoothRadius)
+    local levelBins = server.detectDensityLevels(density)
 
     -- Convert level bins to Y positions
     local levels = {}
@@ -250,7 +250,7 @@ function DetectPropLevelsWithProps(binSize, smoothRadius)
 end
 
 function server.analysis()
-    local area = SamplePlayableAreaGrid(3)
+    local area = server.samplePlayableAreaGrid(3)
     if not area then return end
 
     local aa = Vec(area.Xneg[1], 0, area.Zneg[3])
@@ -396,7 +396,7 @@ function server.analysis()
     -- DebugWatch("WaterRatio", analysis.WaterRatio)
 	-- DebugWatch("PropToAreaRatio", analysis.PropToLandRatio)
 
-	local result = DetectPropLevelsWithProps(1, 3)
+	local result = server.detectPropLevelsWithProps(1, 3)
     analysis.levels = result.levels
 
     server.mapdata = analysis

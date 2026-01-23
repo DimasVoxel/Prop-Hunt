@@ -63,7 +63,7 @@ function server.setTimeSetting(settings)
 		if server.mapdata.SizeMedium > 6000 then 
 			baseTime = baseTime + 2
 		end
-		if server.mapdata.MapArea > 800 then 
+		if server.mapdata.MapArea > 800 and #server.mapdata.levels >= 2 then 
 			baseTime = baseTime + 2
 		end
 		if server.mapdata.MapArea > 1000 then 
@@ -90,6 +90,7 @@ function server.setTimeSetting(settings)
     DebugPrint("Round Lenght Auto Settings:" .. server.gameConfig.roundLength/60)
     server.state.time = server.gameConfig.roundLength
 	shared.state.time = math.floor(server.state.time)
+    shared.gameConfig.roundLength = server.state.time
 end
 
 function server.setBulletReloadTime(settings)
@@ -164,7 +165,7 @@ function server.setHunterAmount(settings)
         end
 
         if server.mapdata.MapArea > 800 and #server.mapdata.levels >= 2 or server.mapdata.MapArea > 1400 then
-            percent = percent + 0.5
+            percent = percent + 0.05
         end
 
         if server.mapdata.MapArea < 150 and server.mapdata.SizeMedium < 200 then
@@ -220,7 +221,7 @@ end
 function server.setEnableMinSizeLimit(settings)
     if settings.minimumSizeLimit == -1 then
         server.gameConfig.minimumSizeLimit = true
-        if server.mapdata.SizeMedium < 200 then 
+        if server.mapdata.SizeMedium < 150 then 
             server.gameConfig.minimumSizeLimit = false 
         end
         if server.mapdata.MapArea < 70 then 
