@@ -125,8 +125,8 @@ server.mapdata = {}
 function server.init()
 	RegisterTool("doublejump", "Double Jump", "MOD/assets/doublejump.vox", 2)
 
-	server.assets.walkingSound = LoadLoop("MOD/assets/walk.ogg", 8)
-	server.assets.runningSound = LoadLoop("MOD/assets/run.ogg", 8)
+	server.assets.walkingSound = LoadLoop("MOD/assets/walk.ogg", 10)
+	server.assets.runningSound = LoadLoop("MOD/assets/run.ogg", 10)
 
 	hudInit(true)
 	hudAddUnstuckButton()

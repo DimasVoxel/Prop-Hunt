@@ -66,13 +66,6 @@ function server.hiderTick(dt)
 
         local propBody = helperGetPlayerPropBody(id)
         if propBody then
-            for _, playerId in ipairs(teamsGetTeamPlayers(1)) do
-                -- You cant grab other hiders props and throw them into the ocean for example
-                if GetPlayerGrabBody() == helperGetPlayerPropBody(playerId) then
-                    ReleasePlayerGrab()
-                end
-            end
-
              -- Placing this here means that if the game ends all players become visible since hiderTick wont get called in the endscreen
              -- May need to be rethought
             SetPlayerHidden(id)
@@ -83,9 +76,17 @@ function server.hiderTick(dt)
                 -- If player is placed / hidden then prop gets collission with world but not with player
                 SetPlayerParam("collisionMask", 1 , id)
                 SetPlayerParam("walkingSpeed", 0, id)
+				ReleasePlayerGrab(id)
             end
 		elseif not propBody and helperIsHuntersReleased() then
 			SetPlayerParam("godmode", false, id)
+		end
+
+		local velocity = GetPlayerVelocity(id)
+		local speed = VecLength(velocity)
+		if speed > 1 and IsPlayerGrounded(id) then
+			PlayLoop(server.assets.walkingSound, GetPlayerTransform(id).pos, math.max(0, speed / 6), true, math.max(0, speed / 7))
+			PlayLoop(server.assets.runningSound, GetPlayerTransform(id).pos, math.max(0, speed / 10), true, math.max(0, speed / 7))
 		end
 
 		server.handleHiderPlayerDamage(id)
@@ -132,6 +133,8 @@ function server.hiderUpdate()
 					if shared.players.hiders[id].stamina == 0 then 
 						shared.players.hiders[id].staminaCoolDown = GetTime() + 10
 					end
+
+					PlayLoop(server.assets.runningSound, GetPlayerTransform(id).pos, math.max(0, speed / 3.5), true, math.max(0, speed / 7))
 				else
 					shared.players.hiders[id].stamina = math.min(shared.players.hiders[id].stamina + GetTimeStep()/8, shared.gameConfig.staminaSeconds)
 				end
@@ -269,7 +272,7 @@ function server.handleHiderPlayerDamage(id) -- In Tic
 		end
 	else
 		local playerTransform = GetPlayerTransform(id)
-		if not IsPointInWater(VecAdd(playerTransform.pos),Vec(0,0.5,0)) or not helperIsHuntersReleased() then 
+		if not IsPointInWater(VecAdd(playerTransform.pos,Vec(0,0.5,0))) or not helperIsHuntersReleased() then 
 			shared.players.hiders[id].damageTick = GetTime()
 			shared.players.hiders[id].environmentalDamageTrigger = false
 		else
@@ -351,6 +354,7 @@ function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 		local newBody, newShape = server.cloneShape(propid)
 		local t = GetShapeLocalTransform(shape)
 		SetShapeLocalTransform(newShape, Transform(Vec(0,0,0), t.rot))
+		SetTag(newBody,"bounded")
 		
 		local backUpBody, backUpShape = server.cloneShape(propid) -- We clone twice if the prop gets damaged we regenerate using the backup
 		local t = GetShapeLocalTransform(shape)
@@ -409,6 +413,7 @@ function server.propRegenerate(playerid)
 		-- Therefor I will keep it like this for now 
 		-- #Todo: could perhaps use voxel count instead of is broken?
 		local newBody, newShape = server.cloneShape(backupShape) 
+		SetTag(newBody,"bounded")
 
 		SetBodyTransform(newBody, GetPlayerTransform(playerid))
 		SetBodyDynamic(newBody, true)
