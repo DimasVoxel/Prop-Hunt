@@ -204,7 +204,7 @@ function client.hiderDraw(dt)
 					UiTranslate(7,125)
 					UiText("Press ( E ) to transform\n\nPress & hold ( LMB ) to Taunt\nPress & Hold ( Shift ) to Sprint\nWater will kill you!\n\nPress ( G ) to close.")
 					if helperGetHiderStandStillTime(GetLocalPlayer()) > 5 then
-						UiTextOutline(0.6, 0.6, 0.6, (math.sin((GetTime()*4))/2)-0.5+helpTextHider.openA, 0.4)
+						UiTextOutline(0.94, 0.94, 0.47, Pulse(-1, 0, 4)+helpTextHider.openA, 0.4)
 					end
 					UiText("Press ( F ) to hide\n\n\n\n\n ")
 				UiPop()
@@ -219,7 +219,7 @@ function client.hiderDraw(dt)
 				UiAlign("center middle")
 				UiColor(1, 1, 1, helpTextHider.closedA)
 				if helperGetHiderStandStillTime(GetLocalPlayer()) > 5 then
-					UiTextOutline(0.6, 0.6, 0.6, (math.sin((GetTime()*4))/2)-0.5+helpTextHider.closedA, 0.4)
+					UiTextOutline(0.94, 0.94, 0.47, Pulse(-1, 0, 4)+helpTextHider.closedA, 0.4)
 				end
 				UiText("Press ( G ) to open.")
 			UiPop()
@@ -254,8 +254,7 @@ function client.hiderDraw(dt)
 						UiAlign("center middle")
 						UiTextAlignment("center")
 						UiTranslate(140, -35)
-						local alpha = (math.sin((GetTime()*7))/2)+0.5
-						UiColor(1,1,1,alpha)
+						UiColor(1,1,1,Pulse(0, 1, 7))
 						UiText("Taking water damage!") --TODO make say what type of damage when fire dmg implemented
 						
 						UiSoundLoop("MOD/assets/taking_env_damage.ogg")
@@ -284,16 +283,44 @@ function client.hiderDraw(dt)
 					local maxStamina = shared.gameConfig.staminaSeconds
 					local stamina = shared.players.hiders[GetLocalPlayer()].stamina
 					local barColor = {0.02, 0.49, 0.82, 1}
+					local barBlink = 0
+					if client.player.jumpTimer > GetTime() and not IsPlayerGrounded() and shared.players.hiders[GetLocalPlayer()].stamina > 1.5 then--if more than half and jumping
+						barBlink = maxStamina/2
+					end
 					if math.max(shared.players.hiders[GetLocalPlayer()].staminaCoolDown - shared.serverTime, 0) ~= 0 then
 						barColor = {0.6, 0.2, 0.2, 1}
 					end
-					ProgressBar(true, 25, 250, stamina, maxStamina, 13, barColor, 2, 0)
+					ProgressBar(true, 25, 250, stamina, maxStamina, 13, barColor, 0, barBlink)
 				end
 				UiTranslate(256)
 				UiAlign("right middle")
 				UiRotate(180)
 				UiColor(1,1,1,1)
 				UiImageBox("MOD/assets/run_graphic.png", 25, 25)
+			UiPop()
+
+			--double jump
+			UiPush()
+				UiAlign("right middle")
+				UiTranslate(-410)
+				RoundedBlurredRect(80, 35, 10, 0.5, {0,0,0,0.6})
+				UiAlign("center middle")
+
+				UiTranslate(-57.5)
+				UiImageBox("MOD/assets/double_jump_graphic.png", 25, 25)
+
+				UiTranslate(35)
+				if shared.players.hiders[GetLocalPlayer()].stamina < 1.5 then--if not more than half
+					UiColor(0, 0, 0, 1)
+				else
+					UiColor(0.02, 0.49, 0.82, 1)
+				end
+				UiRoundedRect(25,25,12.5)
+
+				if client.player.jumpTimer > GetTime() and not IsPlayerGrounded() and shared.players.hiders[GetLocalPlayer()].stamina > 1.5 then--if more than half and jumping
+					UiColor(1, 1, 1, Pulse(0,1,7))
+					UiRoundedRect(25,25,12.5)
+				end
 			UiPop()
 
 			--center info

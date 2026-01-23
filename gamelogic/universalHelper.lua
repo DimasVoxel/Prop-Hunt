@@ -179,3 +179,9 @@ end
 function expDecay(val, target, decay, dt)
 	return target + (val - target) * math.exp(-decay * dt)
 end
+
+--returns a number that pulses between min and max using a sine wave and GetTime, with given frequency
+function Pulse(min, max, opt_freq)
+	opt_freq = opt_freq or 1
+	return (math.sin(GetTime()*opt_freq)*((max-min)/2))+((min+max)/2)
+end
