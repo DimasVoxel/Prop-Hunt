@@ -304,7 +304,7 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 	
 	local dt = GetTimeStep()
 	_scoreresults_anim.time = _scoreresults_anim.time + dt
-
+	
 	UiPush()
 	if not hudDrawResultsAnimation(_scoreresults_anim.time, bannerLabel, bannerColor) then
 		return 0, 0, 0
@@ -316,68 +316,134 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 	for i = 1, #groups do
 		groups[i].dim = i > 1
 	end
+
+	
 	-- apply animation
 	UiTranslate(0, UiMiddle())
 	UiColorFilter(1,1,1, math.sqrt(_scoreresults_anim.param))
 	--UiScale(1, math.sqrt(_scoreresults_anim.param))
 	UiTranslate(0, -UiMiddle())
 
-	UiPush()
-		UiTranslate(UiCenter(), UiMiddle())
-		local boardWith, boardHeight = _drawBoard(title, columns, groups, true, false, #groups == 1)
-	UiPop()
+	if client.ui.hideUi == false then
+		UiPush()
+			UiTranslate(UiCenter(), UiMiddle())
+			local boardWith, boardHeight = _drawBoard(title, columns, groups, true, false, #groups == 1)
+		UiPop()
 
-	UiPush()
-		local y = UiMiddle() + boardHeight/2 + 20
-		UiAlign("center top")
-		UiTranslate(UiCenter(), y)
+		UiPush()
+			local y = UiMiddle() + boardHeight/2 + 20
+			UiAlign("center top")
+			UiTranslate(UiCenter(), y)
 
-		if IsPlayerHost() then
-			UiTranslate(0, 40)
 			UiMakeInteractive()
+			if IsPlayerHost() then
+				UiTranslate(0, 40)
+
+
+				local buttonHeight = 40
+				local buttonWidth = 290
+
+				local gap = 10
+				local padding = 20
+
+				uiDrawPanel(buttonWidth + 2*padding, buttonHeight + gap + padding + buttonHeight + gap + buttonHeight + padding, 16)
+
+				UiPush()
+					UiTranslate(0, 20)
+					if uiDrawSecondaryButton("Game Modes", buttonWidth) then
+						SetBool("game.pausemenu.gamemodes", true)
+					end
+
+					UiTranslate(0, buttonHeight + gap)
+
+					if uiDrawSecondaryButton("Play new Random Map", buttonWidth) then
+						ServerCall("server.loadRandomMap")
+					end
+
+					UiTranslate(0, buttonHeight + gap)
+
+					if shared.state.loadNextMap == true then
+						if uiDrawPrimaryButton("Cancel", buttonWidth) then
+							ServerCall("server.cancelNextMap")
+						end
+					else
+						if uiDrawPrimaryButton(continueLabel, buttonWidth) then
+							if continueFunction ~= nil then
+								continueFunction()
+							else
+								SetString("game.gamemode.next", GetString("game.gamemode"))
+							end
+						end
+					end
+
+					UiTranslate(0, 90)
+					uiDrawPanel(buttonWidth - 20 + padding,  padding + buttonHeight + padding, 16)
+					UiTranslate(0, 20)
+
+					if uiDrawSecondaryButton("Hide Ui", buttonWidth - 20) then
+						client.ui.hideUi = not client.ui.hideUi
+					end
+
+				UiPop()
+			else
+				UiPush()
+
+					UiMakeInteractive()
+
+					local buttonHeight = 40
+					local buttonWidth = 290
+					local gap = 10
+					local padding = 20
+
+					uiDrawPanel(buttonWidth + padding, buttonHeight + gap + buttonHeight + padding + 20, 16)
+					UiTranslate(0, 20)
+
+
+					if uiDrawPrimaryButton("Hide UI", buttonWidth) then
+						client.ui.hideUi = not client.ui.hideUi
+					end
 			
+					UiTranslate(0, buttonHeight + gap)
+					uiDrawTextPanel("loc@UI_TEXT_WAITING_FOR_HOST", 1)
+				UiPop()
+			end
+		UiPop()
+	else
+		UiPush()
+			local y = UiMiddle() + 400
+			UiAlign("center top")
+			UiTranslate(UiCenter(), y)
+
+			UiMakeInteractive()
+
 			local buttonHeight = 40
 			local buttonWidth = 290
-
 			local gap = 10
 			local padding = 20
 
-			uiDrawPanel(buttonWidth + 2*padding, buttonHeight + gap + padding + buttonHeight + gap + buttonHeight + padding, 16)
+			if not IsPlayerHost() then
+				uiDrawPanel(buttonWidth + padding, buttonHeight + gap + buttonHeight + gap + buttonHeight + padding + 20, 16)
+			else
+				uiDrawPanel(buttonWidth + padding, buttonHeight + gap + buttonHeight + padding + 20, 16)
+			end
 
-			UiPush()
-				UiTranslate(0, 20)
-				if uiDrawSecondaryButton("Game Modes", buttonWidth) then
-					SetBool("game.pausemenu.gamemodes", true)
-				end
+			UiTranslate(0, 20)
 
-				UiTranslate(0, buttonHeight + gap)
+			if uiDrawPrimaryButton("Show UI", buttonWidth) then
+				client.ui.hideUi = not client.ui.hideUi
+			end
+			UiTranslate(0, buttonHeight + gap)
 
-				if uiDrawSecondaryButton("Play new Random Map", buttonWidth) then
-					ServerCall("server.loadRandomMap")
-				end
+			if uiDrawSecondaryButton("Restart Animation", buttonWidth) then
+				client.restartAnimation()
+			end
 
-				UiTranslate(0, buttonHeight + gap)
-
-				if shared.state.loadNextMap == true then
-					if uiDrawPrimaryButton("Cancel", buttonWidth) then
-						ServerCall("server.cancelNextMap")
-					end
-				else
-					if uiDrawPrimaryButton(continueLabel, buttonWidth) then
-						if continueFunction ~= nil then
-							continueFunction()
-						else
-							SetString("game.gamemode.next", GetString("game.gamemode"))
-						end
-					end
-				end
-
-			UiPop()
-		else
-			uiDrawTextPanel("loc@UI_TEXT_WAITING_FOR_HOST", 1)
-		end
-
-	UiPop()
+			UiTranslate(0, buttonHeight + gap)
+			if not IsPlayerHost() then
+				uiDrawTextPanel("loc@UI_TEXT_WAITING_FOR_HOST", 1)
+			end
+		UiPop()
+	end
 
 	return boardWith, boardHeight, _scoreresults_anim.param, random_map
 end

@@ -36,14 +36,16 @@ server.gameConfig = {
 	--Server Config only
 	unhideCooldown = 0.6, -- Cant be configured
 	outOfBoundsCoolDown = 5, -- Cant be configured
-	
+	playerPosRecordInterval = 1,
 }
 
 shared.gameConfig = {
+	roundLength = 0,
 	minimumSizeLimit = true,
 	transformCooldown = 5,
 	hiderStandStillWarnTime = 5,
 	staminaSeconds = 3, -- How long playes can sprint until the bar depleets completly
+	endScreenPathDrawTime = 10,
 }
 
 -- Match state (game logic and so on)
@@ -62,7 +64,8 @@ server.timers = {
 	ringHintTimer = 30,
 	hiderTauntReloadTimer = 0,
 	nextMapTimer = 0,
-	hunterDoubleJumpTimer = 0
+	hunterDoubleJumpTimer = 0,
+	playerPosRecordInterval = 0,
 }
 
 server.players = {
@@ -104,12 +107,15 @@ shared.state = {
 	hunterFreed = false,
 	time = 0, -- We only send floored time to the clients
 	gameOver = false,
-	loadNextMap = false
+	loadNextMap = false,
+	pathStartTime = 0,
+	pathEndTime = 0
 }
 
 shared.players = {
 	hiders = {},
 	hunters = {},
+	all = {}
 }
 
 server.shotgunDefaults = {
@@ -225,7 +231,10 @@ function server.tick(dt)
 			if helperIsPlayerHider(id) then 
 				server.initHider(id)
 			end
+
+			shared.players.all[id] = {}
 		end
+		shared.ui.pathStartTime = math.floor(GetTime())
 	end
 
 	server.newPlayerJoinRoutine() -- Needs to happen after teamstick so that players gets assigned first
@@ -244,6 +253,9 @@ function server.tick(dt)
 		for p in Players() do
 			DisablePlayerInput(p)
 		end
+		if shared.state.gameOver == true then return end
+
+		shared.ui.pathEndTime = math.floor(GetTime())
 		return
 	end
 
@@ -254,6 +266,7 @@ function server.tick(dt)
 		shared.state.gameOver = true
 		server.state.hunterFreed = true
 		shared.state.hunterFreed = true
+		shared.ui.pathEndTime = math.floor(GetTime())
 		return
 	end
 
@@ -307,6 +320,13 @@ function server.deadTick()
 				SetPlayerParam("collisionMask", 255, id)
 				SetPlayerParam("godmode", false, id)
 				SetPlayerHealth(0,id) -- We need to kill the player artificially to make the respawn logic work
+
+				shared.players.all[id][#shared.players.all[id]+1] = {
+					pos = VecCopy(GetPlayerTransform(id).pos),
+					color = teamsGetColor(1),
+					time = math.floor(GetTime()),
+					event = "Was Found"
+				}
 			end
 		end
 	end
@@ -335,6 +355,8 @@ function server.newPlayerJoinRoutine()
 			if helperIsPlayerHider(id) then 
 				 server.initHider(id)
 			end
+
+			shared.players.all[id] = {}
 
 			-- build a quick lookup table for loadout tools
 			local loadout = {}

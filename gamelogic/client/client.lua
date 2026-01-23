@@ -18,7 +18,14 @@ client.gameConfig = {
 client.ui = {
 	finalHiderRevealDelay = 0, -- Used for the white beams at the end
 	finalRevealRectSize = 0,
-	switchingMap = false
+	switchingMap = false,
+	calculatedPaths = false,
+
+	paths = {},
+	hideUi = false,
+	uiPathStartTime = 0,
+    uiPathEndTime = 0,
+	uiPathProgress = 0,
 }
 
 client.hint = {

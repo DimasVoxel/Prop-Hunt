@@ -237,11 +237,25 @@ function server.handleHiderPlayerDamage(id) -- In Tic
 			if helperGetPlayerShotsLeft(id) == 0 then 
 				eventlogPostMessage({id, "Tried hiding out of bounds"  })
 			end
+
+			shared.players.all[id][#shared.players.all[id]+1] = {
+				pos = VecCopy(GetPlayerTransform(id).pos),
+				color = teamsGetColor(1),
+				time = math.floor(GetTime()),
+				event = "Fell out of bounds"
+			}
 		end
 
 		if IsBodyBroken(propBody) then
 			helperDecreasePlayerShots(id)
 			helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
+
+			shared.players.all[id][#shared.players.all[id]+1] = {
+				pos = VecCopy(GetPlayerTransform(id).pos),
+				color = teamsGetColor(1),
+				time = math.floor(GetTime()),
+				event = "Damage"
+			}
 
 			-- We move the player to the shape if player was too far from the prop when found
 			-- If we dont there are situations when the prop falls down a cliff or building and the player stays on top of the cliff.
@@ -287,6 +301,13 @@ function server.handleHiderPlayerDamage(id) -- In Tic
 		helperDecreasePlayerShots(id)
 		helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
 		shared.players.hiders[id].damageTick = GetTime()
+
+		shared.players.all[id][#shared.players.all[id]+1] = {
+			pos = VecCopy(GetPlayerTransform(id).pos),
+			color = teamsGetColor(1),
+			time = math.floor(GetTime()),
+			event = "Water damage"
+		}
 	end
 
 	if IsPointInBoundaries(center) == false and helperIsPlayerHidden(id) then
@@ -312,6 +333,13 @@ function server.tauntBroadcast(pos, id)
 	if math.random(1, 100) == 50 then 
 		propguy = true
 	end
+
+	shared.players.all[id][#shared.players.all[id]+1] = {
+		pos = VecCopy(GetPlayerTransform(id).pos),
+		color = teamsGetColor(1),
+		time = math.floor(GetTime()),
+		event = "Taunt"
+	}
 
 	ClientCall(0, "client.tauntBroadcast", pos, soundID, propguy)
 end
@@ -340,6 +368,13 @@ function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 	local shapeBody = GetShapeBody(shape)
 
 	if shape == propid and shapeBody ~= shared.players.hiders[playerid].propBody then
+
+		shared.players.all[playerid][#shared.players.all[playerid]+1] = {
+			pos = VecCopy(GetPlayerTransform(playerid).pos),
+			color = teamsGetColor(1),
+			time = math.floor(GetTime()),
+			event = "Transformed"
+		}
 
 		-- Delete Old Prop and Backup shapes if transforming into a new shape
 		if shared.players.hiders[playerid].propBody ~= -1 then

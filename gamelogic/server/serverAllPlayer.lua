@@ -1,7 +1,40 @@
 function server.playersTick(dt)
 	server.noHunterSituation(dt)
 	server.handleHints(dt)
+	if teamsIsSetup() then
+		--server.recordPoint(dt)
+	end
 end
+
+function server.recordPoint(dt)
+	if server.timers.playerPosRecordInterval <= GetTime() then
+		server.timers.playerPosRecordInterval = GetTime() + server.gameConfig.playerPosRecordInterval
+
+		shared.players = shared.players or {}
+		shared.players.all = shared.players.all or {}
+		for id in Players() do
+			shared.players.all[id] = shared.players.all[id] or {}
+			local data = shared.players.all[id]
+			local playerPos = GetPlayerTransform(id).pos
+			if #data == 0 or VecLength(VecSub(data[#data].pos, playerPos)) > 1 and spawnGetPlayerRespawnTimeLeft(id) == 0 then
+				if helperIsPlayerHider(id) then
+					data[#data+1] = {
+						pos = VecCopy(playerPos),
+						color = teamsGetColor(1),
+						time = math.floor(GetTime())
+					}
+				elseif helperIsPlayerHunter(id) and helperIsHuntersReleased() then
+					shared.players.all[id][#shared.players.all[id]+1] = {
+						pos = VecCopy(GetPlayerTransform(id).pos),
+						color = teamsGetColor(2),
+						time = math.floor(GetTime())
+					}
+				end
+			end
+		end
+	end
+end
+
 
 function server.handleHints(dt)
 
