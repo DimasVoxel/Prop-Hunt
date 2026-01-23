@@ -54,6 +54,7 @@ function server.start(settings)
 	SetBool("level.creative", false, true)
 
     AutoInspect(server.gameConfig, 2," ",false)
+    AutoInspect(server.mapdata, 2," ",false)
 end
 
 function server.setTimeSetting(settings)
@@ -74,12 +75,19 @@ function server.setTimeSetting(settings)
 		if #server.mapdata.levels > 3 then
 			baseTime = baseTime + 2
 		end
+        if server.mapdata.MapArea < 100 then 
+            baseTime = baseTime - 2
+        end
+        if server.mapdata.SizeMedium == 0 then 
+            baseTime = baseTime - 1
+        end
 
 		server.gameConfig.roundLength = baseTime * 60
 	else
 		server.gameConfig.roundLength = settings.time
 	end
 
+    DebugPrint("Round Lenght Auto Settings:" .. server.gameConfig.roundLength/60)
     server.state.time = server.gameConfig.roundLength
 	shared.state.time = math.floor(server.state.time)
 end
@@ -108,7 +116,7 @@ function server.setBulletReloadTime(settings)
     else
         server.gameConfig.hunterBulletReloadTimer = settings.hunterBulletReloadTimer
     end
-    
+    DebugPrint("Bullet Reload Auto Settings:" .. server.gameConfig.hunterBulletReloadTimer)
 end
 
 function server.setHunterDistnaceHintTimer(settings)
@@ -134,36 +142,40 @@ function server.setHunterDistnaceHintTimer(settings)
         end
 
         server.gameConfig.distanceHintTimer = basetime
+        server.timers.distanceHintTimer = 15  -- First hint will be triggered in 15 seconds 
     elseif settings.distanceHintTimer == -2 then 
         server.gameConfig.distanceHintTimer = false
     else
         server.gameConfig.distanceHintTimer = settings.distanceHintTimer
         server.timers.distanceHintTimer = 15  -- First hint will be triggered in 15 seconds 
     end
+    DebugPrint("Distance Hint Auto Settings:" .. server.gameConfig.distanceHintTimer)
 end
 
 function server.setHunterAmount(settings)
     -- Clamp hunters so at least one hider
     if settings.huntersStartAmount == -1 then
-        local basehunter = 1
+        local percent = 0.1
         local total = GetPlayerCount()
         if total < 7 then 
-            basehunter = 1
+            percent = 0.1
         else
-            basehunter = 2
+            percent = 0.16
         end
 
         if server.mapdata.MapArea > 800 and #server.mapdata.levels >= 2 or server.mapdata.MapArea > 1400 then
-            basehunter = basehunter + 1
+            percent = percent + 0.5
         end
 
         if server.mapdata.MapArea < 150 and server.mapdata.SizeMedium < 200 then
-            basehunter = 1
+            percent = 0.1
         end
-        server.gameConfig.huntersStartAmount = basehunter
+        server.gameConfig.huntersStartAmount = math.ceil(total * percent)
+        DebugPrint("percent:" .. percent)
     else
         server.gameConfig.huntersStartAmount = settings.huntersStartAmount
     end
+    DebugPrint("Hunter Amount Auto Settings:" .. server.gameConfig.huntersStartAmount)
 end
 
 function server.setHunterRingHintTimer(settings)
@@ -187,6 +199,7 @@ function server.setHunterRingHintTimer(settings)
     else
         server.gameConfig.ringHintTimer = settings.ringHintTimer
     end
+    DebugPrint("Ring Hint Auto Settings:" .. tostring(server.gameConfig.ringHintTimer))
 end
 
 function server.setEnableMaxSizeLimit(settings)
@@ -201,6 +214,7 @@ function server.setEnableMaxSizeLimit(settings)
     else
         server.gameConfig.maximumSizeLimit = settings.maximumSizeLimit == 1
     end
+    DebugPrint("Maximum Size Limit:" .. tostring(server.gameConfig.maximumSizeLimit))
 end
 
 function server.setEnableMinSizeLimit(settings)
@@ -215,6 +229,7 @@ function server.setEnableMinSizeLimit(settings)
     else
         server.gameConfig.minimumSizeLimit = settings.minimumSizeLimit == 1
     end
+    DebugPrint("Minimum Size Limit:" .. server.gameConfig.minimumSizeLimit)
 end
 
 function server.setHideTime(settings)
@@ -230,4 +245,5 @@ function server.setHideTime(settings)
     else
         server.gameConfig.hideTime = settings.hideTime
     end
+    DebugPrint("Hide Time:" .. server.gameConfig.hideTime)
 end
