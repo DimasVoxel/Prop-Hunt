@@ -63,15 +63,13 @@ function ProgressBar(background, thickness, length, curVal, maxVal, opt_rounding
         --flash
         UiPush()
             if opt_flashAmount > 0 then
-                do
-                    local t = length*(curVal/maxVal)
-                    if t > length then t = length end
-                    if t < 0 then t = 0 end
-                    UiTranslate(t)
-                end
+                local t = length*(curVal/maxVal)
+                if t > length then t = length end
+                if t < 0 then t = 0 end
+                UiTranslate(t)
+                
                 UiAlign("right middle")
-                local alpha = (math.sin((GetTime()*7))/2)+0.5
-                UiColor(1,1,1,alpha)
+                UiColor(1,1,1,Pulse(0, 1, 7))
                 UiRoundedRect(length*(opt_flashAmount/maxVal), thickness, opt_rounding)
             end
         UiPop()
