@@ -72,7 +72,7 @@ server.players = {
 	hunter = {}, -- Contains only Hider Specifc data
 	hiders = {}, -- Contains only Hunter Specifc data
 	spectator = {}, --Contains only Spectator specific data
-	all = {} -- Contains health and stamina stats
+	all = {}
 }
 
 server.moderation = {}
@@ -231,8 +231,6 @@ function server.tick(dt)
 			if helperIsPlayerHider(id) then 
 				server.initHider(id)
 			end
-
-			shared.players.all[id] = {}
 		end
 		shared.ui.pathStartTime = math.floor(GetTime())
 	end
@@ -249,13 +247,17 @@ function server.tick(dt)
 
 	-- Game end
 	if server.state.time <= 0 then
-		shared.state.gameOver = true
 		for p in Players() do
 			DisablePlayerInput(p)
 		end
 		if shared.state.gameOver == true then return end
 
 		shared.ui.pathEndTime = math.floor(GetTime())
+		for id, data in pairs(server.players.log) do
+			ClientCall(0, "client.recieveLogs", data, id, #server.players.log)
+		end
+
+		shared.state.gameOver = true
 		return
 	end
 
@@ -266,7 +268,12 @@ function server.tick(dt)
 		shared.state.gameOver = true
 		server.state.hunterFreed = true
 		shared.state.hunterFreed = true
+
 		shared.ui.pathEndTime = math.floor(GetTime())
+		shared.ui.pathEndTime = math.floor(GetTime())
+		for id, data in pairs(server.players.log) do
+			ClientCall(0, "client.recieveLogs", data, id, #server.players.log)
+		end
 		return
 	end
 
@@ -283,8 +290,8 @@ function server.tick(dt)
 	countdownTick(dt, 0, false)
 	if teamsIsSetup() then
 		server.hiderTick(dt) -- Logic in serverHiderLogic.lua
-		server.hunterTick(dt) -- Logic in serverHunterLogic.lua
 		server.playersTick(dt) -- Logic in serverPlayerLogic.lua
+		server.hunterTick(dt) -- Logic in serverHunterLogic.lua
 		server.deadTick(dt) -- Handles found players
 	end
 
@@ -321,12 +328,7 @@ function server.deadTick()
 				SetPlayerParam("godmode", false, id)
 				SetPlayerHealth(0,id) -- We need to kill the player artificially to make the respawn logic work
 
-				shared.players.all[id][#shared.players.all[id]+1] = {
-					pos = VecCopy(GetPlayerTransform(id).pos),
-					color = teamsGetColor(1),
-					time = math.floor(GetTime()),
-					event = "Was Found"
-				}
+				server.createLog(id, 4)
 			end
 		end
 	end
@@ -334,6 +336,11 @@ end
 
 function server.newPlayerJoinRoutine()
 	for id in PlayersAdded() do
+		if helperIsGameOver() then 
+			for id, data in pairs(server.players.log) do
+				ClientCall(0, "client.recieveLogs", data, id, #server.players.log)
+			end
+		end
 		if teamsIsSetup() then
 			if server.gameConfig.midGameJoin then
 				if helperIsHuntersReleased() then
@@ -356,7 +363,7 @@ function server.newPlayerJoinRoutine()
 				 server.initHider(id)
 			end
 
-			shared.players.all[id] = {}
+			server.players.log[id] = {}
 
 			-- build a quick lookup table for loadout tools
 			local loadout = {}
@@ -471,4 +478,39 @@ end
 function server.cancelNextMap()
 	shared.state.loadNextMap = false
 	server.timers.nextMapTimer = 0
+end
+
+-- EventIDs:
+-- 0 = Just Position,
+-- 1 = Hurt event,
+-- 2 = Transform Event,
+-- 3 = Found Event,
+-- 4 = Taunt
+function server.createLog(id, eventID)
+    server.players.log[id] = server.players.log[id] or {}
+
+    local log = server.players.log[id]
+    local lastEntry = log[#log] 
+    local pos = GetPlayerTransform(id).pos
+
+    if not lastEntry and pos[2] < 1000 then
+        log[1] = {
+            pos = VecCopy(AutoVecRound(pos), 0.01),
+            team = teamsGetTeamId(id),
+            time = AutoRound(GetTime(), 0.1),
+            event = eventID
+        }
+        return
+    end
+
+    local lastPos = lastEntry.pos
+
+    if VecLength(VecSub(pos, lastPos)) < 250 and pos[2] < 1000 then
+        log[#log + 1] = {
+            pos = VecCopy(AutoVecRound(pos), 0.01),
+            team = teamsGetTeamId(id),
+            time = AutoRound(GetTime(), 0.1),
+            event = eventID
+        }
+    end
 end

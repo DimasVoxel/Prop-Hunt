@@ -11,15 +11,9 @@ function client.draw(dt)
     if not gameInit(dt) then return end -- Dont Proceed while game is not setup
 
 	if helperIsGameOver() then 
-		if client.ui.calculatedPaths == false then 
-			for id, playerData in pairs(shared.players.all) do
-				debugcall(pathPostProcessor(playerData), dt )
-				local path = pathPostProcessor(playerData)
-				client.ui.paths[id] = path
-			end
-			client.ui.calculatedPaths = true
+		if client.ui.calculatedPaths == true then 
+			client.drawEndPath()
 		end
-		debugcall(client.drawEndPath(), dt )
 
 		client.revealHiderSpots()
 		-- TODO: Game Ended should be replaced with a text who actually won or if everyone left something akin to "Hiders Left"
@@ -792,29 +786,19 @@ function client.nextMapBanner()
 	client.ui.switchingMap = true
 end
 
-function pathPostProcessor(playerData)
-    if #playerData > 4 then
-		table.insert(playerData,1,playerData[1])
-		table.insert(playerData,#playerData,playerData[#playerData])
-        return client.buildCardinalSpline(playerData,10)
-	end
-end
-
-function client.buildCardinalSpline(knots,precision)
+function client.buildCardinalSpline(knots)
 	local function bezierFast(p1,p2,p3,p4, t) -- By Thomasims
 		local omt = 1 - t
 		local t2, omt2 = t ^ 2, omt ^ 2
-
 
 		local p = VecAdd(VecAdd(VecAdd(VecScale(p1, omt ^ 3), VecScale(p2, 3 * t * omt2)), VecScale(p3, 3 * t2 * omt)),
 			VecScale(p4, t ^ 3))
 		return p
 	end
-    precision = precision or 30
     local curve = {}
 
     --Linear spline to cardinal spline https://youtu.be/jvPPXbo87ds?t=2656
-
+	local precision
     local magicNumber = 4.1 -- Magic number explained https://youtu.be/jvPPXbo87ds?t=2824
     for i=1, #knots do
         if i ~= #knots-2 then 
@@ -824,15 +808,15 @@ function client.buildCardinalSpline(knots,precision)
             local velocityKnos2 = VecSub(knots[i+3].pos,knots[i+1].pos)
             local controllPoint1Knot2 = VecScale(velocityKnos2,1/magicNumber)
             local controllPoint2 = VecAdd(knots[i+2].pos,VecScale(controllPoint1Knot2,-1))
+			precision = AutoClamp((1 * math.max(knots[i+1].time - knots[i].time, 1)) * 10 ,10, 100)
             for j=1, precision do 
                -- DebugLine(controllPoint1,GetPlayerPos())
                 curve[#curve+1] = {} 
                 curve[#curve].pos = bezierFast(knots[i+1].pos,VecAdd(knots[i+1].pos,controllPoint1),controllPoint2,knots[i+2].pos,j/precision)
-				curve[#curve].color = VecLerp(knots[i].color, knots[i+1].color, j/precision)
-				DebugPrint("In Bezier time")
-				curve[#curve].time  = AutoLerp(knots[i].time, knots[i+1].time, j/precision) or 0
-				if j == 1 then
-					curve[#curve].event = knots[i].event
+				curve[#curve].color = teamsGetColor(knots[i+1].team)
+				curve[#curve].time  = AutoLerp(knots[i].time, knots[i+1].time, j/precision)
+				if j == 1 or knots[i+1].event == 4 then
+					curve[#curve].event = knots[i+1].event
 				end
 			end
         else 
@@ -859,6 +843,16 @@ end
 function client.drawEndPath()
 	updatePathProgress()
 
+	local function GetCenterOfVectors(points) 
+		local sum = Vec(0, 0, 0)
+
+		for _, v in ipairs(points) do
+			sum = VecAdd(sum,  v.pos)
+		end
+
+		return VecScale(sum, 1 / #points)
+	end
+
 	local function drawPlayerMarker(id, pos, color, text)
 		text = text or nil
 		local x, y, d = UiWorldToPixel(pos)
@@ -866,7 +860,7 @@ function client.drawEndPath()
 		UiPush()
 			local near, far = 100, 500
 			local t = AutoClamp((d - near) / (far - near), 0, 1)
-			DebugPrint("Size")
+			--DebugPrint("Size")
 			local size = AutoLerp(1.5, 0.5, t)
 
 			UiAlign("center middle")
@@ -884,71 +878,101 @@ function client.drawEndPath()
 		UiPop()
 	end
 
+	-- EventIDs:
+	-- 0 = Just Position,
+	-- 1 = Hurt event,
+	-- 2 = Transform Event,
+	-- 3 = Taunt
+	-- 4 = Found Event,
+	-- 5 = Cucstom + text
+	local function drawEventMarker(color, alpha, pos, eventID, text)
+		if eventID == 0 or eventID == nil or eventID == 4 then return end
+		text = text or nil
+
+		local image = ""
+		if eventID == 1 then image = "MOD/assets/hurt.png" end
+		if eventID == 2 then image = "MOD/assets/transform.png" end
+		if eventID == 4 then image = "MOD/assets/dead.png" end
+		if eventID == 3 then image = "MOD/assets/taunt.png" end
+		if eventID == 5 then return end
+
+		UiPush()
+			local x, y, d = UiWorldToPixel(pos)
+			UiColor(1,1,1,alpha)
+			UiTranslate(x, y)
+			UiAlign("center middle")
+
+			local r,g,b = unpack(color)
+			UiFillImage(image)
+			UiRoundedRect(20, 20 ,2)
+		UiPop()
+	end
+
 	-- Convert progress (0–1) to time window
 	local t = client.ui.uiPathProgress
 	-- optional easing
 	t = t * t * (3 - 2 * t)
 
-	DebugPrint("Before Time")
+	--DebugPrint("Before Time")
 	local time = AutoLerp(
 		shared.ui.pathStartTime,
 		shared.ui.pathEndTime,
 		t
 	)
-
+	local points = {}
+	
 	for id, path in pairs(client.ui.paths) do
-		for i = 2, #path do
+		local first = true
+		local count = 0
+		for i = #path, 2, -1 do
 			if path[i].time <= time then
-				local r, g, b = unpack(path[i].color)
-				DebugLine(path[i].pos, path[i-1].pos, r, g, b, 1 - t)
-				if path[i].event then
-					drawPlayerMarker(id, path[i].pos, {r, g, b}, path[i].event)
+				if first then 
+					drawPlayerMarker(id, path[i].pos, path[i].color)
+					
+					points[#points+1] = {}
+					points[#points].pos = VecCopy(path[i].pos)
+					points[#points].id = id
+					first = false
 				end
+				local r,g,b = unpack(path[i].color)
+				if GetLocalPlayer() == id then
+					r, g, b = r-0.3, g-0.5, b
+				end 
+				count = count + 1
+				local alpha =  math.max(1 - (count / 5000)*1.3, 0)
+				DebugPrint(#path)
+				if path[i].event ~= 4 and count < 5000 then
+					DebugLine(path[i].pos, path[i-1].pos, r, g, b, alpha)
+				end
+				drawEventMarker({r, g, b}, alpha, path[i].pos, path[i].event, path[i].text)
 				if i == #path then
 					drawPlayerMarker(id, path[i].pos, {r, g, b})
 				end
-			else
-				drawPlayerMarker(id, path[i].pos, path[i].color)
-				break
 			end
 		end
+		if count == 0 then 
+			points[#points+1] = {}
+			points[#points].pos = path[1].pos
+			points[#points].id = id
+		end
 	end
+
+	client.middlePoint = GetCenterOfVectors(points)
+	client.playerPoints = points
 end
 
-
-function print(...)
-	local res = {}
-	for i = 1, select("#", ...) do
-		res[i] = tostring(select(i, ...))
+function client.recieveLogs(playerData, id, amount)
+	if #playerData > 4 then
+		table.insert(playerData,1,playerData[1])
+		table.insert(playerData,#playerData,playerData[#playerData])
+		path = client.buildCardinalSpline(playerData)
 	end
-	DebugPrint(table.concat(res, "    "))
-end
 
-function debugcall(func, ...)
-	local args = {...}
-	xpcall(function()
-		return func(unpack(args))
-	end, function(err)
-		print(server and "SERVER" or "CLIENT: " .. GetLocalPlayer(), tostring(err) .. "\n", table.concat(stacktrace(), "\n    "))
-	end)
-end
-function stacktrace( start )
-    start = (start or 0) + 3
-    local stack, last = {}, nil
-    for i = start, 32 do
-        local _, line = pcall( error, "-", i )
-        if line == "-" then
-            if last == "-" then
-                break
-            end
-        else
-            if last == "-" then
-                stack[#stack + 1] = "[C]:?"
-            end
----@diagnostic disable-next-line: need-check-nil
-            stack[#stack + 1] = line:sub( 1, -4 )
-        end
-        last = line
-    end
-    return stack
+	client.ui.paths[id] = path
+
+	DebugPrint("Path Recieved: " ..  #client.ui.paths .. " / " .. amount)
+	if amount == #client.ui.paths then
+		client.ui.calculatedPaths = true
+		DebugPrint("Recieved all data")
+	end
 end

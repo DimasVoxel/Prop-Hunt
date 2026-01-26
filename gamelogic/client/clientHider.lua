@@ -42,6 +42,13 @@ function client.hiderCamera()
 		local outwards = QuatRotateVec(camera_rotation_quat, Vec(0, 0, 1))
 
 		QueryRejectBody(body)
+
+		for id in Players() do 
+			if helperIsPlayerHider(id) then
+				QueryRejectBody(helperGetPlayerPropBody(id))
+			end
+		end
+
 		local dir = VecNormalize(VecSub(AutoSM_Get(client.camera.SM.pos), VecAdd(body_center,Vec(0,1,0))))
 		local hit, dist = QueryRaycast(VecAdd(body_center,Vec(0,1,0)), dir, client.camera.dist, 0.2, true)
 

@@ -325,6 +325,7 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 	UiTranslate(0, -UiMiddle())
 
 	if client.ui.hideUi == false then
+		UiTranslate(0, -200)
 		UiPush()
 			UiTranslate(UiCenter(), UiMiddle())
 			local boardWith, boardHeight = _drawBoard(title, columns, groups, true, false, #groups == 1)
@@ -410,7 +411,7 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 		UiPop()
 	else
 		UiPush()
-			local y = UiMiddle() + 400
+			local y = UiMiddle() + 300
 			UiAlign("center top")
 			UiTranslate(UiCenter(), y)
 
@@ -429,9 +430,57 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 
 			UiTranslate(0, 20)
 
+			if _uiFocusPlayer == nil then 
+				_uiFocusPlayer = 0
+			end
+
+			local name = ""
+			if client.playerPoints[_uiFocusPlayer] ~= nil then
+				name = GetPlayerName(client.playerPoints[_uiFocusPlayer].id)
+			end
+			local nameWidth = 0
+
+			UiPush()
+				UiTranslate(0, -100)
+				UiAlign("center top")
+				UiFont("bold.ttf", 26)
+
+				nameWidth = math.max(UiGetTextSize(name) - 180, 0)
+				uiDrawPanel(buttonWidth-40 +nameWidth, buttonHeight, 10)
+
+				UiTranslate(0, 10)
+				if _uiFocusPlayer == 0 or client.playerPoints == nil then 
+					UiText('All')
+				else
+					UiText(name)
+				end
+			UiPop()
+
+			UiPush()
+				UiTranslate(buttonWidth/2 + nameWidth/2, -100)
+				if uiDrawPrimaryButton(">", 30) then
+					_uiFocusPlayer = _uiFocusPlayer + 1
+				end
+			UiPop()
+
+			UiPush()
+				UiTranslate( buttonWidth/2 *-1 - nameWidth/2 , -100)
+				if uiDrawPrimaryButton("<", 30) then
+					_uiFocusPlayer = _uiFocusPlayer - 1
+				end
+			UiPop()
+
+			if _uiFocusPlayer == -1 then
+				_uiFocusPlayer = #client.playerPoints
+			end
+			if _uiFocusPlayer == #client.playerPoints + 1 then
+				_uiFocusPlayer = 0
+			end
+
 			if uiDrawPrimaryButton("Show UI", buttonWidth) then
 				client.ui.hideUi = not client.ui.hideUi
 			end
+
 			UiTranslate(0, buttonHeight + gap)
 
 			if uiDrawSecondaryButton("Restart Animation", buttonWidth) then
@@ -1565,13 +1614,32 @@ function hudDrawResultsAnimation(time, text, backgroundColor)
 		return VecScale(sum, 1 / #players)
 	end
 
-	if not _resultsAnimCamPos then
-		local pos = GetCenterOfVectors(teamsGetTeamPlayers(1))
-		if pos ~= nil then
-			_resultsAnimCamPos = VecCopy(pos)
+	if _uiFocusPlayer == nil then 
+		_uiFocusPlayer = 0
+	end
+
+	local pos = Vec()
+	if _uiFocusPlayer == 0 then
+		if client.middlePoint ~= nil then 
+			pos = client.middlePoint
 		else
-			_resultsAnimCamPos = GetPlayerCameraTransform().pos
+			pos = GetCenterOfVectors(teamsGetTeamPlayers(1))
 		end
+	else
+		pos = client.playerPoints[_uiFocusPlayer].pos
+	end
+
+	if _resultsAnimCamPos ~= nil then 
+		pos = VecLerp(_resultsAnimCamPos, pos,0.01)
+	end
+
+	if pos ~= nil then
+		_resultsAnimCamPos = VecCopy(pos)
+	else
+		_resultsAnimCamPos = GetPlayerCameraTransform().pos
+	end
+
+	if not _resultsAnimCamPos then
 		_resultsAnimCamRot = GetPlayerCameraTransform().rot
 	end
 

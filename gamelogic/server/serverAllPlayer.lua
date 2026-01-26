@@ -2,7 +2,7 @@ function server.playersTick(dt)
 	server.noHunterSituation(dt)
 	server.handleHints(dt)
 	if teamsIsSetup() then
-		--server.recordPoint(dt)
+		server.recordPoint(dt)
 	end
 end
 
@@ -10,25 +10,27 @@ function server.recordPoint(dt)
 	if server.timers.playerPosRecordInterval <= GetTime() then
 		server.timers.playerPosRecordInterval = GetTime() + server.gameConfig.playerPosRecordInterval
 
-		shared.players = shared.players or {}
-		shared.players.all = shared.players.all or {}
 		for id in Players() do
-			shared.players.all[id] = shared.players.all[id] or {}
-			local data = shared.players.all[id]
+			local data = server.players.log[id]
 			local playerPos = GetPlayerTransform(id).pos
-			if #data == 0 or VecLength(VecSub(data[#data].pos, playerPos)) > 1 and spawnGetPlayerRespawnTimeLeft(id) == 0 then
+
+			local shouldLog = false
+
+			if not data or #data == 0 then
+				shouldLog = true
+			else
+				local last = data[#data]
+				if last and VecLength(VecSub(last.pos, playerPos)) > 2
+				and spawnGetPlayerRespawnTimeLeft(id) == 0 then
+					shouldLog = true
+				end
+			end
+
+			if shouldLog then
 				if helperIsPlayerHider(id) then
-					data[#data+1] = {
-						pos = VecCopy(playerPos),
-						color = teamsGetColor(1),
-						time = math.floor(GetTime())
-					}
+					server.createLog(id, 0)
 				elseif helperIsPlayerHunter(id) and helperIsHuntersReleased() then
-					shared.players.all[id][#shared.players.all[id]+1] = {
-						pos = VecCopy(GetPlayerTransform(id).pos),
-						color = teamsGetColor(2),
-						time = math.floor(GetTime())
-					}
+					server.createLog(id, 0)
 				end
 			end
 		end

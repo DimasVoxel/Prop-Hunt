@@ -42,7 +42,13 @@ function server.start(settings)
 		server.game.spawnedForHunterRoom = Spawn("MOD/hunter_room.xml", Transform(Vec(0,1000,0)), true)
 	end
 
-	--if GetPlayerCount() == 2 and GetPlayerName(0) == "Host" or shared.debug then server.gameConfig.hideTime = 2 end 
+	if GetPlayerCount() == 2 and GetPlayerName(0) == "Host" or shared.debug then server.gameConfig.hideTime = 2 end 
+
+    server.players.log = {}
+    for id in Players() do
+        server.players.log[id] = {}
+    end
+    
 
 	countdownInit(server.gameConfig.hideTime, "hidersHiding")
 

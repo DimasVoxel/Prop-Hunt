@@ -221,4 +221,3 @@ function client.jumpCloud(id, pos, soundID)
 	SpawnParticle(pos, Vec(0, -0.5, 0), 2)
 	PlaySound(client.assets.jumpSound[soundID], pos, 1, true, 1)
 end
-

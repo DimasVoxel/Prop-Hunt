@@ -17,8 +17,7 @@ end
 function server.samplePlayableAreaGrid(gridStep)
     gridStep = gridStep or 10
 
-    local worldAA, worldBB = GetBodyBounds(GetWorldBody())
-
+    local worldAA, worldBB = GetBodyBounds(GetWorldBody()) 
     local Xpos, Xneg, Zpos, Zneg = nil, nil, nil, nil
     local landSamples = 0
     local waterSamples = 0
@@ -27,7 +26,7 @@ function server.samplePlayableAreaGrid(gridStep)
         for z = worldAA[3], worldBB[3], gridStep do
             local p = Vec(x, 0, z)
 
-            if select(1, IsPointInBoundaries(p)) then
+            if IsPointInBoundaries(p) then
                 -- Track playable extents
                 if not Xpos or x > Xpos[1] then Xpos = Vec(x, 0, z) end
                 if not Xneg or x < Xneg[1] then Xneg = Vec(x, 0, z) end

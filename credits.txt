@@ -2,5 +2,9 @@ Attributions:
 
 <a href="https://www.flaticon.com/free-icons/grab" title="grab icons">Grab icons created by berkahicon - Flaticon</a>
 
-
 <a href="https://www.flaticon.com/free-icons/open-hands" title="open hands icons">Open hands icons created by Icon Mart - Flaticon</a>
+
+Hurt SVG Vector
+LICENSE: CC Attribution License
+AUTHOR: Shannon E. Thomas
+https://www.svgrepo.com/svg/413969/hurt

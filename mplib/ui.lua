@@ -452,7 +452,56 @@ function uiDrawTextAndImagePanel(message, imageItem, alpha)
 		UiTranslate(0, y)
 		UiText(message)
 		UiPop()
+		UiPush()
+		UiAlign("left bottom")
+		UiTranslate(w + gap, 0)
+		UiFillImage(imageItem.path)
+		UiColor(imageItem.color[1], imageItem.color[2], imageItem.color[3], a)
+		UiRoundedRect(imgSize, imgSize, 2)
+		UiPop()
 
+		UiPop()
+
+	UiPop()	
+end
+
+function uiDrawImagePanel(message, imageItem, alpha)
+	UiPush()
+
+		UiAlign("left top")
+
+		local a = 1
+		if alpha then
+			a = alpha
+		end
+
+		local gap = 10
+		local margin = 10
+
+		UiFont(FONT_BOLD, FONT_SIZE_30)
+		local w,h,x,y = UiGetTextSize(message)
+
+		local imgSize = 24
+
+		local panelHeight = 42
+		local panelWidth = w + gap + imgSize + 2*margin
+
+		UiTranslate(-panelWidth/2,0)
+
+		UiPush()
+		UiColor(0,0,0,0.75 * a)
+		UiRoundedRect(panelWidth, panelHeight, 8)
+		UiPop()
+
+		UiPush()
+		UiTranslate(10, panelHeight - 10)
+		
+		UiPush()
+		UiColor(1,1,1,a)
+		UiAlign("left bottom")
+		UiTranslate(0, y)
+		UiText(message)
+		UiPop()
 		UiPush()
 		UiAlign("left bottom")
 		UiTranslate(w + gap, 0)
