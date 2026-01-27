@@ -324,6 +324,7 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 	--UiScale(1, math.sqrt(_scoreresults_anim.param))
 	UiTranslate(0, -UiMiddle())
 
+	UiPush()
 	if client.ui.hideUi == false then
 		UiTranslate(0, -200)
 		UiPush()
@@ -435,46 +436,86 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 			end
 
 			local name = ""
-			if client.playerPoints[_uiFocusPlayer] ~= nil then
+			if client.playerPoints and client.playerPoints[_uiFocusPlayer] then
 				name = GetPlayerName(client.playerPoints[_uiFocusPlayer].id)
 			end
 			local nameWidth = 0
 
 			UiPush()
-				UiTranslate(0, -100)
-				UiAlign("center top")
-				UiFont("bold.ttf", 26)
+				
+				
 
-				nameWidth = math.max(UiGetTextSize(name) - 180, 0)
-				uiDrawPanel(buttonWidth-40 +nameWidth, buttonHeight, 10)
+				UiPush()
+					UiTranslate(0, 200)
+					local val, onSlider = optionsSlider(client.ui.uiPathProgress, shared.ui.pathStartTime,shared.ui.pathEndTime)
 
-				UiTranslate(0, 10)
-				if _uiFocusPlayer == 0 or client.playerPoints == nil then 
-					UiText('All')
+					UiTranslate(0, 20)
+					UiAlign("center top")
+					UiFont("bold.ttf", 26)
+
+					-- Calculate elapsed time relative to start
+					local startTime = shared.ui.pathStartTime or 0
+					local endTime = shared.ui.pathEndTime or 0
+					local progress = client.ui.uiPathProgress or startTime
+
+					local elapsed = progress - startTime
+					if elapsed < 0 then elapsed = 0 end  -- safety
+					if elapsed > (endTime - startTime) then elapsed = endTime - startTime end  -- clamp
+
+					-- Convert to minutes:seconds
+					local minutes = math.floor(elapsed / 60)
+					local seconds = math.floor(elapsed % 60)
+					local timeStr = string.format("%02d:%02d", minutes, seconds)
+
+					UiText(timeStr, false)
+				UiPop()
+
+				if InputDown("usetool") and onSlider or client.ui.dragging and InputDown("usetool") then
+					client.ui.dragging = true
+					client.ui.uiPathProgress = val
+					client.ui.lockCamera = true
 				else
-					UiText(name)
+					client.ui.lockCamera = false
+					client.ui.dragging = false
 				end
-			UiPop()
+				DebugPrint(val)
+				UiPush()
+					UiTranslate(0, -100)
+					UiAlign("center top")
+					UiFont("bold.ttf", 26)
 
-			UiPush()
-				UiTranslate(buttonWidth/2 + nameWidth/2, -100)
-				if uiDrawPrimaryButton(">", 30) then
-					_uiFocusPlayer = _uiFocusPlayer + 1
+					nameWidth = math.max(UiGetTextSize(name) - 180, 0)
+					uiDrawPanel(buttonWidth-40 +nameWidth, buttonHeight, 10)
+
+					UiTranslate(0, 10)
+					if _uiFocusPlayer == 0 or client.playerPoints == nil then 
+						UiText('All')
+					else
+						UiText(name)
+					end
+				UiPop()
+
+				UiPush()
+					UiTranslate(buttonWidth/2 + nameWidth/2, -100)
+					if uiDrawPrimaryButton(">", 30) then
+						_uiFocusPlayer = _uiFocusPlayer + 1
+					end
+				UiPop()
+
+				UiPush()
+					UiTranslate( buttonWidth/2 *-1 - nameWidth/2 , -100)
+					if uiDrawPrimaryButton("<", 30) then
+						_uiFocusPlayer = _uiFocusPlayer - 1
+					end
+				UiPop()
+			UiPop()
+			if client.playerPoints then
+				if _uiFocusPlayer == -1 then
+					_uiFocusPlayer = #client.playerPoints
 				end
-			UiPop()
-
-			UiPush()
-				UiTranslate( buttonWidth/2 *-1 - nameWidth/2 , -100)
-				if uiDrawPrimaryButton("<", 30) then
-					_uiFocusPlayer = _uiFocusPlayer - 1
+				if _uiFocusPlayer == #client.playerPoints + 1 then
+					_uiFocusPlayer = 0
 				end
-			UiPop()
-
-			if _uiFocusPlayer == -1 then
-				_uiFocusPlayer = #client.playerPoints
-			end
-			if _uiFocusPlayer == #client.playerPoints + 1 then
-				_uiFocusPlayer = 0
 			end
 
 			if uiDrawPrimaryButton("Show UI", buttonWidth) then
@@ -493,6 +534,7 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 			end
 		UiPop()
 	end
+	UiPop()
 
 	return boardWith, boardHeight, _scoreresults_anim.param, random_map
 end
@@ -1618,8 +1660,23 @@ function hudDrawResultsAnimation(time, text, backgroundColor)
 		_uiFocusPlayer = 0
 	end
 
+	_mouseDif = _mouseDif or 0
+	_lastMousebutton = _lastMousebutton or GetTime()
+	_camDist = _camDist or 50
+	_camDist = AutoClamp(_camDist + InputValue("mousewheel") *-2, 10, 100)
+
+	local bool = InputDown("usetool") or InputDown("grab")
+	if bool and not client.ui.lockCamera then
+		_mouseDif = _mouseDif + InputValue("camerax")*-1
+		_lastMousebutton = GetTime()
+	end
+
+	if _lastMousebutton + 3 < GetTime() then
+		_mouseDif = _mouseDif + GetTimeStep()*0.025
+	end
+
 	local pos = Vec()
-	if _uiFocusPlayer == 0 then
+	if _uiFocusPlayer == 0 or not client.playerPoints or not client.playerPoints[_uiFocusPlayer] then
 		if client.middlePoint ~= nil then 
 			pos = client.middlePoint
 		else
@@ -1630,7 +1687,8 @@ function hudDrawResultsAnimation(time, text, backgroundColor)
 	end
 
 	if _resultsAnimCamPos ~= nil then 
-		pos = VecLerp(_resultsAnimCamPos, pos,0.01)
+		local d = AutoClamp(1 - _camDist/50, 0, 1) / 10
+		pos = VecLerp(_resultsAnimCamPos, pos,0.01 + d)
 	end
 
 	if pos ~= nil then
@@ -1655,9 +1713,7 @@ function hudDrawResultsAnimation(time, text, backgroundColor)
 		endSoundPlayed = true
 	end
 
-
-
-	local orbitOffset = VecScale(Vec(math.sin(_resultsAnimTime*0.025+_hud.randomOffset), 1.0, math.cos(_resultsAnimTime*0.025+_hud.randomOffset)), 50.0)
+	local orbitOffset = VecScale(Vec(math.sin(_mouseDif+_hud.randomOffset), 1.0, math.cos(_mouseDif+_hud.randomOffset)), _camDist)
 	local camPos = VecAdd(_resultsAnimCamPos, orbitOffset)
 	local camRot = QuatLookAt(camPos, _resultsAnimCamPos)
 
@@ -2576,4 +2632,82 @@ function _drawGroupRows(columns, group, layout)
 	end
 	
 	UiTranslate(0, -layout.playerRowGap) -- Remove last gap
+end
+
+function optionsSlider(val, min, max, r, g, b)
+    UiPush()
+        UiTranslate(0, -8)
+        local w = 800
+
+        -- Decide tick spacing in seconds (or units of your range)F
+        local tickStep = 1
+        local pixelsPerUnit = w / (max - min)
+
+        -- Draw slider background
+        UiRect(w, 3)
+		UiPush()
+			UiTranslate(0, -5)
+			uiDrawPanel(w+ 30, 15, 2)
+		UiPop()
+        -- Draw ticks dynamically based on min/max
+        UiPush()
+            UiAlign("left middle")
+            for t = min, max, tickStep do
+                UiPush()
+					UiTranslate(-w/2, 2)
+                    UiTranslate((t - min) * pixelsPerUnit, 0)
+                    UiRect(2, 10) -- small tick
+                UiPop()
+            end
+        UiPop()
+		UiPush()
+		UiTranslate(0, -25)
+        local inRect = UiIsMouseInRect(w, 50)
+		UiPop()
+
+        UiAlign("center middle")
+        UiTranslate(-w/2, 1)
+
+        -- Normalize val to 0..1
+        local normalized = (val - min) / (max - min)
+        if normalized < 0 then normalized = 0 end
+        if normalized > 1 then normalized = 1 end
+
+        -- Convert normalized value to pixel space
+        local pixelVal = normalized * w
+
+        -- Slider: returns new pixel position
+        pixelVal, _ = UiSlider("ui/common/dot.png", "x", pixelVal, 0, w)
+
+        -- Convert pixel back to normalized
+        normalized = pixelVal / w
+
+        -- Convert normalized back to actual value
+        val = normalized * (max - min) + min
+
+    UiPop()
+    return val, inRect
+end
+
+
+
+function Round(n, decimal)
+    decimal = decimal or .01
+    point = 1 / decimal
+
+    ceil =  math.ceil(n * point) / point
+    floor = math.floor(n * point) / point
+
+    distceil = dist(n, ceil)
+    distfloor = dist(n, floor)
+
+    if distceil < distfloor then
+        return ceil
+    else
+        return floor
+    end
+end
+
+function dist(a, b)
+    return math.abs(a - b)
 end

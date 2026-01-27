@@ -18,6 +18,10 @@ function client.draw(dt)
 		client.revealHiderSpots()
 		-- TODO: Game Ended should be replaced with a text who actually won or if everyone left something akin to "Hiders Left"
 		hudDrawResults("Game Ended!", {1, 1, 1, 0.75}, "Prop Hunt Results", {{name="Time Survived", width=160, align="center"}}, getEndResults())
+
+		if shared.ui.currentCountDownName == "nextgame" then
+			countdownDraw("Next Game In", false)
+		end
 		return
 	end
 
@@ -808,7 +812,8 @@ function client.buildCardinalSpline(knots)
             local velocityKnos2 = VecSub(knots[i+3].pos,knots[i+1].pos)
             local controllPoint1Knot2 = VecScale(velocityKnos2,1/magicNumber)
             local controllPoint2 = VecAdd(knots[i+2].pos,VecScale(controllPoint1Knot2,-1))
-			precision = AutoClamp((1 * math.max(knots[i+1].time - knots[i].time, 1)) * 10 ,10, 100)
+			precision = math.ceil(5 * (1 * math.max(knots[i+1].time - knots[i].time, 1)))
+
             for j=1, precision do 
                -- DebugLine(controllPoint1,GetPlayerPos())
                 curve[#curve+1] = {} 
@@ -831,13 +836,12 @@ end
 -- Call this to restart the animation
 function client.restartAnimation()
 	client.ui.uiPathProgress = 0
-	client.ui.uiPathStartTime = GetTime()
 end
 
 -- Call this once per frame (tick or draw)
 local function updatePathProgress()
-	local elapsed = GetTime() - client.ui.uiPathStartTime
-	client.ui.uiPathProgress = AutoClamp(elapsed / 30, 0, 1)
+	local speed = (shared.ui.pathEndTime - shared.ui.pathStartTime) / 30 
+	client.ui.uiPathProgress = AutoClamp(client.ui.uiPathProgress + speed*GetTimeStep(), shared.ui.pathStartTime, shared.ui.pathEndTime)
 end
 
 function client.drawEndPath()
@@ -862,7 +866,6 @@ function client.drawEndPath()
 			local t = AutoClamp((d - near) / (far - near), 0, 1)
 			--DebugPrint("Size")
 			local size = AutoLerp(1.5, 0.5, t)
-
 			UiAlign("center middle")
 			UiTranslate(x, y)
 			uiDrawPlayerImage(id, 15 * size, 15 * size, 3, color, 2)
@@ -908,17 +911,7 @@ function client.drawEndPath()
 		UiPop()
 	end
 
-	-- Convert progress (0–1) to time window
-	local t = client.ui.uiPathProgress
-	-- optional easing
-	t = t * t * (3 - 2 * t)
-
-	--DebugPrint("Before Time")
-	local time = AutoLerp(
-		shared.ui.pathStartTime,
-		shared.ui.pathEndTime,
-		t
-	)
+	local time = client.ui.uiPathProgress
 	local points = {}
 	
 	for id, path in pairs(client.ui.paths) do
@@ -939,10 +932,11 @@ function client.drawEndPath()
 					r, g, b = r-0.3, g-0.5, b
 				end 
 				count = count + 1
-				local alpha =  math.max(1 - (count / 5000)*1.3, 0)
-				DebugPrint(#path)
-				if path[i].event ~= 4 and count < 5000 then
+				local alpha =  math.max(1 - (count / 2000)*1.3, 0)
+				if path[i].event ~= 4 and count < 2000 then
 					DebugLine(path[i].pos, path[i-1].pos, r, g, b, alpha)
+				else
+					break
 				end
 				drawEventMarker({r, g, b}, alpha, path[i].pos, path[i].event, path[i].text)
 				if i == #path then

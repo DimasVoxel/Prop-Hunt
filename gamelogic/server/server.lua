@@ -36,7 +36,7 @@ server.gameConfig = {
 	--Server Config only
 	unhideCooldown = 0.6, -- Cant be configured
 	outOfBoundsCoolDown = 5, -- Cant be configured
-	playerPosRecordInterval = 1,
+	playerPosRecordInterval = 1.5,
 }
 
 shared.gameConfig = {
@@ -245,19 +245,37 @@ function server.tick(dt)
 		return
 	end
 
+	if InputPressed("c") then 
+		for id in Players() do 
+			for logId, data in pairs(server.players.log) do
+				ClientCall(id, "client.recieveLogs", data, logId, #server.players.log) -- Sending too much at once crashes the connection
+			end
+		end
+	end
+
 	-- Game end
 	if server.state.time <= 0 then
 		for p in Players() do
 			DisablePlayerInput(p)
 		end
+		countdownTick(dt, 0, false)
+
+		local data, finished = GetEvent("countdownFinished", 1)
+        if data == "nextgame" and finished then
+			SetString("game.gamemode.next", GetString("game.gamemode"))
+		end
+
 		if shared.state.gameOver == true then return end
 
 		shared.ui.pathEndTime = math.floor(GetTime())
-		for id, data in pairs(server.players.log) do
-			ClientCall(0, "client.recieveLogs", data, id, #server.players.log)
+		for id in Players() do 
+			for logId, data in pairs(server.players.log) do
+			ClientCall(id, "client.recieveLogs", data, logId, #server.players.log) -- Sending too much at once crashes the connection
+			end
 		end
 
 		shared.state.gameOver = true
+		countdownInit(60, "nextgame")
 		return
 	end
 
@@ -270,10 +288,12 @@ function server.tick(dt)
 		shared.state.hunterFreed = true
 
 		shared.ui.pathEndTime = math.floor(GetTime())
-		shared.ui.pathEndTime = math.floor(GetTime())
-		for id, data in pairs(server.players.log) do
-			ClientCall(0, "client.recieveLogs", data, id, #server.players.log)
+		for id in Players() do 
+			for logId, data in pairs(server.players.log) do
+			ClientCall(id, "client.recieveLogs", data, logId, #server.players.log) -- Sending too much at once crashes the connection
+			end
 		end
+		countdownInit(60, "nextgame")
 		return
 	end
 
@@ -337,8 +357,10 @@ end
 function server.newPlayerJoinRoutine()
 	for id in PlayersAdded() do
 		if helperIsGameOver() then 
-			for id, data in pairs(server.players.log) do
-				ClientCall(0, "client.recieveLogs", data, id, #server.players.log)
+			for id in Players() do 
+				for logId, data in pairs(server.players.log) do
+				ClientCall(id, "client.recieveLogs", data, logId, #server.players.log) -- Sending too much at once crashes the connection
+				end
 			end
 		end
 		if teamsIsSetup() then
@@ -504,7 +526,6 @@ function server.createLog(id, eventID)
     end
 
     local lastPos = lastEntry.pos
-
     if VecLength(VecSub(pos, lastPos)) < 250 and pos[2] < 1000 then
         log[#log + 1] = {
             pos = VecCopy(AutoVecRound(pos), 0.01),

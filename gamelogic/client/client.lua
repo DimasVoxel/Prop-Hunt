@@ -26,6 +26,9 @@ client.ui = {
 	uiPathStartTime = 0,
     uiPathEndTime = 0,
 	uiPathProgress = 0,
+
+	lockCamera = false,
+	dragging = false
 }
 
 client.hint = {
