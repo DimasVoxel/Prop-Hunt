@@ -246,14 +246,6 @@ function server.tick(dt)
 		return
 	end
 
-	if InputPressed("c") then 
-		for id in Players() do 
-			for logId, data in pairs(server.players.log) do
-				ClientCall(id, "client.recieveLogs", data, logId, #server.players.log) -- Sending too much at once crashes the connection
-			end
-		end
-	end
-
 	-- Game end
 	if server.state.time <= 0 then
 		for p in Players() do
@@ -273,6 +265,8 @@ function server.tick(dt)
 			for logId, data in pairs(server.players.log) do
 			ClientCall(id, "client.recieveLogs", data, logId, #server.players.log) -- Sending too much at once crashes the connection
 			end
+
+			server.resetPlayerToProp(id)
 		end
 
 		shared.state.gameOver = true
@@ -293,6 +287,8 @@ function server.tick(dt)
 			for logId, data in pairs(server.players.log) do
 			ClientCall(id, "client.recieveLogs", data, logId, #server.players.log) -- Sending too much at once crashes the connection
 			end
+
+			server.resetPlayerToProp(id)
 		end
 		countdownInit(60, "nextgame")
 		return

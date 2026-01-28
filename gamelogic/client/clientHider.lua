@@ -41,7 +41,16 @@ function client.hiderTick()
 		end
 
 		if client.player.tauntChargeCount <= GetTime() then 
-			ServerCall("server.tauntBroadcast", GetPlayerTransform(GetLocalPlayer()).pos, GetLocalPlayer())
+
+			local pos 
+			local body = helperGetPlayerPropBody()
+			if body then 
+				pos = GetBodyTransform(body).pos
+			else
+				pos = GetPlayerTransform(GetLocalPlayer()).pos
+			end
+
+			ServerCall("server.tauntBroadcast", pos, GetLocalPlayer())
 			client.hint.tauntCooldown = 5
 		end
 
@@ -98,7 +107,7 @@ function client.hiderCamera()
 			ServerCall("server.updateCameraRot", GetLocalPlayer(), sm_transform.rot)
 
 			local hit, closestPoint = GetBodyClosestPoint(body, sm_transform.pos)
-			if VecLength(VecSub(sm_transform.pos, closestPoint))  < 2 then 
+			if VecLength(VecSub(sm_transform.pos, closestPoint)) < 2 then 
 				local aa = VecAdd(sm_transform.pos, Vec(10, 5, 10))
 				local bb = VecAdd(sm_transform.pos, Vec(-10, -5, -10))
 
@@ -114,9 +123,12 @@ function client.hiderCamera()
 				end
 			end
 		else
-			local playerTransform = GetPlayerTransform()
+			local playerTransform = GetPlayerTransformWithPitch()
 			local aa = VecAdd(playerTransform.pos, Vec(10, 5, 10))
 			local bb = VecAdd(playerTransform.pos, Vec(-10, -5, -10))
+
+			local x,y,z = GetQuatEuler(playerTransform.rot)
+			client.camera.Rotation = Vec(x,y)
 
 			QueryRequire("physical visible")
 			QueryInclude("player")

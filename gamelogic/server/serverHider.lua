@@ -8,13 +8,16 @@ function server.clientHideRequest(playerid)
 		shared.players.hiders[playerid].isPropPlaced = true
 		server.players.hiders[playerid].unhideCooldown = GetTime() + server.gameConfig.unhideCooldown
 
+		local beforeTransform = GetBodyTransform(body)
+
 		body = server.propRegenerate(playerid)
 	
 		server.disableBodyCollission(body, false)
-		
+
+		SetBodyTransform(body, beforeTransform)
 		SetBodyDynamic(body, true)
 		SetBodyActive(body, true)
-		
+
 		SetBodyVelocity(body, GetPlayerVelocity(playerid))
 	end
 
