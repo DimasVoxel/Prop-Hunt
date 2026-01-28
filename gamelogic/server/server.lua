@@ -191,6 +191,7 @@ function server.initHider(id)
 	server.players.hiders[id].grabbing.localPos = 0
 	server.players.hiders[id].grabbing.dist = 0
 	server.players.hiders[id].standStillPosition = Vec()
+	server.players.hiders[id].currentCameraRot = Quat()
 end
 
 function server.update()

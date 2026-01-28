@@ -72,11 +72,12 @@ function client.hiderCamera()
 			end
 
 			local sm_transform = Transform(AutoSM_Get(client.camera.SM.pos), AutoSM_Get(client.camera.SM.rot))
+
 			SetCameraTransform(sm_transform)
+			ServerCall("server.updateCameraRot", GetLocalPlayer(), sm_transform.rot)
 
 			local hit, closestPoint = GetBodyClosestPoint(body, sm_transform.pos)
 			if VecLength(VecSub(sm_transform.pos, closestPoint))  < 2 then 
-				local playerTransform = GetPlayerTransform()
 				local aa = VecAdd(sm_transform.pos, Vec(10, 5, 10))
 				local bb = VecAdd(sm_transform.pos, Vec(-10, -5, -10))
 
