@@ -17,7 +17,7 @@ function client.hiderTick()
 
 	if IsPlayerJumping() and client.player.jumpTimer < GetTime() then 
 		client.player.jumpTimer = GetTime() + 2
-	elseif InputPressed("jump") and client.player.jumpTimer > GetTime() and not IsPlayerGrounded() then
+	elseif InputPressed("jump") and client.player.jumpTimer > GetTime() and not IsPlayerGrounded() and not helperIsPlayerHidden() then
 		ServerCall("server.doubleJump", GetLocalPlayer())
 		client.player.jumpTimer = 0
 
