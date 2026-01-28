@@ -28,6 +28,27 @@ function client.hiderTick()
 			ServerCall("server.broadCastJump", GetLocalPlayer(), pos, soundID)
 		end
 	end
+	
+    if helperIsPlayerHider() and teamsIsSetup() then
+		client.sendHideRequest()
+        client.SelectProp()
+
+		if client.hint.tauntCooldown == 0 and InputDown("usetool", GetLocalPlayer()) then
+			client.player.taunting = true
+		else
+			client.player.taunting = false
+			client.player.tauntChargeCount = GetTime() + client.gameConfig.tauntChargeTime
+		end
+
+		if client.player.tauntChargeCount <= GetTime() then 
+			ServerCall("server.tauntBroadcast", GetPlayerTransform(GetLocalPlayer()).pos, GetLocalPlayer())
+			client.hint.tauntCooldown = 5
+		end
+
+		if client.hint.tauntCooldown > 0 then
+			client.hint.tauntCooldown = math.max(0, client.hint.tauntCooldown - GetTimeStep())
+		end
+	end
 end
 
 function client.hiderCamera()
@@ -112,26 +133,6 @@ function client.hiderCamera()
 end
 
 function client.hiderUpdate()
-    if helperIsPlayerHider() and teamsIsSetup() then
-		client.sendHideRequest()
-        client.SelectProp()
-
-		if client.hint.tauntCooldown == 0 and InputDown("usetool", GetLocalPlayer()) then
-			client.player.taunting = true
-		else
-			client.player.taunting = false
-			client.player.tauntChargeCount = GetTime() + client.gameConfig.tauntChargeTime
-		end
-
-		if client.player.tauntChargeCount <= GetTime() then 
-			ServerCall("server.tauntBroadcast", GetPlayerTransform(GetLocalPlayer()).pos, GetLocalPlayer())
-			client.hint.tauntCooldown = 5
-		end
-
-		if client.hint.tauntCooldown > 0 then
-			client.hint.tauntCooldown = math.max(0, client.hint.tauntCooldown - GetTimeStep())
-		end
-	end
 end
 
 function client.SelectProp()
