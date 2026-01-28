@@ -130,6 +130,10 @@ function client.hiderCamera()
 			local x,y,z = GetQuatEuler(playerTransform.rot)
 			client.camera.Rotation = Vec(x,y)
 
+			local tr = GetPlayerCameraTransform()
+			AutoSM_Set(client.camera.SM.pos, tr.pos)
+			AutoSM_Set(client.camera.SM.rot, tr.rot)
+
 			QueryRequire("physical visible")
 			QueryInclude("player")
 			QueryRejectBody(body)
