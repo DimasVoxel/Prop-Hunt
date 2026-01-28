@@ -2640,8 +2640,11 @@ function optionsSlider(val, min, max, r, g, b)
         local w = 800
 
         -- Decide tick spacing in seconds (or units of your range)F
-        local tickStep = 1
-        local pixelsPerUnit = w / (max - min)
+	local tickCount = 30
+	local range = max - min
+	local tickStep = range / (tickCount - 1)
+	local pixelsPerUnit = w / range
+
 
         -- Draw slider background
         UiRect(w, 3)
@@ -2649,17 +2652,22 @@ function optionsSlider(val, min, max, r, g, b)
 			UiTranslate(0, -5)
 			uiDrawPanel(w+ 30, 15, 2)
 		UiPop()
-        -- Draw ticks dynamically based on min/max
-        UiPush()
-            UiAlign("left middle")
-            for t = min, max, tickStep do
-                UiPush()
+
+		UiPush()
+			UiAlign("left middle")
+
+			for i = 0, tickCount - 1 do
+				local t = min + i * tickStep
+
+				UiPush()
 					UiTranslate(-w/2, 2)
-                    UiTranslate((t - min) * pixelsPerUnit, 0)
-                    UiRect(2, 10) -- small tick
-                UiPop()
-            end
-        UiPop()
+					UiTranslate((t - min) * pixelsPerUnit, 0)
+					UiRect(2, 10)
+				UiPop()
+			end
+
+		UiPop()
+
 		UiPush()
 		UiTranslate(0, -25)
         local inRect = UiIsMouseInRect(w, 50)
