@@ -175,6 +175,18 @@ function client.hiderDraw(dt)
 			UiAlign("right middle")
 			UiTranslate(UiWidth()-40, UiMiddle())
 
+			-- Hurt screen
+			if client.ui.damageScreen > GetTime() then
+				UiPush()
+					local d = client.ui.damageScreen - GetTime()  
+					UiColor(0.8-d/2,0,0,d/2)
+					UiTranslate(UiCenter(), UiMiddle())
+					UiAlign("center middle")
+					UiImageBox("ui/hud/steroid.png",UiWidth(), UiHeight())
+				UiPop()
+			end
+
+
 			if InputPressed("G") then
 				helpTextHider.open = not helpTextHider.open
 			end
@@ -818,10 +830,12 @@ function client.buildCardinalSpline(knots)
                -- DebugLine(controllPoint1,GetPlayerPos())
                 curve[#curve+1] = {} 
                 curve[#curve].pos = bezierFast(knots[i+1].pos,VecAdd(knots[i+1].pos,controllPoint1),controllPoint2,knots[i+2].pos,j/precision)
-				curve[#curve].color = teamsGetColor(knots[i+1].team)
-				curve[#curve].time  = AutoLerp(knots[i].time, knots[i+1].time, j/precision)
-				if j == 1 or knots[i+1].event == 4 then
-					curve[#curve].event = knots[i+1].event
+				curve[#curve].color = teamsGetColor(knots[i+2].team)
+				curve[#curve].time  = AutoLerp(knots[i].time, knots[i+2].time, j/precision)
+				if j ~= 1 and knots[i+2].event == 4 then
+					curve[#curve].event = 5
+				elseif j == 1 then
+					curve[#curve].event = knots[i+2].event
 				end
 			end
         else 
@@ -887,17 +901,15 @@ function client.drawEndPath()
 	-- 2 = Transform Event,
 	-- 3 = Taunt
 	-- 4 = Found Event,
-	-- 5 = Cucstom + text
-	local function drawEventMarker(color, alpha, pos, eventID, text)
-		if eventID == 0 or eventID == nil or eventID == 4 then return end
+	-- 5 = No Draw 
+	local function drawEventMarker(color, alpha, pos, eventID)
+		if eventID == 0 or eventID == nil or eventID == 5 then return end
 		text = text or nil
-
 		local image = ""
 		if eventID == 1 then image = "MOD/assets/hurt.png" end
 		if eventID == 2 then image = "MOD/assets/transform.png" end
-		if eventID == 4 then image = "MOD/assets/dead.png" end
 		if eventID == 3 then image = "MOD/assets/taunt.png" end
-		if eventID == 5 then return end
+		if eventID == 4 then image = "MOD/assets/dead.png" end
 
 		UiPush()
 			local x, y, d = UiWorldToPixel(pos)
@@ -914,14 +926,15 @@ function client.drawEndPath()
 	local time = client.ui.uiPathProgress
 	local points = {}
 	
-	for id, path in pairs(client.ui.paths) do
+	for _, data in ipairs(client.ui.paths) do
+		local path = data.path
+		local id = data.id
 		local first = true
 		local count = 0
 		for i = #path, 2, -1 do
 			if path[i].time <= time then
 				if first then 
 					drawPlayerMarker(id, path[i].pos, path[i].color)
-					
 					points[#points+1] = {}
 					points[#points].pos = VecCopy(path[i].pos)
 					points[#points].id = id
@@ -933,18 +946,20 @@ function client.drawEndPath()
 				end 
 				count = count + 1
 				local alpha =  math.max(1 - (count / 2000)*1.3, 0)
-				if path[i].event ~= 4 and count < 2000 then
+
+				drawEventMarker({r, g, b}, alpha, path[i].pos, path[i].event)
+				if path[i].event ~= 5 then
 					DebugLine(path[i].pos, path[i-1].pos, r, g, b, alpha)
-				else
+				elseif count > 2000 then
 					break
 				end
-				drawEventMarker({r, g, b}, alpha, path[i].pos, path[i].event, path[i].text)
-				if i == #path then
+
+				if i == #path and path[i].event ~= 4 then
 					drawPlayerMarker(id, path[i].pos, {r, g, b})
 				end
 			end
 		end
-		if count == 0 then 
+		if count == 0 and #path ~= 0 then 
 			points[#points+1] = {}
 			points[#points].pos = path[1].pos
 			points[#points].id = id
@@ -956,17 +971,25 @@ function client.drawEndPath()
 end
 
 function client.recieveLogs(playerData, id, amount)
+	local path = {}
 	if #playerData > 4 then
 		table.insert(playerData,1,playerData[1])
 		table.insert(playerData,#playerData,playerData[#playerData])
 		path = client.buildCardinalSpline(playerData)
 	end
 
-	client.ui.paths[id] = path
+	if not client.ui.paths then client.ui.paths = {} end
+	client.ui.paths[#client.ui.paths+1] = {}
+	client.ui.paths[#client.ui.paths].id = id
+	client.ui.paths[#client.ui.paths].path = path
 
 	DebugPrint("Path Recieved: " ..  #client.ui.paths .. " / " .. amount)
 	if amount == #client.ui.paths then
 		client.ui.calculatedPaths = true
 		DebugPrint("Recieved all data")
 	end
+end
+
+function client.playerHurt(id)
+	client.ui.damageScreen = GetTime() + 1
 end

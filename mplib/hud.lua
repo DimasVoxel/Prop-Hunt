@@ -423,13 +423,32 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 			local gap = 10
 			local padding = 20
 
+
+		
+			UiPush()
+			UiTranslate(0, 100)
+
 			if not IsPlayerHost() then
 				uiDrawPanel(buttonWidth + padding, buttonHeight + gap + buttonHeight + gap + buttonHeight + padding + 20, 16)
 			else
 				uiDrawPanel(buttonWidth + padding, buttonHeight + gap + buttonHeight + padding + 20, 16)
 			end
+				UiTranslate(0, 20)
+				if uiDrawPrimaryButton("Show UI", buttonWidth) then
+					client.ui.hideUi = not client.ui.hideUi
+				end
 
-			UiTranslate(0, 20)
+				UiTranslate(0, buttonHeight + gap)
+
+				if uiDrawSecondaryButton("Restart Animation", buttonWidth) then
+					client.restartAnimation()
+				end
+
+				UiTranslate(0, buttonHeight + gap)
+				if not IsPlayerHost() then
+					uiDrawTextPanel("loc@UI_TEXT_WAITING_FOR_HOST", 1)
+				end
+			UiPop()
 
 			if _uiFocusPlayer == nil then 
 				_uiFocusPlayer = 0
@@ -442,11 +461,8 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 			local nameWidth = 0
 
 			UiPush()
-				
-				
-
 				UiPush()
-					UiTranslate(0, 200)
+					UiTranslate(0, -10)
 					local val, onSlider = optionsSlider(client.ui.uiPathProgress, shared.ui.pathStartTime,shared.ui.pathEndTime)
 
 					UiTranslate(0, 20)
@@ -478,7 +494,7 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 					client.ui.lockCamera = false
 					client.ui.dragging = false
 				end
-				DebugPrint(val)
+
 				UiPush()
 					UiTranslate(0, -100)
 					UiAlign("center top")
@@ -516,21 +532,6 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 				if _uiFocusPlayer == #client.playerPoints + 1 then
 					_uiFocusPlayer = 0
 				end
-			end
-
-			if uiDrawPrimaryButton("Show UI", buttonWidth) then
-				client.ui.hideUi = not client.ui.hideUi
-			end
-
-			UiTranslate(0, buttonHeight + gap)
-
-			if uiDrawSecondaryButton("Restart Animation", buttonWidth) then
-				client.restartAnimation()
-			end
-
-			UiTranslate(0, buttonHeight + gap)
-			if not IsPlayerHost() then
-				uiDrawTextPanel("loc@UI_TEXT_WAITING_FOR_HOST", 1)
 			end
 		UiPop()
 	end
@@ -2635,6 +2636,40 @@ function _drawGroupRows(columns, group, layout)
 end
 
 function optionsSlider(val, min, max, r, g, b)
+
+	local function drawEventMarker(alpha ,eventID)
+		if eventID == 0 or eventID == nil then return end
+		if eventID == 5 then return end
+
+		local image = ""
+		if eventID == 1 then 
+			image = "MOD/assets/hurt.png" 
+			color = {1,0.3,0}
+		end
+		if eventID == 2 then 
+			image = "MOD/assets/transform.png" 
+			color = {0.1,1,0.6} 
+		end
+		if eventID == 4 then 
+			image = "MOD/assets/dead.png" 
+			color = {1,0,0} 
+		end
+		if eventID == 3 then 
+			image = "MOD/assets/taunt.png" 
+			color = {0.4,0.7,1} 
+		end
+
+
+		UiPush()
+			local r,g,b = unpack(color)
+			UiColor(r,g,b,alpha)
+			UiAlign("center middle")
+
+			UiFillImage(image)
+			UiRoundedRect(20, 20 ,2)
+		UiPop()
+	end
+
     UiPush()
         UiTranslate(0, -8)
         local w = 800
@@ -2656,11 +2691,46 @@ function optionsSlider(val, min, max, r, g, b)
 		UiPush()
 			UiAlign("left middle")
 
+			local events = {}
+
+			local startTime = shared.ui.pathStartTime
+			local endTime   = shared.ui.pathEndTime
+			local timeRange = endTime - startTime
+
+			-- loop through paths until you find client.playerPoints[_uiFocusPlayer].id == client.ui.paths[index].id
+
+			local id = 0
+			for index, data in pairs(client.ui.paths) do
+				if client.playerPoints and _uiFocusPlayer ~= 0 and data.id == client.playerPoints[_uiFocusPlayer].id then
+					id = index
+					break
+				end
+			end
+
+			if _uiFocusPlayer ~= 0 and timeRange > 0 and client.ui.paths and client.ui.paths[id] then
+				local path = client.ui.paths[id].path
+
+				for i = #path, 2, -1 do
+					local node = path[i]
+					if node.event ~= 0 and node.event ~= nil then
+						events[#events + 1] = {}
+						events[#events ].time = (node.time - startTime) / timeRange
+						events[#events ].event = node.event
+					end
+				end
+			end
+
+
 			for i = 0, tickCount - 1 do
 				local t = min + i * tickStep
-
 				UiPush()
 					UiTranslate(-w/2, 2)
+					UiPush()
+						if events[i] ~= nil then
+							UiTranslate(events[i].time * w, 0)
+							drawEventMarker(1,events[i].event)
+						end
+					UiPop()
 					UiTranslate((t - min) * pixelsPerUnit, 0)
 					UiRect(2, 10)
 				UiPop()

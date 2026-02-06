@@ -28,7 +28,9 @@ client.ui = {
 	uiPathProgress = 0,
 
 	lockCamera = false,
-	dragging = false
+	dragging = false,
+
+	damageScreen = 0
 }
 
 client.hint = {
@@ -65,6 +67,8 @@ client.assets = {
 client.camera = {}
 client.camera.Rotation = Vec() -- Using a Vec instead of a quat so it doesn't cause any roll by mistake.
 client.camera.dist = 8
+client.camera.transition = 1
+client.camera.previousT = Transform()
 client.camera.SM = {
         pos = AutoSM_Define(Vec(), 2, 0.8, 1),      -- Inital Value, Frequency, Dampening, Response
         rot = AutoSM_DefineQuat(Quat(), 2, 0.8, 1), -- Inital Value, Frequency, Dampening, Response

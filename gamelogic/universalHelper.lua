@@ -103,6 +103,7 @@ end
 function helperDecreasePlayerShots(id)
 	local id = id or GetLocalPlayer()
 	if helperIsPlayerHider(id) and shared.players.hiders[id] then
+		ClientCall(id, "client.playerHurt")
 		shared.players.hiders[id].hp = math.max(shared.players.hiders[id].hp - 1,0)
 	end
 end

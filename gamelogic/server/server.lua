@@ -261,13 +261,7 @@ function server.tick(dt)
 		if shared.state.gameOver == true then return end
 
 		shared.ui.pathEndTime = math.floor(GetTime())
-		for id in Players() do 
-			for logId, data in pairs(server.players.log) do
-			ClientCall(id, "client.recieveLogs", data, logId, #server.players.log) -- Sending too much at once crashes the connection
-			end
 
-			server.resetPlayerToProp(id)
-		end
 
 		shared.state.gameOver = true
 		countdownInit(60, "nextgame")
@@ -284,10 +278,7 @@ function server.tick(dt)
 
 		shared.ui.pathEndTime = math.floor(GetTime())
 		for id in Players() do 
-			for logId, data in pairs(server.players.log) do
-			ClientCall(id, "client.recieveLogs", data, logId, #server.players.log) -- Sending too much at once crashes the connection
-			end
-
+			server.sendLogs(id)
 			server.resetPlayerToProp(id)
 		end
 		countdownInit(60, "nextgame")
@@ -355,9 +346,7 @@ function server.newPlayerJoinRoutine()
 	for id in PlayersAdded() do
 		if helperIsGameOver() then 
 			for id in Players() do 
-				for logId, data in pairs(server.players.log) do
-				ClientCall(id, "client.recieveLogs", data, logId, #server.players.log) -- Sending too much at once crashes the connection
-				end
+				server.sendLogs(id)
 			end
 		end
 		if teamsIsSetup() then
@@ -522,6 +511,11 @@ function server.createLog(id, eventID)
         return
     end
 
+	-- Replace last X with Skull
+	if lastEntry.event == 1 and eventID == 4 then
+		table.remove(log, #log)
+	end
+
     local lastPos = lastEntry.pos
     if VecLength(VecSub(pos, lastPos)) < 250 and pos[2] < 1000 then
         log[#log + 1] = {
@@ -531,4 +525,16 @@ function server.createLog(id, eventID)
             event = eventID
         }
     end
+end
+
+function server.sendLogs(id)
+
+	local countLogs = 0 
+	for _ in pairs(server.players.log) do
+		countLogs = countLogs + 1
+	end
+
+	for logId, data in pairs(server.players.log) do
+		ClientCall(id, "client.recieveLogs", data, logId, countLogs) -- Sending too much at once crashes the connection
+	end
 end
