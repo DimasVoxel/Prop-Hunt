@@ -341,7 +341,7 @@ function server.doubleJump(id)
 			local vel = GetPlayerVelocity(id)
 			vel[2] = math.max(vel[2], 0)
 			SetPlayerVelocity(VecAdd(Vec(0, 4 ,0 ), vel), id)
-			shared.players.hiders[id].stamina = math.max(shared.players.hiders[id].stamina - 1.55, 0)
+			shared.players.hiders[id].stamina = math.max(shared.players.hiders[id].stamina - 1, 0) -- Players have an arbirary amount of "3" stamina. 
 			if shared.players.hiders[id].stamina < 0.3 then 
 				shared.players.hiders[id].staminaCoolDown = GetTime() + 10
 			end

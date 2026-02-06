@@ -10,7 +10,7 @@ function client.hiderTick()
 	end
 	client.highlightClippingProps()
 	client.HighlightDynamicBodies()
-	
+
 	if IsPlayerGrounded() and not IsPlayerJumping() then 
 		client.player.jumpTimer = client.player.jumpTimer - GetTimeStep() * 10
 	end
@@ -102,6 +102,7 @@ function client.hiderCamera()
 			end
 
 			local sm_transform = Transform(AutoSM_Get(client.camera.SM.pos), AutoSM_Get(client.camera.SM.rot))
+			client.camera.previousT = TransformCopy(sm_transform)
 
 			SetCameraTransform(sm_transform)
 			ServerCall("server.updateCameraRot", GetLocalPlayer(), sm_transform.rot)
@@ -122,6 +123,7 @@ function client.hiderCamera()
 					SetPivotClipBody(bodies[i])
 				end
 			end
+			client.camera.transition = 0
 		else
 			local playerTransform = GetPlayerTransformWithPitch()
 			local aa = VecAdd(playerTransform.pos, Vec(10, 5, 10))
@@ -133,6 +135,12 @@ function client.hiderCamera()
 			local tr = GetPlayerCameraTransform()
 			AutoSM_Set(client.camera.SM.pos, tr.pos)
 			AutoSM_Set(client.camera.SM.rot, tr.rot)
+
+			client.camera.transition = math.min(AutoLerp(client.camera.transition, 1, (client.camera.transition + GetTimeStep())*GetTimeStep()*25 ), 1)
+			if client.camera.transition ~= 1 then
+				local t = AutoTransformLerp(client.camera.previousT,tr,client.camera.transition) 
+				SetCameraTransform(t)
+			end
 
 			QueryRequire("physical visible")
 			QueryInclude("player")
