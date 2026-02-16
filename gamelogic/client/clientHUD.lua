@@ -483,13 +483,13 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.time",
 							label = "Round Length",
 							info = "How long one round lasts",
-							options = { { label = "06:00", value = 6 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 3 * 60 } }
+							options = { { label = "Auto", value = -1 }, { label = "03:00", value = 3 * 60 }, { label = "06:00", value = 6 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, }
 						},
 						{
 							key = "savegame.mod.settings.hideTime",
 							label = "Hide Time",
 							info = "How much time hiders have to hide",
-							options = {{ label = "00:45", value = 45 }, { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 }, { label = "00:30", value = 30}}
+							options = {{ label = "Auto", value = -1 }, { label = "00:30", value = 30}, { label = "00:45", value = 45 }, { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 },}
 						},
 						{
 							key = "savegame.mod.settings.hidersJoinHunters",
@@ -522,16 +522,16 @@ function client.SetupScreen(dt)
 							options = {{ label = "Disable", value = 0 },  { label = "Enable", value = 1 } }
 						},
 						{
-							key = "savegame.mod.settings.hintTimer",
-							label = "Hunter Hints",
+							key = "savegame.mod.settings.distanceHintTimer",
+							label = "Distance Hints",
 							info = "Timer when Hunters get a hint",
-							options = {{ label = "45 Seconds", value = 45}, { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -1}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30}}
+							options = {{ label = "Auto", value = -1}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30},{ label = "45 Seconds", value = 45}, { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -2}}
 						},
 						{
-							key = "savegame.mod.settings.enableHunterHints",
+							key = "savegame.mod.settings.ringHintTimer",
 							label = "Hunter Hints",
 							info ="Enable or disable hints.",
-							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+							options = {{ label = "Auto", value = -1}, { label = "30 Seconds", value = 30}, { label = "45 Seconds", value = 45}, { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -2},}
 						},
 						{
 							key = "savegame.mod.settings.doubleJumpReload",
@@ -543,7 +543,7 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.hunterBulletReloadTimer",
 							label = "Bullet Reload",
 							info ="How quickly hunters get new bullets.",
-							options = {{ label = "4 Seconds", value = 4}, { label = "5 Seconds", value = 5},  { label = "6 Seconds", value = 6}, { label = "7 Seconds", value = 7}, { label = "8 Seconds", value = 8}, { label = "9 Seconds", value = 9}, { label = "10 Seconds", value = 10}, { label = "1 Second", value = 1}, { label = "2 Seconds", value = 2}, { label = "3 Seconds", value = 3}}
+							options = { { label = "Auto", value = -1}, { label = "1 Second", value = 1}, { label = "2 Seconds", value = 2}, { label = "3 Seconds", value = 3}, { label = "4 Seconds", value = 4}, { label = "5 Seconds", value = 5},  { label = "6 Seconds", value = 6}, { label = "7 Seconds", value = 7}, { label = "8 Seconds", value = 8}, { label = "9 Seconds", value = 9}, { label = "10 Seconds", value = 10}, }
 						},
 						{
 							key = "savegame.mod.settings.hunterPipebombReloadTimer",
@@ -567,25 +567,25 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.minimumSizeLimit",
 							label = "Min. Size Limits",
 							info ="Enables the minimum Size limit.",
-							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+							options = { { label = "Auto", value = -1 }, { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
 							key = "savegame.mod.settings.maximumSizeLimit",
 							label = "Max. Size Limits",
 							info ="Enables the max Size limit.",
-							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+							options = { { label = "Auto", value = -1 }, { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
 							key = "savegame.mod.settings.transformCooldown",
 							label = "Prop Cooldown",
 							info ="How quickly hiders can switch from one prop to another.",
-							options = { { label = "3 Seconds", value = 3}, { label = "5 Seconds", value = 5}, { label = "8 Seconds", value = 8}, { label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15} }
+							options = { { label = "8 Seconds", value = 8}, { label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15}, { label = "3 Seconds", value = 3}, { label = "5 Seconds", value = 5} }
 						},
 						{
 							key = "savegame.mod.settings.allowallowallowFriendlyFire",
 							label = "Kick Friendly Fire",
 							info ="If enabled players that kill too many players will be kicked.",
-							options = { { label = "Disable", value = 0 }, { label = "Enable", value = 1 } }
+							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 }, }
 						}
 					}
 				}
@@ -601,11 +601,11 @@ function client.SetupScreen(dt)
 					hunterBulletReloadTimer = GetInt("savegame.mod.settings.hunterBulletReloadTimer"),
 					hunterPipebombReloadTimer = GetInt("savegame.mod.settings.hunterPipebombReloadTimer"),
 					hunterBluetideReloadTimer = GetInt("savegame.mod.settings.blueTide"),
-					hunterHintTimer = GetInt("savegame.mod.settings.hintTimer"),
+					distanceHintTimer = GetInt("savegame.mod.settings.distanceHintTimer"),
+					ringHintTimer = GetInt("savegame.mod.settings.ringHintTimer"),
 					hiderTauntReloadTimer = GetInt("savegame.mod.settings.hiderTauntReloadTimer"),
 					hidersJoinHunters = GetInt("savegame.mod.settings.hidersJoinHunters"),
 					midGameJoin = GetInt("savegame.mod.settings.midGameJoin"),
-					enableHints = GetInt("savegame.mod.settings.enableHunterHints"),
 					minimumSizeLimit = GetInt("savegame.mod.settings.minimumSizeLimit"),
 					maximumSizeLimit = GetInt("savegame.mod.settings.maximumSizeLimit"),
 					allowFriendlyFire = GetInt("savegame.mod.settings.allowFriendlyFire"),
@@ -626,13 +626,24 @@ function getPlayerStats() -- This is for the tab button scoreboard
 	local hiderTable = {}
 	local spectators = {}
 
+	local function wasHider(id)
+		for i = 1, #shared.ui.stats.wasHider do 
+		-- need to check if id is in the wasHider table
+			if  shared.ui.stats.wasHider[i][1] == id then
+				return true
+			end
+		end
+		return false
+	end
+
 	for id in Players() do
-		if teamsGetTeamId(id) == 2 then
+		if teamsGetTeamId(id) == 2 and not wasHider(id) then
 			hunterTable[#hunterTable+1] = {
 				player = id,
 				columns = { "Hunter" }
 			}
 		end
+
 
 		if teamsGetTeamId(id) == 1 then
 			hiderTable[#hiderTable+1] = {
@@ -643,9 +654,9 @@ function getPlayerStats() -- This is for the tab button scoreboard
 	end
 
 	for i = 1, #shared.ui.stats.wasHider do
-		hiderTable[#hiderTable+1] = {
+		hunterTable[#hunterTable+1] = {
 			player = shared.ui.stats.wasHider[i][1],
-			columns = { shared.ui.stats.wasHider[i][2] .. " seconds" }
+			columns = { "Found after " ..shared.ui.stats.wasHider[i][2] .."s" }
 		}
 	end
 	for id in Players() do
@@ -679,30 +690,61 @@ function getPlayerStats() -- This is for the tab button scoreboard
 end
 
 function getEndResults() -- This is for the end game scoreboard. Perhaps players found should be a statistic in the future
-	local stats
+	
+
+	local stats = shared.ui.stats
 
 	local hunterTable = {}
 	local hiderTable = {}
-	for i = 1, #shared.ui.stats.originalHunters do
-		hunterTable[#hunterTable+1] = {
-			player = shared.ui.stats.originalHunters[i],
+
+	-- Build lookup tables
+	local originalHunterLookup = {}
+	for i = 1, #stats.originalHunters do
+		originalHunterLookup[stats.originalHunters[i]] = true
+	end
+
+	local wasHiderLookup = {}
+	for i = 1, #stats.wasHider do
+		wasHiderLookup[stats.wasHider[i][1]] = stats.wasHider[i][2]
+	end
+
+	-- Original hunters
+	for i = 1, #stats.originalHunters do
+		hunterTable[#hunterTable + 1] = {
+			player = stats.originalHunters[i],
 			columns = { "Hunter" }
 		}
 	end
 
+	-- Hiders that survived
 	for id in Players() do
-		if teamsGetTeamId(id) == 1 then
-			hiderTable[#hiderTable+1] = {
+		if teamsGetTeamId(id) == 1 and not wasHiderLookup[id] then
+			hiderTable[#hiderTable + 1] = {
 				player = id,
-				columns = { "Survived"}
+				columns = { "Survived" }
 			}
 		end
 	end
-	for i = 1, #shared.ui.stats.wasHider do
-		hiderTable[#hiderTable+1] = {
-			player = shared.ui.stats.wasHider[i][1],
-			columns = { shared.ui.stats.wasHider[i][2] .. " seconds" }
+
+	-- Hiders that were found (with time)
+	for playerId, time in pairs(wasHiderLookup) do
+		hiderTable[#hiderTable + 1] = {
+			player = playerId,
+			columns = { time .. " seconds" }
 		}
+	end
+
+	-- Joined mid game hunters
+	for id in Players() do
+		if teamsGetTeamId(id) == 2
+			and not originalHunterLookup[id]
+			and not wasHiderLookup[id] then
+
+			hunterTable[#hunterTable + 1] = {
+				player = id,
+				columns = { "Joined mid game" }
+			}
+		end
 	end
 
 	if #teamsGetTeamPlayers(1) == 0 then

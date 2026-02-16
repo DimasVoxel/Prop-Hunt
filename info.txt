@@ -1,4 +1,4 @@
-name = Prop Hunt
+name = Prop Hunt - Experimental
 author = DimasVoxel and Luke Splyne
 description = A prop hunt mod[noupload]
 tags = gameplay

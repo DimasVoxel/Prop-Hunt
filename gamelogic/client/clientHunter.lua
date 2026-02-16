@@ -16,7 +16,8 @@ function client.hunterDoubleJump()
 		client.player.jumpTimer = 0
 
         local pos = GetPlayerTransform().pos
-        client.jumpCloud(-1, pos)
-        ServerCall("server.broadCastJump", GetLocalPlayer(), pos)
+		local soundID = math.random(1,3)
+        client.jumpCloud(-1, pos, soundID)
+        ServerCall("server.broadCastJump", GetLocalPlayer(), pos, soundID)
 	end
 end

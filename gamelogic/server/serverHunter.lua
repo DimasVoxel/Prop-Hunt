@@ -62,7 +62,7 @@ function server.huntersDuringHideTime()
             --    SetPlayerParam("godMode", false, id)
             --end
 
-            server.timers.hunterHintTimer = GetTime() + 15
+            server.timers.distanceHintTimer = GetTime() + 15
         else
             local hunters = teamsGetTeamPlayers(2)
 

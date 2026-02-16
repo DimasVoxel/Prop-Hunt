@@ -23,8 +23,9 @@ function client.hiderTick()
 
 		if shared.players.hiders[GetLocalPlayer()].stamina > 1.5 then
 			local pos = GetPlayerTransform().pos
-			client.jumpCloud(-1, pos)
-			ServerCall("server.broadCastJump", GetLocalPlayer(), pos)
+			local soundID = math.random(1,3)
+			client.jumpCloud(-1, pos, soundID)
+			ServerCall("server.broadCastJump", GetLocalPlayer(), pos, soundID)
 		end
 	end
 end
@@ -32,39 +33,57 @@ end
 function client.hiderCamera()
 	local body = helperGetPlayerPropBody()
 	if body ~= -1 and body ~= false then
+		local body_center = AutoBodyCenter(body)
+		local dt = GetTimeStep()
+
+		local camera_rotation_quat = QuatEuler(unpack(client.camera.Rotation))
+
+		local target_position = VecCopy(body_center)
+		local outwards = QuatRotateVec(camera_rotation_quat, Vec(0, 0, 1))
+
+		QueryRejectBody(body)
+		local dir = VecNormalize(VecSub(AutoSM_Get(client.camera.SM.pos), VecAdd(body_center,Vec(0,1,0))))
+		local hit, dist = QueryRaycast(VecAdd(body_center,Vec(0,1,0)), dir, client.camera.dist, 0.2, true)
+
+		if hit then
+			dist = dist - 0.5
+		else
+			dist = client.camera.dist
+		end
+
+		target_position = VecAdd(target_position, VecScale(outwards, dist))
+		AutoSM_Update(client.camera.SM.pos, target_position, dt)
+		AutoSM_Update(client.camera.SM.rot, camera_rotation_quat, dt)
+
 		if helperIsPlayerHidden() then
-			local body_center = AutoBodyCenter(body)
-			local dt = GetTimeStep()
 			do -- Camera Rotation
 				local mouse_rotation = Vec(-InputValue("cameray") * 50, -InputValue("camerax") * 50)
 				client.camera.Rotation = VecAdd(client.camera.Rotation, mouse_rotation)
-				client.camera.Rotation[1] = AutoClamp(client.camera.Rotation[1], -100, 20)
+				client.camera.Rotation[1] = AutoClamp(client.camera.Rotation[1], -95, 40)
 
-				client.camera.dist = AutoClamp(client.camera.dist + InputValue("mousewheel") / -2, 2, 10)
+				client.camera.dist = AutoClamp(client.camera.dist + InputValue("mousewheel") / -2, 0.5, 15)
 			end
-
-			local camera_rotation_quat = QuatEuler(unpack(client.camera.Rotation))
-
-			local target_position = VecCopy(body_center)
-			local outwards = QuatRotateVec(camera_rotation_quat, Vec(0, 0, 1))
-
-			QueryRejectBody(body)
-			local dir = VecNormalize(VecSub(AutoSM_Get(client.camera.SM.pos), VecAdd(body_center,Vec(0,1,0))))
-			local hit, dist = QueryRaycast(VecAdd(body_center,Vec(0,1,0)), dir, client.camera.dist, 0.2, false)
-
-			if hit then
-				dist = dist - 0.3
-			else
-				dist = client.camera.dist
-			end
-
-			target_position = VecAdd(target_position, VecScale(outwards, dist))
-
-				AutoSM_Update(client.camera.SM.pos, target_position, dt)
-			AutoSM_Update(client.camera.SM.rot, camera_rotation_quat, dt)
 
 			local sm_transform = Transform(AutoSM_Get(client.camera.SM.pos), AutoSM_Get(client.camera.SM.rot))
 			SetCameraTransform(sm_transform)
+
+			local hit, closestPoint = GetBodyClosestPoint(body, sm_transform.pos)
+			if VecLength(VecSub(sm_transform.pos, closestPoint))  < 2 then 
+				local playerTransform = GetPlayerTransform()
+				local aa = VecAdd(sm_transform.pos, Vec(10, 5, 10))
+				local bb = VecAdd(sm_transform.pos, Vec(-10, -5, -10))
+
+				QueryRequire("physical visible")
+				QueryInclude("player")
+				QueryRejectBody(body)
+				DrawBodyOutline(body,  0, 0.95, 0.85, 0.6)
+
+				local bodies = QueryAabbBodies(bb, aa)
+				SetPivotClipBody(bodies[1], 0)
+				for i = 1, #bodies do
+					SetPivotClipBody(bodies[i])
+				end
+			end
 		else
 			local playerTransform = GetPlayerTransform()
 			local aa = VecAdd(playerTransform.pos, Vec(10, 5, 10))
