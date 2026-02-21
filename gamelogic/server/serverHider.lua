@@ -264,7 +264,9 @@ function server.handleHiderPlayerDamage(id) -- In Tic
 		if IsBodyBroken(propBody) then
 			helperDecreasePlayerShots(id)
 			helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
-			server.resetPlayerToProp(id)
+			if helperIsPlayerHidden(id) then
+				server.resetPlayerToProp(id)
+			end
 			server.createLog(id, 1)
 
 			-- We move the player to the shape if player was too far from the prop when found
@@ -526,7 +528,7 @@ function server.updateClientGrab(playerid, dir)
 end
 
 function server.resetPlayerToProp(id)
-	if helperGetPlayerPropBody(id) and helperIsPlayerHidden(id) then
+	if helperGetPlayerPropBody(id) then
 		local vel = GetPlayerVelocity(id)
 		local bodyT = GetBodyTransform(helperGetPlayerPropBody(id))
 		local pos = TransformToParentPoint(bodyT, VecScale(shared.players.hiders[id].offset,1))
