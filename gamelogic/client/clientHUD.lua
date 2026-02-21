@@ -322,13 +322,13 @@ function client.hiderDraw(dt)
 			UiPush()
 				UiAlign("right middle")
 				UiTranslate(-410)
-				RoundedBlurredRect(80, 35, 10, 0.5, {0,0,0,0.6})
+				RoundedBlurredRect(68, 35, 10, 0.5, {0,0,0,0.6})
 				UiAlign("center middle")
 
-				UiTranslate(-57.5)
-				UiImageBox("MOD/assets/double_jump_graphic.png", 25, 25)
+				UiTranslate(-50)
+				UiImageBox("MOD/assets/double_jump_graphic.png", 12.5, 25)
 
-				UiTranslate(35)
+				UiTranslate(30)
 				if shared.players.hiders[GetLocalPlayer()].stamina < 1.5 then--if not more than half
 					UiColor(0, 0, 0, 1)
 				else
