@@ -173,7 +173,6 @@ function client.hiderDraw(dt)
 	if not helperIsGameOver() then
 		UiPush()--help text
 			UiAlign("right middle")
-			UiTranslate(UiWidth()-40, UiMiddle())
 
 			-- Hurt screen
 			if client.ui.damageScreen > GetTime() then
@@ -186,6 +185,7 @@ function client.hiderDraw(dt)
 				UiPop()
 			end
 
+			UiTranslate(UiWidth()-40, UiMiddle())
 
 			if InputPressed("G") then
 				helpTextHider.open = not helpTextHider.open
