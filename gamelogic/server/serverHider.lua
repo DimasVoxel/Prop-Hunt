@@ -526,7 +526,7 @@ function server.updateClientGrab(playerid, dir)
 end
 
 function server.resetPlayerToProp(id)
-	if helperGetPlayerPropBody(id) then
+	if helperGetPlayerPropBody(id) and helperIsPlayerHidden(id) then
 		local vel = GetPlayerVelocity(id)
 		local bodyT = GetBodyTransform(helperGetPlayerPropBody(id))
 		local pos = TransformToParentPoint(bodyT, VecScale(shared.players.hiders[id].offset,1))
