@@ -156,9 +156,6 @@ function client.hiderCamera()
 	end
 end
 
-function client.hiderUpdate()
-end
-
 function client.SelectProp()
 	local cooldown = AutoClamp(math.floor(shared.players.hiders[GetLocalPlayer()].transformCooldown-shared.serverTime+0.4),0,3)
 	if not helperIsHuntersReleased() then

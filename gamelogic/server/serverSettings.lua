@@ -1,4 +1,9 @@
 function server.start(settings)
+
+    server.mapdata.SizeMedium = server.mapdata.SizeMedium or 1000
+    server.mapdata.MapArea = 400
+    server.mapdata.levels = {}
+
     server.setTimeSetting(settings)
 	server.setHunterAmount(settings)
     server.setHunterDistnaceHintTimer(settings)

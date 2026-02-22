@@ -261,7 +261,10 @@ function server.tick(dt)
 		if shared.state.gameOver == true then return end
 
 		shared.ui.pathEndTime = math.floor(GetTime())
-
+		for id in Players() do 
+			server.sendLogs(id)
+			server.resetPlayerToProp(id)
+		end
 
 		shared.state.gameOver = true
 		countdownInit(60, "nextgame")

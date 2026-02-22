@@ -135,7 +135,7 @@ function client.tick()
 end
 
 function client.update()
-	client.hiderUpdate()
+
 end
 
 function client.render(dt)
