@@ -20,7 +20,7 @@ function client.draw(dt)
 		hudDrawResults("Game Ended!", {1, 1, 1, 0.75}, "Prop Hunt Results", {{name="Time Survived", width=160, align="center"}}, getEndResults())
 
 		if shared.ui.currentCountDownName == "nextgame" then
-			countdownDraw("Next Game In", false)
+			countdownDraw("Next Game In", false, true)
 		end
 		return
 	end
@@ -73,6 +73,45 @@ function client.hunterDraw(dt)
 	-- Draws The Image While hunters Wait
 
 	if not helperIsGameOver() then
+
+		if helperIsHuntersReleased() then
+			UiPush()
+				local len = 250
+				UiTranslate(UiCenter() + 10, 120)
+				UiFont("bold.ttf", 20)
+				ProgressBar(true, 30, len, shared.gameConfig.distanceHintFrequency - shared.timers.distanceHintTimer, shared.gameConfig.distanceHintFrequency, 13, {0.2,0.5,0.3,1}, 0, 0)
+				DebugPrint(shared.timers.distanceHintTimer)
+				DebugPrint(shared.gameConfig.distanceHintFrequency)
+				UiColor(1,1,1,1)
+				UiTranslate(len/2,0)
+				UiAlign("center middle")
+				UiText('Next Distance Hint')
+			UiPop()
+
+			UiPush()
+				local current = 0
+				local max = 0
+				local text = "Next Area Hint"
+
+				if shared.hint.enableCircleHint then 
+					current = shared.gameConfig.ringHintFrequency - shared.timers.ringHintTimer
+					max = shared.gameConfig.ringHintFrequency
+				else
+					text = "Area Hints Inactive"
+				end
+				local len = 250
+				UiTranslate(UiCenter() - 10 - len , 120)
+				UiFont("bold.ttf", 20)
+				ProgressBar(true, 30, len, current, max, 13, {0.3,0.2,0.5,1}, 0, 0)
+				DebugPrint(shared.timers.ringHintTimer)
+				DebugPrint(shared.gameConfig.ringHintFrequency)
+				UiColor(1,1,1,1)
+				UiTranslate(len/2,0)
+				UiAlign("center middle")
+				UiText(text)
+			UiPop()
+		end
+
 		--hudDrawGameModeHelpText("You are a Hunter", "Search players! Shoot at props, if you find a hider make sure to kill them.")
 		UiPush()--help text
 			UiAlign("right middle")
@@ -95,7 +134,6 @@ function client.hunterDraw(dt)
 			end
 
 			RoundedBlurredRect(helpTextHunter.actualW, helpTextHunter.actualH, 10, 0.5, {0,0,0,0.6})
-			
 			--open text
 			UiPush()
 				UiTranslate(-150)
@@ -184,7 +222,7 @@ function client.hiderDraw(dt)
 					UiImageBox("ui/hud/steroid.png",UiWidth(), UiHeight())
 				UiPop()
 			end
-
+			
 			UiTranslate(UiWidth()-40, UiMiddle())
 
 			if InputPressed("G") then

@@ -938,11 +938,19 @@ end
 --
 -- @param[type=string] message Text to display.
 -- @param[type=number] alpha Alpha multiplier in range [0..1] for fading.
-function hudDrawInformationMessage(message, alpha)
-	UiPush()
-	UiTranslate(UiCenter(), 190)
-	uiDrawTextPanel(message, alpha)
-	UiPop()
+function hudDrawInformationMessage(message, alpha, corner)
+	if corner == nil then corner = false end
+	if corner == false then
+		UiPush()
+			UiTranslate(UiCenter(), 190)
+			uiDrawTextPanel(message, alpha)
+		UiPop()
+	else
+		UiPush()
+			UiTranslate(200, 100)
+			uiDrawTextPanel(message, alpha)
+		UiPop()
+	end
 end
 
 --- Draw a large numeric countdown in the center of the screen (client).
@@ -950,16 +958,20 @@ end
 -- Shows the remaining time as a big number with a fade effect.
 --
 -- @param[type=number] time Remaining time in seconds. Values <= 0 disable rendering.
-function hudDrawCountDown(time)
+function hudDrawCountDown(time, corner)
 	if time <= 0.0 then return end
 
 	local alpha = clamp(time/0.25, 0.0, 1.0)
 	
 	UiPush()
-	UiFont(FONT_BOLD, 100)
+	UiFont(FONT_BOLD, 50)
 	UiColor(1,1,1, alpha)
 	UiTextShadow(0,0,0,0.5 * alpha,2.0)
-	UiTranslate(UiCenter(), 310)
+	if corner then 
+		UiTranslate(200, 200)
+	else
+		UiTranslate(UiCenter(), 310)
+	end
 	UiAlign("center middle")
 	UiScale(2,2)
 	UiText(tostring(math.ceil(time)))

@@ -46,6 +46,8 @@ shared.gameConfig = {
 	hiderStandStillWarnTime = 5,
 	staminaSeconds = 3, -- How long playes can sprint until the bar depleets completly
 	endScreenPathDrawTime = 10,
+	distanceHintFrequency = -1,
+	ringHintFrequency = -1
 }
 
 -- Match state (game logic and so on)
@@ -98,9 +100,14 @@ shared.ui.stats = {
 }
 
 shared.serverTime = 0
+shared.timers = {
+	distanceHintTimer = 0,
+	ringHintTimer = 0
+}
 
 shared.hint = {
 	circleHint = {},
+	enableCircleHint = false
 }
 
 shared.state = {
@@ -291,6 +298,12 @@ function server.tick(dt)
 	if server.state.hunterFreed then
 		server.state.time = server.state.time - dt  -- update time
 		shared.state.time = math.floor(server.state.time) -- sync only whole seconds to client
+		shared.timers.distanceHintTimer = server.timers.distanceHintTimer - GetTime()
+		if server.gameConfig.ringHintTimer == false then
+			shared.timers.ringHintTimer = 0
+		else
+			shared.timers.ringHintTimer = server.timers.ringHintTimer - GetTime()
+		end
 	else
 		for id in Players() do
 			SetPlayerHealth(1, id) -- Cant die during hiding phase.

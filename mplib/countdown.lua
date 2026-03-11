@@ -83,9 +83,9 @@ end
 -- @param[type=string] message The message to display. -- #DimaCustom
 -- @param[type=bool] soundOnly If the function should only be used for timer sounds.
 -- @return[type=bool] true if the timer is still active.
-function countdownDraw(message, soundOnly)
+function countdownDraw(message, soundOnly, corner)
 	if shared.countdownTimer <= 0.0 then return false end
-
+	if corner == nil then corner = false end 
 	message = message or "Match starts in..."
 	soundOnly = soundOnly or false
 
@@ -105,8 +105,8 @@ function countdownDraw(message, soundOnly)
 	end
 
 	if not soundOnly then --did this so I could use only sound for hunter timer
-		hudDrawInformationMessage(message, math.min(shared.countdownTimer - 0.5,0.25)/0.25)
-		hudDrawCountDown(shared.countdownTimer)
+		hudDrawInformationMessage(message, math.min(shared.countdownTimer - 0.5,0.25)/0.25, corner)
+		hudDrawCountDown(shared.countdownTimer, corner)
 	end
 
 	return shared.countdownTimer > 0.0

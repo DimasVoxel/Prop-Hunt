@@ -26,7 +26,8 @@ function server.start(settings)
 	server.gameConfig.randomTeams = settings.randomTeams == 1
 
 	shared.gameConfig.transformCooldown = settings.transformCooldown
-
+    shared.gameConfig.distanceHintFrequency = server.gameConfig.distanceHintTimer
+    shared.gameConfig.ringHintFrequency     = server.gameConfig.ringHintTimer
 
 	if settings.hunterPipebombReloadTimer == -1 then
 		server.gameConfig.hunterPipeBombEnabled = false
@@ -39,7 +40,6 @@ function server.start(settings)
 	else
 		server.gameConfig.bluetideEnabled = true
 	end
-
 
 	--room has to be spawned here and not in init or the screens won't work
 	server.hasPlacedHuntersInRoom = false

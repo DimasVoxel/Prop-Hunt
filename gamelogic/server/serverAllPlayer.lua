@@ -67,6 +67,11 @@ function server.handleHints(dt)
 		if server.timers.ringHintTimer <= GetTime() or server.state.time < 30 and server.state.triggerLastHint == false then
 			server.timers.ringHintTimer = GetTime() + server.gameConfig.ringHintTimer
 			server.circleHint()
+
+	
+		end
+		if server.state.time < 180 then
+			shared.hint.enableCircleHint = true
 		end
 		lastHint()
 	end
@@ -142,6 +147,7 @@ function server.circleHint()
 
     -- Reset the circle hint table
     shared.hint.circleHint = {}
+	
 
     -- Add a transform for each hider
     for _, hiderId in ipairs(hiders) do
