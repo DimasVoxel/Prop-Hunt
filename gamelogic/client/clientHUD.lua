@@ -1,8 +1,31 @@
 #include "uiHelper.lua"
 
 function client.draw(dt)
-	hudTick(dt)
-	eventlogDraw(dt, teamsGetPlayerColorsList())
+    hudTick(dt)
+    eventlogDraw(dt, teamsGetPlayerColorsList())
+
+    if IsPlayerHost(GetLocalPlayer()) then
+        UiPush()
+            UiTranslate(10, UiHeight() - 10)
+            UiAlign("left bottom")
+            UiFont(FONT_BOLD, FONT_SIZE_18)
+            local mode = shared._hud.hostMode or 0
+            local label
+            if mode == 0 then
+                label = "Host Mode: MANUAL"
+                UiColor(1, 1, 1, 1)
+            elseif mode == 1 then
+                label = "Host Mode: AUTO"
+                UiColor(0, 0.8, 0.4, 1)
+            else
+                label = "Host Mode: AUTO + SPECTATE"
+                UiColor(0, 0.8, 0.4, 1)
+            end
+            if UiTextButton(label) then
+                ServerCall("server.cycleHostMode")
+            end
+        UiPop()
+    end
 
 	if shared.state.loadNextMap == true then
 		hudDrawBanner(dt)
@@ -15,6 +38,20 @@ function client.draw(dt)
 		client.revealHiderSpots()
 		-- TODO: Game Ended should be replaced with a text who actually won or if everyone left something akin to "Hiders Left"
 		hudDrawResults("Game Ended!", {1, 1, 1, 0.75}, "Prop Hunt Results", {{name="Time Survived", width=160, align="center"}}, getEndResults())
+
+		if shared.ui.currentCountDownName == "nextgame" and shared.countdownTimer > 0 then
+			UiPush()
+				UiTranslate(20, 20)
+				UiAlign("left top")
+				UiFont(FONT_BOLD, FONT_SIZE_22)
+				UiColor(1, 1, 1, 0.9)
+				UiText("Next Game In")
+				UiTranslate(0, 28)
+				UiFont(FONT_BOLD, FONT_SIZE_50)
+				UiColor(1, 1, 1, 1)
+				UiText(tostring(math.ceil(shared.countdownTimer)))
+			UiPop()
+		end
 		return
 	end
 

@@ -30,6 +30,10 @@ _LOCKTIME = 2.5
 _teamState = { time=0.0, pendingTeamSwaps = {}, stateTime = 0.0, skippedCountdown = false }
 client._teamState = { stateTime = 0.0, prevState = _WAITING }
 
+-- Lobby open timer
+_lobbyOpenTime = nil
+_lobbyGameStarted = false
+
 --- Initialize the team system with a given number of teams (server).
 --
 -- Sets default team names and colors and clears any previous team state.
@@ -344,7 +348,9 @@ function teamsDraw(dt)
     local teamBoxHeight = 376
 
     local width = 10 + teamBoxWidth * teamCount + 10 * (teamCount-1) + 10
-    local height = 432
+    local playerCount = GetPlayerCount()
+    local showTimer = not _lobbyGameStarted and playerCount < 3
+    local height = showTimer and 510 or 432
 
     UiPush()
         UiAlign("left top")
@@ -355,13 +361,48 @@ function teamsDraw(dt)
 
         UiPush()
             UiTranslate(width/2, 0)
-            UiColor(COLOR_WHITE)
-            UiFont("bold.ttf", 32 * 1.23)
             UiAlign("center top")
-            UiText("Join a team")
+
+            if _lobbyOpenTime == nil then
+                _lobbyOpenTime = GetTime()
+            end
+
+            if playerCount <= 1 and _lobbyGameStarted then
+                _lobbyOpenTime = GetTime()
+                _lobbyGameStarted = false
+            end
+
+            if teamsIsSetup() then
+                _lobbyGameStarted = true
+            end
+
+            UiFont("bold.ttf", 32 * 1.23)
+            if playerCount >= 3 then
+                UiColor(0, 0.9, 0.5, 1)
+                UiText("Game starting soon!")
+            else
+                UiColor(COLOR_WHITE)
+                UiText("Waiting for players (" .. playerCount .. "/3)")
+
+                if showTimer then
+                    local elapsed = math.floor(GetTime() - _lobbyOpenTime)
+                    local mins = math.floor(elapsed / 60)
+                    local secs = elapsed % 60
+                    local timeStr
+                    if mins > 0 then
+                        timeStr = "Lobby open for " .. mins .. "m " .. secs .. "s"
+                    else
+                        timeStr = "Lobby open for " .. secs .. "s"
+                    end
+                    UiFont("bold.ttf", 22 * 1.23)
+                    UiColor(0.7, 0.7, 0.7, 1)
+                    UiTranslate(0, 36)
+                    UiText(timeStr)
+                end
+            end
         UiPop()
 
-        UiTranslate(0, 36)
+        UiTranslate(0, showTimer and 72 or 36)
 
         UiPush()
         UiTranslate(10,0)

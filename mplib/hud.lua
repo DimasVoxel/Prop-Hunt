@@ -45,6 +45,7 @@ _hud = {
 function hudInit(useDamageIndicators)
 	shared._hud.useDamageIndicators = useDamageIndicators
 	shared._hud.gameIsSetup = false
+	shared._hud.hostMode = GetInt("savegame.mod.hostMode")
 end
 
 --- Enable the "Unstuck" pause menu button (server).
@@ -116,17 +117,9 @@ function hudTick(dt)
 			end
 		end
 	end
+
 end
 
-
---- Draw a countdown timer on the screen (client).
---
--- Shows time remaining in a human-readable `MM:SS` format (for example `1:25`)
--- near the top of the screen. Plays a warning sound during the last seconds.
--- Should be called from the UI render loop.
---
--- @param[type=number] time Time in seconds to display.
--- @param[opt,type=number] alpha Alpha multiplier in range [0..1] for fading the timer.
 function hudDrawTimer(time, alpha)
 
 	if time > 10 then
@@ -1992,6 +1985,31 @@ end
 
 function server.hudPlayPressed()
 	shared._hud.gameIsSetup = true
+end
+
+function server.cycleHostMode()
+	shared._hud.hostMode = (shared._hud.hostMode + 1) % 3
+	SetInt("savegame.mod.hostMode", shared._hud.hostMode)
+
+	local hostId = nil
+	for p in Players() do
+		if IsPlayerHost(p) then hostId = p end
+	end
+	if hostId == nil then return end
+
+	for t = 1, #shared._teamState.teams do
+		local players = shared._teamState.teams[t].players
+		for i = #players, 1, -1 do
+			if players[i] == hostId then
+				table.remove(players, i)
+			end
+		end
+	end
+
+	if shared._hud.hostMode == 2 then
+		local spec = shared._teamState.teams[3].players
+		spec[#spec + 1] = hostId
+	end
 end
 
 
