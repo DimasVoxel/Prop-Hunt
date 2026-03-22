@@ -42,6 +42,7 @@ server.state = {
 	time = 0, -- Accurate server only time
 	gameEnded = false,
 	triggerLastHint = false,
+	autoStartTriggered = false,
 }
 
 -- Timers (all ticking values)
@@ -246,6 +247,51 @@ function server.tick(dt)
 
 	server.nextMap()
 
+	if shared._hud.hostMode and shared._hud.hostMode >= 1 and not teamsIsSetup() and not shared._hud.gameIsSetup and not shared.state.loadNextMap then
+		if GetPlayerCount() >= 3 then
+			if not server.state.autoStartTriggered then
+				server.state.autoStartTriggered = true
+				shared._hud.gameIsSetup = true
+				if shared._hud.hostMode == 2 then
+					for p in Players() do
+						if IsPlayerHost(p) then
+							for t = 1, #shared._teamState.teams do
+								local players = shared._teamState.teams[t].players
+								for i = #players, 1, -1 do
+									if players[i] == p then table.remove(players, i) end
+								end
+							end
+							local spec = shared._teamState.teams[3].players
+							spec[#spec + 1] = p
+						end
+					end
+				end
+				server.start({
+					time                         = GetFloat("savegame.mod.settings.time") ~= 0 and GetFloat("savegame.mod.settings.time") or -1,
+					huntersStartAmount           = GetInt("savegame.mod.settings.hunters") ~= 0 and GetInt("savegame.mod.settings.hunters") or -1,
+					enforceGameStartHunterAmount = GetInt("savegame.mod.settings.enforceGameStartHunterAmount") ~= 0 and GetInt("savegame.mod.settings.enforceGameStartHunterAmount") or 1,
+					randomTeams                  = GetInt("savegame.mod.settings.serverRandomTeams"),
+					hideTime                     = GetFloat("savegame.mod.settings.hideTime") ~= 0 and GetFloat("savegame.mod.settings.hideTime") or -1,
+					hunterBulletReloadTimer      = GetInt("savegame.mod.settings.hunterBulletReloadTimer") ~= 0 and GetInt("savegame.mod.settings.hunterBulletReloadTimer") or -1,
+					hunterPipebombReloadTimer    = GetInt("savegame.mod.settings.hunterPipebombReloadTimer") ~= 0 and GetInt("savegame.mod.settings.hunterPipebombReloadTimer") or 20,
+					hunterBluetideReloadTimer    = GetInt("savegame.mod.settings.blueTide") ~= 0 and GetInt("savegame.mod.settings.blueTide") or 20,
+					distanceHintTimer            = GetInt("savegame.mod.settings.distanceHintTimer") ~= 0 and GetInt("savegame.mod.settings.distanceHintTimer") or -1,
+					ringHintTimer                = GetInt("savegame.mod.settings.ringHintTimer") ~= 0 and GetInt("savegame.mod.settings.ringHintTimer") or -1,
+					hiderTauntReloadTimer        = GetInt("savegame.mod.settings.hiderTauntReloadTimer") ~= 0 and GetInt("savegame.mod.settings.hiderTauntReloadTimer") or 15,
+					hidersJoinHunters            = GetInt("savegame.mod.settings.hidersJoinHunters") ~= 0 and GetInt("savegame.mod.settings.hidersJoinHunters") or 1,
+					midGameJoin                  = GetInt("savegame.mod.settings.midGameJoin") ~= 0 and GetInt("savegame.mod.settings.midGameJoin") or 1,
+					minimumSizeLimit             = GetInt("savegame.mod.settings.minimumSizeLimit") ~= 0 and GetInt("savegame.mod.settings.minimumSizeLimit") or -1,
+					maximumSizeLimit             = GetInt("savegame.mod.settings.maximumSizeLimit") ~= 0 and GetInt("savegame.mod.settings.maximumSizeLimit") or -1,
+					allowFriendlyFire            = GetInt("savegame.mod.settings.allowFriendlyFire"),
+					transformCooldown            = GetInt("savegame.mod.settings.transformCooldown") ~= 0 and GetInt("savegame.mod.settings.transformCooldown") or 5,
+					hunterJumpReload             = GetInt("savegame.mod.settings.doubleJumpReload") ~= 0 and GetInt("savegame.mod.settings.doubleJumpReload") or 8,
+				})
+			end
+		else
+			server.state.autoStartTriggered = false
+		end
+	end
+
 	eventlogTick(dt)
 
 	if teamsTick(dt) then -- This handles the Join/Leave button in the join a team HUD
@@ -276,10 +322,24 @@ function server.tick(dt)
 
 	-- Game end
 	if server.state.time <= 0 then
-		shared.state.gameOver = true
 		for p in Players() do
 			DisablePlayerInput(p)
 		end
+		countdownTick(dt, 0, false)
+
+		local data, finished = GetEvent("countdownFinished", 1)
+		if data == "nextgame" and finished then
+			if shared._hud.hostMode and shared._hud.hostMode >= 1 then
+				server.loadRandomMap()
+			else
+				SetString("game.gamemode.next", GetString("game.gamemode"))
+			end
+		end
+
+		if shared.state.gameOver == true then return end
+
+		shared.state.gameOver = true
+		countdownInit(20, "nextgame")
 		return
 	end
 
@@ -290,6 +350,7 @@ function server.tick(dt)
 		shared.state.gameOver = true
 		server.state.hunterFreed = true
 		shared.state.hunterFreed = true
+		countdownInit(20, "nextgame")
 		return
 	end
 
@@ -440,22 +501,42 @@ function server.destroy()
 end
 
 function server.loadRandomMap()
-	
-	local maps = {}
+
 	local blackList = {
 		"builtin-simplehouse",
 		"builtin-contentgamemodeexample",
+		"builtin-castle",
+		"builtin-motorpark",
+		"builtin-basic",
+		"builtin-debuginfo",
+		"builtin-editorshowcase",
+		"builtin-robotshowcase",
+		"builtin-scriptingshowcase",
+		"builtin-uishowcase",
+		"builtin-vehicleikshowcase",
+		"builtin-heistexample",
+		"builtin-bananabomb",
+		"builtin-assetpack",
+		"builtin-proppack",
+		"builtin-vehiclebooster",
+		"builtin-vehiclepack",
+		"builtin-screenrecorder",
+		"builtin-slowmotion",
+		"builtin-smokegun",
+		"builtin-speedometer",
+		"builtin-jetpack",
+		"builtin-lasergun",
+		"builtin-minigun",
+		"builtin-drivetosurvive",
+		"builtin-merlin",
 	}
 
 	local contains = function(tab, val)
-		for index, value in ipairs(tab) do
-			if value == val then
-				return true
-			end
-		end
+		for _, v in ipairs(tab) do if v == val then return true end end
 		return false
 	end
 
+	local maps = {}
 	for _, id in ipairs(ListKeys("mods.available")) do
 		local isPlayable = GetBool("mods.available." .. id .. ".playable")
 		local isMultiplayer = GetBool("mods.available." .. id .. ".multiplayer")
@@ -463,9 +544,9 @@ function server.loadRandomMap()
 		local isLocal = GetInt("mods.available." .. id .. ".local")
 		local path = GetString("mods.available." .. id .. ".path")
 
-		DebugPrint(id) 
-		DebugPrint(contains(blackList, id))
-		if isMultiplayer and isPlayable and isLocal == 0 and not contains(blackList, id) then
+		if isMultiplayer and isPlayable and isLocal == 0
+			and not contains(blackList, id)
+			and string.sub(id, 1, 8) == "builtin-" then
 			table.insert(maps, {
 				id = id,
 				name = name,
@@ -474,8 +555,32 @@ function server.loadRandomMap()
 		end
 	end
 
-	local map = maps[math.random(1, #maps)]
-	DebugPrint("set")
+	local usedCount = GetInt("savegame.mod.mapRotation.usedCount") or 0
+	local usedIds = {}
+	for i = 1, usedCount do
+		usedIds[GetString("savegame.mod.mapRotation.used" .. i)] = true
+	end
+
+	-- Find maps not yet used this rotation
+	local availableMaps = {}
+	for _, m in ipairs(maps) do
+		if not usedIds[m.id] then
+			table.insert(availableMaps, m)
+		end
+	end
+
+	if #availableMaps == 0 then
+		SetInt("savegame.mod.mapRotation.usedCount", 0)
+		availableMaps = maps
+		usedCount = 0
+	end
+
+	local map = availableMaps[math.random(1, #availableMaps)]
+
+	usedCount = usedCount + 1
+	SetString("savegame.mod.mapRotation.used" .. usedCount, map.id)
+	SetInt("savegame.mod.mapRotation.usedCount", usedCount)
+
 	SetString("level.randomMap.name", map.name, true)
 	SetString("level.randomMap.path", map.path)
 	SetString("level.randomMap.id", map.id)
