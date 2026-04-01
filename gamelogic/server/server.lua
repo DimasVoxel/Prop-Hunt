@@ -1,10 +1,13 @@
 --[[
+#include serverMapAnalyser.lua
+#include serverSettings.lua
 #include serverHider.lua
 #include serverHunter.lua
 #include serverAllPlayer.lua
 #include shape_utils.lua
 ]]
 
+shared.debug = false
 
 -- Match configuration (lobby / rules)
 server.gameConfig = {
@@ -13,8 +16,11 @@ server.gameConfig = {
 	hunterBulletReloadTimer = 5,
 	hunterPipebombReloadTimer = 10,
 	hunterBluetideReloadTimer = 20,
-	hunterHintTimer = 45,
+	distanceHintTimer = 45,
+	ringHintTimer = 45,
+
 	hiderTauntReloadTimer = 10,
+	hideTime = 45,
 
 	midGameJoin = true,
 	hidersJoinHunters = true,
@@ -26,15 +32,22 @@ server.gameConfig = {
 	minimumSizeLimit = true,
 	transformCooldown = 5,
 
+	
 	--Server Config only
 	unhideCooldown = 0.6, -- Cant be configured
 	outOfBoundsCoolDown = 5, -- Cant be configured
+	playerPosRecordInterval = 1.5,
 }
 
 shared.gameConfig = {
+	roundLength = 0,
 	minimumSizeLimit = true,
 	transformCooldown = 5,
-	hiderStandStillWarnTime = 5
+	hiderStandStillWarnTime = 5,
+	staminaSeconds = 3, -- How long playes can sprint until the bar depleets completly
+	endScreenPathDrawTime = 10,
+	distanceHintFrequency = -1,
+	ringHintFrequency = -1
 }
 
 -- Match state (game logic and so on)
@@ -49,23 +62,28 @@ server.timers = {
 	hunterBulletReloadTimer = 0,
 	hunterPipebombReloadTimer = 0,
 	hunterBluetideReloadTimer = 0,
-	hunterHintTimer = 15,
+	distanceHintTimer = 15,
+	ringHintTimer = 30,
 	hiderTauntReloadTimer = 0,
 	nextMapTimer = 0,
+	hunterDoubleJumpTimer = 0,
+	playerPosRecordInterval = 0,
 }
 
 server.players = {
 	hunter = {}, -- Contains only Hider Specifc data
 	hiders = {}, -- Contains only Hunter Specifc data
 	spectator = {}, --Contains only Spectator specific data
-	all = {} -- Contains health and stamina stats
+	all = {}
 }
 
 server.moderation = {}
 
 server.assets = {
 	taunt = 0,
-	handSprite = 0
+	handSprite = 0,
+	walkingSound = 0,
+	runningSound = 0,
 }
 
 -- All other game related variables
@@ -82,21 +100,29 @@ shared.ui.stats = {
 }
 
 shared.serverTime = 0
+shared.timers = {
+	distanceHintTimer = 0,
+	ringHintTimer = 0
+}
 
 shared.hint = {
 	circleHint = {},
+	enableCircleHint = false
 }
 
 shared.state = {
 	hunterFreed = false,
 	time = 0, -- We only send floored time to the clients
 	gameOver = false,
-	loadNextMap = false
+	loadNextMap = false,
+	pathStartTime = 0,
+	pathEndTime = 0
 }
 
 shared.players = {
 	hiders = {},
 	hunters = {},
+	all = {}
 }
 
 server.shotgunDefaults = {
@@ -107,7 +133,14 @@ server.shotgunDefaults = {
 	fallOffStart = 0
 }
 
+server.mapdata = {}
+
 function server.init()
+	RegisterTool("doublejump", "Double Jump", "MOD/assets/doublejump.vox", 2)
+
+	server.assets.walkingSound = LoadLoop("MOD/assets/walk.ogg", 10)
+	server.assets.runningSound = LoadLoop("MOD/assets/run.ogg", 10)
+
 	hudInit(true)
 	hudAddUnstuckButton()
 	teamsInit(3)
@@ -121,7 +154,7 @@ function server.init()
 
 	--- spawnSetDefaultLoadoutForTeam was modified to support per team loadouts
 	spawnSetDefaultLoadoutForTeam(1, {  })                  				  -- Hiders
-	spawnSetDefaultLoadoutForTeam(2, {{ "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }}) -- Hunters
+	spawnSetDefaultLoadoutForTeam(2, {{ "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }, { "doublejump", 0 }}) -- Hunters
 
 	spawnSetRespawnTime(10)
 
@@ -133,6 +166,8 @@ function server.init()
 	SetInt('game.tool.shotgun.damage', 2, true)
 	SetInt('game.tool.shotgun.range', 10, true)
 	SetInt('game.tool.shotgun.falloffDamage', 0.02, true)
+
+	server.analysis()
 end
 
 function server.initHider(id)
@@ -147,11 +182,12 @@ function server.initHider(id)
 	shared.players.hiders[id].environmentalDamageTrigger = false 
 	shared.players.hiders[id].damageValue = 0.33
 	shared.players.hiders[id].transformCooldown = 0
-	shared.players.hiders[id].stamina = 3 -- Players have 3 seconds of sprint
+	shared.players.hiders[id].stamina = shared.gameConfig.staminaSeconds -- Players have 3 seconds of sprint
 	shared.players.hiders[id].staminaCoolDown = 0
 	shared.players.hiders[id].taunts = 1
 	shared.players.hiders[id].grabbing = false
 	shared.players.hiders[id].standStillTimer = 0
+	shared.players.hiders[id].clippingProps = {}
 
 	-- Server Side information only
 	server.players.hiders[id] = {}
@@ -162,72 +198,14 @@ function server.initHider(id)
 	server.players.hiders[id].grabbing.localPos = 0
 	server.players.hiders[id].grabbing.dist = 0
 	server.players.hiders[id].standStillPosition = Vec()
-end
-
-function server.start(settings)
-	server.state.time = settings.time
-	shared.state.time = math.floor(server.state.time)
-
-	server.gameConfig.roundLength = settings.time
-	server.gameConfig.huntersStartAmount = settings.huntersStartAmount
-
-	server.gameConfig.hunterBulletReloadTimer = settings.hunterBulletReloadTimer
-	server.gameConfig.hunterPipebombReloadTimer = settings.hunterPipebombReloadTimer
-	server.gameConfig.hunterBluetideReloadTimer = settings.hunterBluetideReloadTimer
-	server.gameConfig.hunterHintTimer = settings.hunterHintTimer
-	server.gameConfig.hiderTauntReloadTimer = settings.hiderTauntReloadTimer
-	server.gameConfig.transformCooldown = settings.transformCooldown
-	
-
-	-- The gameConfig function doesnt support bools? Therefor I am converting them here
-	server.gameConfig.midGameJoin = settings.midGameJoin == 1
-	server.gameConfig.hidersJoinHunters = settings.hidersJoinHunters == 1
-	server.gameConfig.allowFriendlyFire = settings.allowFriendlyFire == 1
-	server.gameConfig.enforceGameStartHunterAmount = settings.enforceGameStartHunterAmount == 1
-	server.gameConfig.randomTeams = settings.randomTeams == 1
-	server.gameConfig.enableHunterHints = settings.enableHints == 1
-
-	shared.gameConfig.transformCooldown = settings.transformCooldown
-	shared.gameConfig.minimumSizeLimit = settings.minimumSizeLimit == 1
-	shared.gameConfig.maximumSizeLimit = settings.maximumSizeLimit == 1
-
-	server.timers.hunterHintTimer = 15  -- First hint will be triggered in 15 seconds 
-
-	if settings.hunterPipebombReloadTimer == -1 then
-		server.gameConfig.hunterPipeBombEnabled = false
-	else
-		server.gameConfig.hunterPipeBombEnabled = true
-	end
-
-	if settings.hunterBluetideReloadTimer == -1 then
-		server.gameConfig.bluetideEnabled = false
-	else
-		server.gameConfig.bluetideEnabled = true
-	end
-
-
-	--room has to be spawned here and not in init or the screens won't work
-	server.hasPlacedHuntersInRoom = false
-	if #server.game.spawnedForHunterRoom <= 0 then
-		server.game.spawnedForHunterRoom = Spawn("MOD/hunter_room.xml", Transform(Vec(0,1000,0)), true)
-	end
-
-	local hideTime = settings.hideTime
-	if GetPlayerCount() == 2 and GetPlayerName(0) == "Host" then hideTime = 2 end 
-
-	countdownInit(hideTime, "hidersHiding")
-
-	teamsStart(false)
-
-	SetBool("level.sandbox", false, true)
-	SetBool("level.unlimitedammo", false, true)
-	SetBool("level.spawn", false, true)
-	SetBool("level.creative", false, true)
+	server.players.hiders[id].currentCameraRot = Quat()
 end
 
 function server.update()
 	if helperIsGameOver() then return end
 	server.hiderUpdate()
+
+	--AutoDrawAABB(dynamicProps.Mapaa, dynamicProps.Mapbb, 1,1,1,1,true,false)
 end
 
 function server.nextMap()
@@ -262,6 +240,7 @@ function server.tick(dt)
 				server.initHider(id)
 			end
 		end
+		shared.ui.pathStartTime = math.floor(GetTime())
 	end
 
 	server.newPlayerJoinRoutine() -- Needs to happen after teamstick so that players gets assigned first
@@ -276,10 +255,26 @@ function server.tick(dt)
 
 	-- Game end
 	if server.state.time <= 0 then
-		shared.state.gameOver = true
 		for p in Players() do
 			DisablePlayerInput(p)
 		end
+		countdownTick(dt, 0, false)
+
+		local data, finished = GetEvent("countdownFinished", 1)
+        if data == "nextgame" and finished then
+			SetString("game.gamemode.next", GetString("game.gamemode"))
+		end
+
+		if shared.state.gameOver == true then return end
+
+		shared.ui.pathEndTime = math.floor(GetTime())
+		for id in Players() do 
+			server.sendLogs(id)
+			server.resetPlayerToProp(id)
+		end
+
+		shared.state.gameOver = true
+		countdownInit(60, "nextgame")
 		return
 	end
 
@@ -290,12 +285,25 @@ function server.tick(dt)
 		shared.state.gameOver = true
 		server.state.hunterFreed = true
 		shared.state.hunterFreed = true
+
+		shared.ui.pathEndTime = math.floor(GetTime())
+		for id in Players() do 
+			server.sendLogs(id)
+			server.resetPlayerToProp(id)
+		end
+		countdownInit(60, "nextgame")
 		return
 	end
 
 	if server.state.hunterFreed then
 		server.state.time = server.state.time - dt  -- update time
 		shared.state.time = math.floor(server.state.time) -- sync only whole seconds to client
+		shared.timers.distanceHintTimer = server.timers.distanceHintTimer - GetTime()
+		if server.gameConfig.ringHintTimer == false then
+			shared.timers.ringHintTimer = 0
+		else
+			shared.timers.ringHintTimer = server.timers.ringHintTimer - GetTime()
+		end
 	else
 		for id in Players() do
 			SetPlayerHealth(1, id) -- Cant die during hiding phase.
@@ -306,8 +314,8 @@ function server.tick(dt)
 	countdownTick(dt, 0, false)
 	if teamsIsSetup() then
 		server.hiderTick(dt) -- Logic in serverHiderLogic.lua
-		server.hunterTick(dt) -- Logic in serverHunterLogic.lua
 		server.playersTick(dt) -- Logic in serverPlayerLogic.lua
+		server.hunterTick(dt) -- Logic in serverHunterLogic.lua
 		server.deadTick(dt) -- Handles found players
 	end
 
@@ -343,6 +351,8 @@ function server.deadTick()
 				SetPlayerParam("collisionMask", 255, id)
 				SetPlayerParam("godmode", false, id)
 				SetPlayerHealth(0,id) -- We need to kill the player artificially to make the respawn logic work
+
+				server.createLog(id, 4)
 			end
 		end
 	end
@@ -350,6 +360,11 @@ end
 
 function server.newPlayerJoinRoutine()
 	for id in PlayersAdded() do
+		if helperIsGameOver() then 
+			for id in Players() do 
+				server.sendLogs(id)
+			end
+		end
 		if teamsIsSetup() then
 			if server.gameConfig.midGameJoin then
 				if helperIsHuntersReleased() then
@@ -372,10 +387,12 @@ function server.newPlayerJoinRoutine()
 				 server.initHider(id)
 			end
 
+			server.players.log[id] = {}
+
 			-- build a quick lookup table for loadout tools
 			local loadout = {}
 			if helperIsPlayerHunter(id) then
-				loadout = { { "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 } }
+				loadout = { { "shotgun", 3 }, { "pipebomb", 0 }, { "steroid", 0 }, { "doublejump", 0 } }
 			end
 
 			local loadoutSet = {}
@@ -463,8 +480,6 @@ function server.loadRandomMap()
 		local isLocal = GetInt("mods.available." .. id .. ".local")
 		local path = GetString("mods.available." .. id .. ".path")
 
-		DebugPrint(id) 
-		DebugPrint(contains(blackList, id))
 		if isMultiplayer and isPlayable and isLocal == 0 and not contains(blackList, id) then
 			table.insert(maps, {
 				id = id,
@@ -475,7 +490,6 @@ function server.loadRandomMap()
 	end
 
 	local map = maps[math.random(1, #maps)]
-	DebugPrint("set")
 	SetString("level.randomMap.name", map.name, true)
 	SetString("level.randomMap.path", map.path)
 	SetString("level.randomMap.id", map.id)
@@ -488,4 +502,55 @@ end
 function server.cancelNextMap()
 	shared.state.loadNextMap = false
 	server.timers.nextMapTimer = 0
+end
+
+-- EventIDs:
+-- 0 = Just Position,
+-- 1 = Hurt event,
+-- 2 = Transform Event,
+-- 3 = Found Event,
+-- 4 = Taunt
+function server.createLog(id, eventID)
+    server.players.log[id] = server.players.log[id] or {}
+
+    local log = server.players.log[id]
+    local lastEntry = log[#log] 
+    local pos = GetPlayerTransform(id).pos
+
+    if not lastEntry and pos[2] < 1000 then
+        log[1] = {
+            pos = VecCopy(AutoVecRound(pos), 0.01),
+            team = teamsGetTeamId(id),
+            time = AutoRound(GetTime(), 0.1),
+            event = eventID
+        }
+        return
+    end
+
+	-- Replace last X with Skull
+	if lastEntry.event == 1 and eventID == 4 then
+		table.remove(log, #log)
+	end
+
+    local lastPos = lastEntry.pos
+    if VecLength(VecSub(pos, lastPos)) < 250 and pos[2] < 1000 then
+        log[#log + 1] = {
+            pos = VecCopy(AutoVecRound(pos), 0.01),
+            team = teamsGetTeamId(id),
+            time = AutoRound(GetTime(), 0.1),
+            event = eventID
+        }
+    end
+end
+
+function server.sendLogs(id)
+
+	local countLogs = 0 
+	for _ in pairs(server.players.log) do
+		countLogs = countLogs + 1
+	end
+
+	for logId, data in pairs(server.players.log) do
+		ClientCall(id, "client.recieveLogs", data, logId, countLogs) -- Sending too much at once crashes the connection
+	end
 end

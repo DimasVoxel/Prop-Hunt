@@ -1,7 +1,7 @@
 function client.hiderTick()
 	if not client.state.matchEnded then
 		if client.player.hider.hidingAttempt then
-			if shared.players.hiders[GetLocalPlayer()].isPropPlaced == true or shared.players.hiders[GetLocalPlayer()].isPropClipping == false then
+			if helperIsPlayerHidden() or #checkPropClipping(GetLocalPlayer()) == 0 then
 				client.player.hider.hidingAttempt = false
 			end
 		end
@@ -10,66 +10,25 @@ function client.hiderTick()
 	end
 	client.highlightClippingProps()
 	client.HighlightDynamicBodies()
-	
-end
 
+	if IsPlayerGrounded() and not IsPlayerJumping() then 
+		client.player.jumpTimer = client.player.jumpTimer - GetTimeStep() * 10
+	end
 
-function client.hiderCamera()
-	local body = helperGetPlayerPropBody()
-	if body ~= -1 and body ~= false then
-		if helperIsPlayerHidden() then
-			local body_center = AutoBodyCenter(body)
-			local dt = GetTimeStep()
-			do -- Camera Rotation
-				local mouse_rotation = Vec(-InputValue("cameray") * 50, -InputValue("camerax") * 50)
-				client.camera.Rotation = VecAdd(client.camera.Rotation, mouse_rotation)
-				client.camera.Rotation[1] = AutoClamp(client.camera.Rotation[1], -100, 20)
+	if IsPlayerJumping() and client.player.jumpTimer < GetTime() then 
+		client.player.jumpTimer = GetTime() + 2
+	elseif InputPressed("jump") and client.player.jumpTimer > GetTime() and not IsPlayerGrounded() and not helperIsPlayerHidden() then
+		ServerCall("server.doubleJump", GetLocalPlayer())
+		client.player.jumpTimer = 0
 
-				client.camera.dist = AutoClamp(client.camera.dist + InputValue("mousewheel") / -2, 2, 10)
-
-			end
-			local camera_rotation_quat = QuatEuler(unpack(client.camera.Rotation))
-
-			local target_position = VecCopy(body_center)
-			local outwards = QuatRotateVec(camera_rotation_quat, Vec(0, 0, 1))
-
-			QueryRejectBody(body)
-			local dir = VecNormalize(VecSub(AutoSM_Get(client.camera.SM.pos), VecAdd(body_center,Vec(0,1,0))))
-			local hit, dist = QueryRaycast(VecAdd(body_center,Vec(0,1,0)), dir, client.camera.dist, 0.2, false)
-
-			if hit then
-				dist = dist - 0.3
-			else
-				dist = client.camera.dist
-			end
-
-			target_position = VecAdd(target_position, VecScale(outwards, dist))
-
-				AutoSM_Update(client.camera.SM.pos, target_position, dt)
-			AutoSM_Update(client.camera.SM.rot, camera_rotation_quat, dt)
-
-			local sm_transform = Transform(AutoSM_Get(client.camera.SM.pos), AutoSM_Get(client.camera.SM.rot))
-			SetCameraTransform(sm_transform)
-		else
-			local playerTransform = GetPlayerTransform()
-			local aa = VecAdd(playerTransform.pos, Vec(10, 5, 10))
-			local bb = VecAdd(playerTransform.pos, Vec(-10, -5, -10))
-
-			QueryRequire("physical visible")
-			QueryInclude("player")
-			QueryRejectBody(body)
-			DrawBodyOutline(body,  0, 0.95, 0.85, 0.6)
-
-			local bodies = QueryAabbBodies(bb, aa)
-			SetPivotClipBody(bodies[1], 0)
-			for i = 1, #bodies do
-				SetPivotClipBody(bodies[i])
-			end
+		if shared.players.hiders[GetLocalPlayer()].stamina > 1.5 then
+			local pos = GetPlayerTransform().pos
+			local soundID = math.random(1,3)
+			client.jumpCloud(-1, pos, soundID)
+			ServerCall("server.broadCastJump", GetLocalPlayer(), pos, soundID)
 		end
 	end
-end
-
-function client.hiderUpdate()
+	
     if helperIsPlayerHider() and teamsIsSetup() then
 		client.sendHideRequest()
         client.SelectProp()
@@ -82,12 +41,117 @@ function client.hiderUpdate()
 		end
 
 		if client.player.tauntChargeCount <= GetTime() then 
-			ServerCall("server.tauntBroadcast", GetPlayerTransform(GetLocalPlayer()).pos, GetLocalPlayer())
+
+			local pos 
+			local body = helperGetPlayerPropBody()
+			if body then 
+				pos = GetBodyTransform(body).pos
+			else
+				pos = GetPlayerTransform(GetLocalPlayer()).pos
+			end
+
+			ServerCall("server.tauntBroadcast", pos, GetLocalPlayer())
 			client.hint.tauntCooldown = 5
 		end
 
 		if client.hint.tauntCooldown > 0 then
 			client.hint.tauntCooldown = math.max(0, client.hint.tauntCooldown - GetTimeStep())
+		end
+	end
+end
+
+function client.hiderCamera()
+	local body = helperGetPlayerPropBody()
+	if body ~= -1 and body ~= false then
+		local body_center = AutoBodyCenter(body)
+		local dt = GetTimeStep()
+
+		local camera_rotation_quat = QuatEuler(unpack(client.camera.Rotation))
+
+		local target_position = VecCopy(body_center)
+		local outwards = QuatRotateVec(camera_rotation_quat, Vec(0, 0, 1))
+
+		QueryRejectBody(body)
+
+		for id in Players() do 
+			if helperIsPlayerHider(id) then
+				QueryRejectBody(helperGetPlayerPropBody(id))
+			end
+		end
+
+		local dir = VecNormalize(VecSub(AutoSM_Get(client.camera.SM.pos), VecAdd(body_center,Vec(0,1,0))))
+		local hit, dist = QueryRaycast(VecAdd(body_center,Vec(0,1,0)), dir, client.camera.dist, 0.2, true)
+
+		if hit then
+			dist = dist - 0.5
+		else
+			dist = client.camera.dist
+		end
+
+		target_position = VecAdd(target_position, VecScale(outwards, dist))
+		AutoSM_Update(client.camera.SM.pos, target_position, dt)
+		AutoSM_Update(client.camera.SM.rot, camera_rotation_quat, dt)
+
+		if helperIsPlayerHidden() then
+			do -- Camera Rotation
+				local mouse_rotation = Vec(-InputValue("cameray") * 50, -InputValue("camerax") * 50)
+				client.camera.Rotation = VecAdd(client.camera.Rotation, mouse_rotation)
+				client.camera.Rotation[1] = AutoClamp(client.camera.Rotation[1], -95, 40)
+
+				client.camera.dist = AutoClamp(client.camera.dist + InputValue("mousewheel") / -2, 0.5, 15)
+			end
+
+			local sm_transform = Transform(AutoSM_Get(client.camera.SM.pos), AutoSM_Get(client.camera.SM.rot))
+			client.camera.previousT = TransformCopy(sm_transform)
+
+			SetCameraTransform(sm_transform)
+			ServerCall("server.updateCameraRot", GetLocalPlayer(), sm_transform.rot)
+
+			local hit, closestPoint = GetBodyClosestPoint(body, sm_transform.pos)
+			if VecLength(VecSub(sm_transform.pos, closestPoint)) < 2 then 
+				local aa = VecAdd(sm_transform.pos, Vec(10, 5, 10))
+				local bb = VecAdd(sm_transform.pos, Vec(-10, -5, -10))
+
+				QueryRequire("physical visible")
+				QueryInclude("player")
+				QueryRejectBody(body)
+				DrawBodyOutline(body,  0, 0.95, 0.85, 0.6)
+
+				local bodies = QueryAabbBodies(bb, aa)
+				SetPivotClipBody(bodies[1], 0)
+				for i = 1, #bodies do
+					SetPivotClipBody(bodies[i])
+				end
+			end
+			client.camera.transition = 0
+		else
+			local playerTransform = GetPlayerTransformWithPitch()
+			local aa = VecAdd(playerTransform.pos, Vec(10, 5, 10))
+			local bb = VecAdd(playerTransform.pos, Vec(-10, -5, -10))
+
+			local x,y,z = GetQuatEuler(playerTransform.rot)
+			client.camera.Rotation = Vec(x,y)
+
+			local tr = GetPlayerCameraTransform()
+			AutoSM_Set(client.camera.SM.pos, tr.pos)
+			AutoSM_Set(client.camera.SM.rot, tr.rot)
+
+			client.camera.transition = math.min(AutoLerp(client.camera.transition, 1, (client.camera.transition + GetTimeStep())*GetTimeStep()*25 ), 1)
+			if client.camera.transition ~= 1 then
+				local t = AutoTransformLerp(client.camera.previousT,tr,client.camera.transition) 
+				SetCameraTransform(t)
+			end
+
+			QueryRequire("physical visible")
+			QueryInclude("player")
+			QueryRejectBody(body)
+			DrawBodyOutline(body,  0, 0.95, 0.85, 0.6)
+
+			local bodies = QueryAabbBodies(bb, aa)
+			SetPivotClipBody(bodies[1], 0)
+			for i = 1, #bodies do
+				SetPivotClipBody(bodies[i])
+			end
 		end
 	end
 end
@@ -109,13 +173,10 @@ function client.sendHideRequest()
 
     if InputPressed("flashlight") and not helperIsPlayerHidden() then
 		local playerID = GetLocalPlayer()
-        if not shared.players.hiders[playerID].isPropClipping and helperGetPlayerPropBody() and client.player.hideCoolDown <= GetTime() then
+        if helperGetPlayerPropBody() and client.player.hideCoolDown <= GetTime() then
             ServerCall("server.clientHideRequest", playerID)
-			client.player.hider.hidingAttempt = false
-			client.player.hideCoolDown = GetTime() + client.gameConfig.hideCoolDown
-		end
-		if shared.players.hiders[playerID].isPropClipping then
 			client.player.hider.hidingAttempt = true
+			client.player.hideCoolDown = GetTime() + client.gameConfig.hideCoolDown
 		end
     end
 end
@@ -135,6 +196,7 @@ function client.HighlightDynamicBodies()
 		QueryRejectVehicle(vehicles[i])
 	end
 
+	QueryRejectAnimator(GetWorldBody())
 	QueryRejectBody(helperGetPlayerPropBody())
 	local bodies = QueryAabbBodies(bb, aa)
 
@@ -175,7 +237,7 @@ function client.HighlightDynamicBodies()
 					end
 
 					local lookAtShape = playerGetLookAtShape(10, GetLocalPlayer())
-					
+
 					if unqualified == false then 
 						DrawShapeOutline(shape, 1, 1, 1, 1)
 						if lookAtShape == shape then
@@ -190,9 +252,10 @@ function client.HighlightDynamicBodies()
 end
 
 function client.highlightClippingProps()
-    if shared.players.hiders[GetLocalPlayer()].propBody ~= -1 and not shared.players.hiders[GetLocalPlayer()].isPropPlaced then
+    if shared.players.hiders[GetLocalPlayer()].propBody ~= -1 and not shared.players.hiders[GetLocalPlayer()].isPropPlaced and client.player.hider.hidingAttempt == true then
 		local clippingShapes = checkPropClipping(GetLocalPlayer())
         for i = 1, #clippingShapes do
+			DrawShapeHighlight(clippingShapes[i], math.sin(GetTime()*2)/4)
             DrawShapeOutline(clippingShapes[i], 1,0,0,1)
         end
     end
@@ -327,7 +390,7 @@ function client.calculatePlayerHurtValue(shape)
 end
 
 function client.grab() -- Is being used in client.draw 
-	if InputDown("grab") and not helperIsPlayerHidden() then 
+	if InputDown("grab") and not helperIsPlayerHidden() and helperGetPlayerPropBody() then 
 		local x,y = UiGetMousePos()
 		local dir = UiPixelToWorld(x, y)
 		local pos = GetCameraTransform().pos

@@ -8,20 +8,27 @@ function client.draw(dt)
 		hudDrawBanner(dt)
 		hudDrawTitle(dt, "Loading next Map: ".. GetString('level.randomMap.name'), true)
 	end
-
     if not gameInit(dt) then return end -- Dont Proceed while game is not setup
 
 	if helperIsGameOver() then 
+		if client.ui.calculatedPaths == true then 
+			client.drawEndPath()
+		end
+
 		client.revealHiderSpots()
 		-- TODO: Game Ended should be replaced with a text who actually won or if everyone left something akin to "Hiders Left"
 		hudDrawResults("Game Ended!", {1, 1, 1, 0.75}, "Prop Hunt Results", {{name="Time Survived", width=160, align="center"}}, getEndResults())
+
+		if shared.ui.currentCountDownName == "nextgame" then
+			countdownDraw("Next Game In", false, true)
+		end
 		return
 	end
 
 	hudDrawScoreboard(InputDown("tab") and not helperIsGameOver(), "", {{name="Time Survived", width=160, align="center"}}, getPlayerStats())
 
 	if helperIsPlayerHunter() then
-		client.hunterDraw()
+		client.hunterDraw(dt)
 	elseif helperIsPlayerHider() then
 		client.hiderDraw(dt)
 		client.grab(dt)
@@ -54,10 +61,111 @@ function gameInit(dt)
 	return client.SetupScreen(dt)
 end
 
-function client.hunterDraw()
+local helpTextHunter = { --tbh there was probably a better way to do this but it works so idc
+	open = true, 
+	actualW = 300, 
+	actualH = 250,
+	openA = 1,
+	closedA = -1
+}
+
+function client.hunterDraw(dt)
 	-- Draws The Image While hunters Wait
 
 	if not helperIsGameOver() then
+
+		if helperIsHuntersReleased() then
+			UiPush()
+				local len = 250
+				UiTranslate(UiCenter() + 10, 120)
+				UiFont("bold.ttf", 20)
+				ProgressBar(true, 30, len, shared.gameConfig.distanceHintFrequency - shared.timers.distanceHintTimer, shared.gameConfig.distanceHintFrequency, 13, {0.2,0.5,0.3,1}, 0, 0)
+				DebugPrint(shared.timers.distanceHintTimer)
+				DebugPrint(shared.gameConfig.distanceHintFrequency)
+				UiColor(1,1,1,1)
+				UiTranslate(len/2,0)
+				UiAlign("center middle")
+				UiText('Next Distance Hint')
+			UiPop()
+
+			UiPush()
+				local current = 0
+				local max = 0
+				local text = "Next Area Hint"
+
+				if shared.hint.enableCircleHint then 
+					current = shared.gameConfig.ringHintFrequency - shared.timers.ringHintTimer
+					max = shared.gameConfig.ringHintFrequency
+				else
+					text = "Area Hints Inactive"
+				end
+				local len = 250
+				UiTranslate(UiCenter() - 10 - len , 120)
+				UiFont("bold.ttf", 20)
+				ProgressBar(true, 30, len, current, max, 13, {0.3,0.2,0.5,1}, 0, 0)
+				DebugPrint(shared.timers.ringHintTimer)
+				DebugPrint(shared.gameConfig.ringHintFrequency)
+				UiColor(1,1,1,1)
+				UiTranslate(len/2,0)
+				UiAlign("center middle")
+				UiText(text)
+			UiPop()
+		end
+
+		--hudDrawGameModeHelpText("You are a Hunter", "Search players! Shoot at props, if you find a hider make sure to kill them.")
+		UiPush()--help text
+			UiAlign("right middle")
+			UiTranslate(UiWidth()-40, UiMiddle())
+
+			if InputPressed("G") then
+				helpTextHunter.open = not helpTextHunter.open
+			end
+
+			if helpTextHunter.open then
+				helpTextHunter.actualW = expDecay(helpTextHunter.actualW, 300, 10, dt)
+				helpTextHunter.actualH = expDecay(helpTextHunter.actualH, 250, 10, dt)
+				helpTextHunter.openA   = expDecay(helpTextHunter.openA,   1,   10, dt)
+				helpTextHunter.closedA = expDecay(helpTextHunter.closedA, -1,  10, dt)
+			else
+				helpTextHunter.actualW = expDecay(helpTextHunter.actualW, 50,  10, dt)
+				helpTextHunter.actualH = expDecay(helpTextHunter.actualH, 240, 10, dt)
+				helpTextHunter.openA   = expDecay(helpTextHunter.openA,   -1,  10, dt)
+				helpTextHunter.closedA = expDecay(helpTextHunter.closedA, 1,   10, dt)
+			end
+
+			RoundedBlurredRect(helpTextHunter.actualW, helpTextHunter.actualH, 10, 0.5, {0,0,0,0.6})
+			--open text
+			UiPush()
+				UiTranslate(-150)
+				UiTextAlignment("center")
+				UiPush()
+					UiColor(0.94, 0.94, 0.47, helpTextHunter.openA)
+					UiFont("bold.ttf", 35)
+					UiAlign("center top")
+					UiTranslate(0,-110)
+					UiText("You are a hunter!")
+				UiPop()
+				UiPush()
+					UiColor(1, 1, 1, helpTextHunter.openA)
+					UiFont("regular.ttf", 30)
+					UiAlign("center bottom")
+					UiTranslate(7,110)
+					UiText("Search for players!\nShoot at props, if you\nfind a hider make\nsure to kill them.\n\nPress ( G ) to close.")
+				UiPop()
+			UiPop()
+
+			--closed text
+			UiPush()
+				UiTextAlignment("center")
+				UiTranslate(-25)
+				UiRotate(-90)
+				UiFont("regular.ttf", 30)
+				UiAlign("center middle")
+				UiColor(1, 1, 1, helpTextHunter.closedA)
+				UiText("Press ( G ) to open.")
+			UiPop()
+		UiPop()
+
 		if helperIsPlayerHunter() and not helperIsHuntersReleased() then
 			--UiImageBox("assets/placeholder.png", UiWidth(), UiHeight(), 0,0)
 			if shared.ui.currentCountDownName == "hidersHiding" then
@@ -66,12 +174,18 @@ function client.hunterDraw()
 		end
 
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
-		hudDrawGameModeHelpText("You are a Hunter", "Search players! Shoot at props, if you find a hider make sure to kill them.")
 		hudDrawPlayerWorldMarkers(teamsGetTeamPlayers(2), false, 100, teamsGetColor(2))
 	end
 end
 
 local healthBarActualFill = 0
+local helpTextHider = { --tbh there was probably a better way to do this but it works so idc
+	open = true, 
+	actualW = 400, 
+	actualH = 275,
+	openA = 1,
+	closedA = -1
+}
 --local lowHealthSoundEffect = false
 --local lowHealthSfxVol = 3
 function client.hiderDraw(dt)
@@ -95,9 +209,81 @@ function client.hiderDraw(dt)
 	end
 
 	if not helperIsGameOver() then
+		UiPush()--help text
+			UiAlign("right middle")
+
+			-- Hurt screen
+			if client.ui.damageScreen > GetTime() then
+				UiPush()
+					local d = client.ui.damageScreen - GetTime()  
+					UiColor(0.8-d/2,0,0,d/2)
+					UiTranslate(UiCenter(), UiMiddle())
+					UiAlign("center middle")
+					UiImageBox("ui/hud/steroid.png",UiWidth(), UiHeight())
+				UiPop()
+			end
+			
+			UiTranslate(UiWidth()-40, UiMiddle())
+
+			if InputPressed("G") then
+				helpTextHider.open = not helpTextHider.open
+			end
+
+			if helpTextHider.open then
+				helpTextHider.actualW = expDecay(helpTextHider.actualW, 400, 10, dt)
+				helpTextHider.actualH = expDecay(helpTextHider.actualH, 280, 10, dt)
+				helpTextHider.openA   = expDecay(helpTextHider.openA,   1,   10, dt)
+				helpTextHider.closedA = expDecay(helpTextHider.closedA, -1,  10, dt)
+			else
+				helpTextHider.actualW = expDecay(helpTextHider.actualW, 50,  10, dt)
+				helpTextHider.actualH = expDecay(helpTextHider.actualH, 240, 10, dt)
+				helpTextHider.openA   = expDecay(helpTextHider.openA,   -1,  10, dt)
+				helpTextHider.closedA = expDecay(helpTextHider.closedA, 1,   10, dt)
+			end
+
+			RoundedBlurredRect(helpTextHider.actualW, helpTextHider.actualH, 10, 0.5, {0,0,0,0.6})
+			
+			--open text
+			UiPush()
+				UiTranslate(-200)
+				UiTextAlignment("center")
+				UiPush()
+					UiColor(0.94, 0.94, 0.47, helpTextHider.openA)
+					UiFont("bold.ttf", 35)
+					UiAlign("center top")
+					UiTranslate(0,-125)
+					UiText("You are a hider!")
+				UiPop()
+				UiPush()
+					UiColor(1, 1, 1, helpTextHider.openA)
+					UiFont("regular.ttf", 30)
+					UiAlign("center bottom")
+					UiTranslate(7,125)
+					UiText("Press ( E ) to transform\n\nPress & hold ( LMB ) to Taunt\nPress & Hold ( Shift ) to Sprint\nWater will kill you!\n\nPress ( G ) to close.")
+					if helperGetHiderStandStillTime(GetLocalPlayer()) > 5 then
+						UiTextOutline(0.94, 0.94, 0.47, Pulse(-1, 0, 4)+helpTextHider.openA, 0.4)
+					end
+					UiText("Press ( F ) to hide\n\n\n\n\n ")
+				UiPop()
+			UiPop()
+
+			--closed text
+			UiPush()
+				UiTextAlignment("center")
+				UiTranslate(-25)
+				UiRotate(-90)
+				UiFont("regular.ttf", 30)
+				UiAlign("center middle")
+				UiColor(1, 1, 1, helpTextHider.closedA)
+				if helperGetHiderStandStillTime(GetLocalPlayer()) > 5 then
+					UiTextOutline(0.94, 0.94, 0.47, Pulse(-1, 0, 4)+helpTextHider.closedA, 0.4)
+				end
+				UiText("Press ( G ) to open.")
+			UiPop()
+		UiPop()
 
 		hudDrawRespawnTimer(spawnGetPlayerRespawnTimeLeft(GetLocalPlayer()))
-		hudDrawGameModeHelpText("You are a Hider", "- Press ( E ) to transform\n- Press ( F ) to hide\n- Press & hold ( LMB ) to Taunt\n- Press & Hold ( Shift ) to Sprint\n- Water will kill you!",nil, 385)
+		--hudDrawGameModeHelpText("You are a Hider", "- Press ( E ) to transform\n- Press ( F ) to hide\n- Press & hold ( LMB ) to Taunt\n- Press & Hold ( Shift ) to Sprint\n- Water will kill you!",nil, 385)
 		client.clippingText()
 		client.tauntForce()
 
@@ -125,8 +311,7 @@ function client.hiderDraw(dt)
 						UiAlign("center middle")
 						UiTextAlignment("center")
 						UiTranslate(140, -35)
-						local alpha = (math.sin((GetTime()*7))/2)+0.5
-						UiColor(1,1,1,alpha)
+						UiColor(1,1,1,Pulse(0, 1, 7))
 						UiText("Taking water damage!") --TODO make say what type of damage when fire dmg implemented
 						
 						UiSoundLoop("MOD/assets/taking_env_damage.ogg")
@@ -152,19 +337,47 @@ function client.hiderDraw(dt)
 				UiRotate(180)
 				UiTranslate(110)
 				do
-					local maxStamina = 3
+					local maxStamina = shared.gameConfig.staminaSeconds
 					local stamina = shared.players.hiders[GetLocalPlayer()].stamina
 					local barColor = {0.02, 0.49, 0.82, 1}
+					local barBlink = 0
+					if client.player.jumpTimer > GetTime() and not IsPlayerGrounded() and shared.players.hiders[GetLocalPlayer()].stamina > 1.5 then--if more than half and jumping
+						barBlink = maxStamina/2
+					end
 					if math.max(shared.players.hiders[GetLocalPlayer()].staminaCoolDown - shared.serverTime, 0) ~= 0 then
 						barColor = {0.6, 0.2, 0.2, 1}
 					end
-					ProgressBar(true, 25, 250, stamina, maxStamina, 13, barColor, 0, 0)
+					ProgressBar(true, 25, 250, stamina, maxStamina, 13, barColor, 0, barBlink)
 				end
 				UiTranslate(256)
 				UiAlign("right middle")
 				UiRotate(180)
 				UiColor(1,1,1,1)
 				UiImageBox("MOD/assets/run_graphic.png", 25, 25)
+			UiPop()
+
+			--double jump
+			UiPush()
+				UiAlign("right middle")
+				UiTranslate(-410)
+				RoundedBlurredRect(68, 35, 10, 0.5, {0,0,0,0.6})
+				UiAlign("center middle")
+
+				UiTranslate(-50)
+				UiImageBox("MOD/assets/double_jump_graphic.png", 12.5, 25)
+
+				UiTranslate(30)
+				if shared.players.hiders[GetLocalPlayer()].stamina < 1.5 then--if not more than half
+					UiColor(0, 0, 0, 1)
+				else
+					UiColor(0.02, 0.49, 0.82, 1)
+				end
+				UiRoundedRect(25,25,12.5)
+
+				if client.player.jumpTimer > GetTime() and not IsPlayerGrounded() and shared.players.hiders[GetLocalPlayer()].stamina > 1.5 then--if more than half and jumping
+					UiColor(1, 1, 1, Pulse(0,1,7))
+					UiRoundedRect(25,25,12.5)
+				end
 			UiPop()
 
 			--center info
@@ -243,6 +456,8 @@ function client.hiderDraw(dt)
 	end
 end
 
+
+
 function client.DrawTransformPrompt()
 	if client.player.lookAtShape ~= -1 and not helperIsPlayerHidden() then
 		local boundsAA, boundsBB = GetBodyBounds(GetShapeBody(client.player.lookAtShape))
@@ -269,7 +484,7 @@ function client.clippingText()
 	UiTranslate(UiWidth()/2, UiHeight()-160)
 	UiFont("bold.ttf",30)
 	UiAlign('center middle')
-	if client.player.hider.hidingAttempt then
+	if client.player.hider.hidingAttempt and not helperIsPlayerHidden() then
 		UiText("You're clipping into " .. #checkPropClipping(GetLocalPlayer()) .. " shapes. Can't hide.")
 	end
 	UiPop()
@@ -327,13 +542,13 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.time",
 							label = "Round Length",
 							info = "How long one round lasts",
-							options = { { label = "06:00", value = 6 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, { label = "03:00", value = 3 * 60 } }
+							options = { { label = "Auto", value = -1 }, { label = "03:00", value = 3 * 60 }, { label = "06:00", value = 6 * 60 }, { label = "07:30", value = 7.5 * 60 }, { label = "10:00", value = 10 * 60 }, }
 						},
 						{
 							key = "savegame.mod.settings.hideTime",
 							label = "Hide Time",
 							info = "How much time hiders have to hide",
-							options = {{ label = "00:30", value = 30}, { label = "00:45", value = 45 }, { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 },  }
+							options = {{ label = "Auto", value = -1 }, { label = "00:30", value = 30}, { label = "00:45", value = 45 }, { label = "01:00", value = 60 }, { label = "01:30", value = 90 }, { label = "02:00", value = 120 },}
 						},
 						{
 							key = "savegame.mod.settings.hidersJoinHunters",
@@ -366,22 +581,28 @@ function client.SetupScreen(dt)
 							options = {{ label = "Disable", value = 0 },  { label = "Enable", value = 1 } }
 						},
 						{
-							key = "savegame.mod.settings.hintTimer",
-							label = "Hunter Hints",
+							key = "savegame.mod.settings.distanceHintTimer",
+							label = "Distance Hints",
 							info = "Timer when Hunters get a hint",
-							options = {{ label = "45 Seconds", value = 45}, { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -1}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30}}
+							options = {{ label = "Auto", value = -1}, { label = "15 Seconds", value = 15} , { label = "30 Seconds", value = 30},{ label = "45 Seconds", value = 45}, { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -2}}
 						},
 						{
-							key = "savegame.mod.settings.enableHunterHints",
+							key = "savegame.mod.settings.ringHintTimer",
 							label = "Hunter Hints",
 							info ="Enable or disable hints.",
-							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+							options = {{ label = "Auto", value = -1}, { label = "30 Seconds", value = 30}, { label = "45 Seconds", value = 45}, { label = "60 Seconds", value = 60}, { label = "120 Seconds", value = 120}, { label = "Disable Hints", value = -2},}
+						},
+						{
+							key = "savegame.mod.settings.doubleJumpReload",
+							label = "Hunter Jump Rel.",
+							info ="How quickly hunters can double jump.",
+							options = {{ label = "8 Seconds", value = 8},  { label = "10 Seconds", value = 10}, { label = "3 Seconds", value = 3}, { label = "5 Seconds", value = 5}}
 						},
 						{
 							key = "savegame.mod.settings.hunterBulletReloadTimer",
 							label = "Bullet Reload",
 							info ="How quickly hunters get new bullets.",
-							options = {{ label = "4 Seconds", value = 4}, { label = "5 Seconds", value = 5},  { label = "6 Seconds", value = 6}, { label = "7 Seconds", value = 7}, { label = "8 Seconds", value = 8}, { label = "9 Seconds", value = 9}, { label = "10 Seconds", value = 10}, { label = "1 Second", value = 1}, { label = "2 Seconds", value = 2}, { label = "3 Seconds", value = 3}}
+							options = { { label = "Auto", value = -1}, { label = "1 Second", value = 1}, { label = "2 Seconds", value = 2}, { label = "3 Seconds", value = 3}, { label = "4 Seconds", value = 4}, { label = "5 Seconds", value = 5},  { label = "6 Seconds", value = 6}, { label = "7 Seconds", value = 7}, { label = "8 Seconds", value = 8}, { label = "9 Seconds", value = 9}, { label = "10 Seconds", value = 10}, }
 						},
 						{
 							key = "savegame.mod.settings.hunterPipebombReloadTimer",
@@ -405,25 +626,25 @@ function client.SetupScreen(dt)
 							key = "savegame.mod.settings.minimumSizeLimit",
 							label = "Min. Size Limits",
 							info ="Enables the minimum Size limit.",
-							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+							options = { { label = "Auto", value = -1 }, { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
 							key = "savegame.mod.settings.maximumSizeLimit",
 							label = "Max. Size Limits",
 							info ="Enables the max Size limit.",
-							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
+							options = { { label = "Auto", value = -1 }, { label = "Enable", value = 1 }, { label = "Disable", value = 0 } }
 						},
 						{
 							key = "savegame.mod.settings.transformCooldown",
 							label = "Prop Cooldown",
 							info ="How quickly hiders can switch from one prop to another.",
-							options = { { label = "3 Seconds", value = 3}, { label = "5 Seconds", value = 5}, { label = "8 Seconds", value = 8}, { label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15} }
+							options = { { label = "8 Seconds", value = 8}, { label = "10 Seconds", value = 10}, { label = "15 Seconds", value = 15}, { label = "3 Seconds", value = 3}, { label = "5 Seconds", value = 5} }
 						},
 						{
 							key = "savegame.mod.settings.allowallowallowFriendlyFire",
 							label = "Kick Friendly Fire",
 							info ="If enabled players that kill too many players will be kicked.",
-							options = { { label = "Disable", value = 0 }, { label = "Enable", value = 1 } }
+							options = { { label = "Enable", value = 1 }, { label = "Disable", value = 0 }, }
 						}
 					}
 				}
@@ -439,15 +660,16 @@ function client.SetupScreen(dt)
 					hunterBulletReloadTimer = GetInt("savegame.mod.settings.hunterBulletReloadTimer"),
 					hunterPipebombReloadTimer = GetInt("savegame.mod.settings.hunterPipebombReloadTimer"),
 					hunterBluetideReloadTimer = GetInt("savegame.mod.settings.blueTide"),
-					hunterHintTimer = GetInt("savegame.mod.settings.hintTimer"),
+					distanceHintTimer = GetInt("savegame.mod.settings.distanceHintTimer"),
+					ringHintTimer = GetInt("savegame.mod.settings.ringHintTimer"),
 					hiderTauntReloadTimer = GetInt("savegame.mod.settings.hiderTauntReloadTimer"),
 					hidersJoinHunters = GetInt("savegame.mod.settings.hidersJoinHunters"),
 					midGameJoin = GetInt("savegame.mod.settings.midGameJoin"),
-					enableHints = GetInt("savegame.mod.settings.enableHunterHints"),
 					minimumSizeLimit = GetInt("savegame.mod.settings.minimumSizeLimit"),
 					maximumSizeLimit = GetInt("savegame.mod.settings.maximumSizeLimit"),
 					allowFriendlyFire = GetInt("savegame.mod.settings.allowFriendlyFire"),
 					transformCooldown = GetInt("savegame.mod.settings.transformCooldown"),
+					hunterJumpReload = GetInt("savegame.mod.settings.doubleJumpReload"),
 				})
 			end
 		end
@@ -463,13 +685,24 @@ function getPlayerStats() -- This is for the tab button scoreboard
 	local hiderTable = {}
 	local spectators = {}
 
+	local function wasHider(id)
+		for i = 1, #shared.ui.stats.wasHider do 
+		-- need to check if id is in the wasHider table
+			if  shared.ui.stats.wasHider[i][1] == id then
+				return true
+			end
+		end
+		return false
+	end
+
 	for id in Players() do
-		if teamsGetTeamId(id) == 2 then
+		if teamsGetTeamId(id) == 2 and not wasHider(id) then
 			hunterTable[#hunterTable+1] = {
 				player = id,
 				columns = { "Hunter" }
 			}
 		end
+
 
 		if teamsGetTeamId(id) == 1 then
 			hiderTable[#hiderTable+1] = {
@@ -480,9 +713,9 @@ function getPlayerStats() -- This is for the tab button scoreboard
 	end
 
 	for i = 1, #shared.ui.stats.wasHider do
-		hiderTable[#hiderTable+1] = {
+		hunterTable[#hunterTable+1] = {
 			player = shared.ui.stats.wasHider[i][1],
-			columns = { shared.ui.stats.wasHider[i][2] .. " seconds" }
+			columns = { "Found after " ..shared.ui.stats.wasHider[i][2] .."s" }
 		}
 	end
 	for id in Players() do
@@ -516,30 +749,61 @@ function getPlayerStats() -- This is for the tab button scoreboard
 end
 
 function getEndResults() -- This is for the end game scoreboard. Perhaps players found should be a statistic in the future
-	local stats
+	
+
+	local stats = shared.ui.stats
 
 	local hunterTable = {}
 	local hiderTable = {}
-	for i = 1, #shared.ui.stats.originalHunters do
-		hunterTable[#hunterTable+1] = {
-			player = shared.ui.stats.originalHunters[i],
+
+	-- Build lookup tables
+	local originalHunterLookup = {}
+	for i = 1, #stats.originalHunters do
+		originalHunterLookup[stats.originalHunters[i]] = true
+	end
+
+	local wasHiderLookup = {}
+	for i = 1, #stats.wasHider do
+		wasHiderLookup[stats.wasHider[i][1]] = stats.wasHider[i][2]
+	end
+
+	-- Original hunters
+	for i = 1, #stats.originalHunters do
+		hunterTable[#hunterTable + 1] = {
+			player = stats.originalHunters[i],
 			columns = { "Hunter" }
 		}
 	end
 
+	-- Hiders that survived
 	for id in Players() do
-		if teamsGetTeamId(id) == 1 then
-			hiderTable[#hiderTable+1] = {
+		if teamsGetTeamId(id) == 1 and not wasHiderLookup[id] then
+			hiderTable[#hiderTable + 1] = {
 				player = id,
-				columns = { "Survived"}
+				columns = { "Survived" }
 			}
 		end
 	end
-	for i = 1, #shared.ui.stats.wasHider do
-		hiderTable[#hiderTable+1] = {
-			player = shared.ui.stats.wasHider[i][1],
-			columns = { shared.ui.stats.wasHider[i][2] .. " seconds" }
+
+	-- Hiders that were found (with time)
+	for playerId, time in pairs(wasHiderLookup) do
+		hiderTable[#hiderTable + 1] = {
+			player = playerId,
+			columns = { time .. " seconds" }
 		}
+	end
+
+	-- Joined mid game hunters
+	for id in Players() do
+		if teamsGetTeamId(id) == 2
+			and not originalHunterLookup[id]
+			and not wasHiderLookup[id] then
+
+			hunterTable[#hunterTable + 1] = {
+				player = id,
+				columns = { "Joined mid game" }
+			}
+		end
 	end
 
 	if #teamsGetTeamPlayers(1) == 0 then
@@ -574,4 +838,196 @@ end
 function client.nextMapBanner()
 	_titleState.time = 0
 	client.ui.switchingMap = true
+end
+
+function client.buildCardinalSpline(knots)
+	local function bezierFast(p1,p2,p3,p4, t) -- By Thomasims
+		local omt = 1 - t
+		local t2, omt2 = t ^ 2, omt ^ 2
+
+		local p = VecAdd(VecAdd(VecAdd(VecScale(p1, omt ^ 3), VecScale(p2, 3 * t * omt2)), VecScale(p3, 3 * t2 * omt)),
+			VecScale(p4, t ^ 3))
+		return p
+	end
+    local curve = {}
+
+    --Linear spline to cardinal spline https://youtu.be/jvPPXbo87ds?t=2656
+	local precision
+    local magicNumber = 4.1 -- Magic number explained https://youtu.be/jvPPXbo87ds?t=2824
+    for i=1, #knots do
+        if i ~= #knots-2 then 
+            -- # Hermite to bezier conversion https://youtu.be/jvPPXbo87ds?t=2528
+            local velocity = VecSub(knots[i+2].pos,knots[i].pos)
+            local controllPoint1 = VecScale(velocity,1/magicNumber)
+            local velocityKnos2 = VecSub(knots[i+3].pos,knots[i+1].pos)
+            local controllPoint1Knot2 = VecScale(velocityKnos2,1/magicNumber)
+            local controllPoint2 = VecAdd(knots[i+2].pos,VecScale(controllPoint1Knot2,-1))
+			precision = math.ceil(5 * (1 * math.max(knots[i+1].time - knots[i].time, 1)))
+
+            for j=1, precision do 
+               -- DebugLine(controllPoint1,GetPlayerPos())
+                curve[#curve+1] = {} 
+                curve[#curve].pos = bezierFast(knots[i+1].pos,VecAdd(knots[i+1].pos,controllPoint1),controllPoint2,knots[i+2].pos,j/precision)
+				curve[#curve].color = teamsGetColor(knots[i+2].team)
+				curve[#curve].time  = AutoLerp(knots[i].time, knots[i+2].time, j/precision)
+				if j ~= 1 and knots[i+2].event == 4 then
+					curve[#curve].event = 5
+				elseif j == 1 then
+					curve[#curve].event = knots[i+2].event
+				end
+			end
+        else 
+            break
+        end
+    end
+
+    return curve
+end
+
+
+-- Call this to restart the animation
+function client.restartAnimation()
+	client.ui.uiPathProgress = 0
+end
+
+-- Call this once per frame (tick or draw)
+local function updatePathProgress()
+	local speed = (shared.ui.pathEndTime - shared.ui.pathStartTime) / 30 
+	client.ui.uiPathProgress = AutoClamp(client.ui.uiPathProgress + speed*GetTimeStep(), shared.ui.pathStartTime, shared.ui.pathEndTime)
+end
+
+function client.drawEndPath()
+	updatePathProgress()
+
+	local function GetCenterOfVectors(points) 
+		local sum = Vec(0, 0, 0)
+
+		for _, v in ipairs(points) do
+			sum = VecAdd(sum,  v.pos)
+		end
+
+		return VecScale(sum, 1 / #points)
+	end
+
+	local function drawPlayerMarker(id, pos, color, text)
+		text = text or nil
+		local x, y, d = UiWorldToPixel(pos)
+
+		UiPush()
+			local near, far = 100, 500
+			local t = AutoClamp((d - near) / (far - near), 0, 1)
+			--DebugPrint("Size")
+			local size = AutoLerp(1.5, 0.5, t)
+			UiAlign("center middle")
+			UiTranslate(x, y)
+			uiDrawPlayerImage(id, 15 * size, 15 * size, 3, color, 2)
+
+			UiTranslate(0, 14 * size)
+			UiFont("bold.ttf", 12 * size)
+			UiText(GetPlayerName(id), false)
+
+			if text then
+				UiTranslate(0, 10 * size)
+				UiText(text, false)
+			end
+		UiPop()
+	end
+
+	-- EventIDs:
+	-- 0 = Just Position,
+	-- 1 = Hurt event,
+	-- 2 = Transform Event,
+	-- 3 = Taunt
+	-- 4 = Found Event,
+	-- 5 = No Draw 
+	local function drawEventMarker(color, alpha, pos, eventID)
+		if eventID == 0 or eventID == nil or eventID == 5 then return end
+		text = text or nil
+		local image = ""
+		if eventID == 1 then image = "MOD/assets/hurt.png" end
+		if eventID == 2 then image = "MOD/assets/transform.png" end
+		if eventID == 3 then image = "MOD/assets/taunt.png" end
+		if eventID == 4 then image = "MOD/assets/dead.png" end
+
+		UiPush()
+			local x, y, d = UiWorldToPixel(pos)
+			UiColor(1,1,1,alpha)
+			UiTranslate(x, y)
+			UiAlign("center middle")
+
+			local r,g,b = unpack(color)
+			UiFillImage(image)
+			UiRoundedRect(20, 20 ,2)
+		UiPop()
+	end
+
+	local time = client.ui.uiPathProgress
+	local points = {}
+	
+	for _, data in ipairs(client.ui.paths) do
+		local path = data.path
+		local id = data.id
+		local first = true
+		local count = 0
+		for i = #path, 2, -1 do
+			if path[i].time <= time then
+				if first then 
+					drawPlayerMarker(id, path[i].pos, path[i].color)
+					points[#points+1] = {}
+					points[#points].pos = VecCopy(path[i].pos)
+					points[#points].id = id
+					first = false
+				end
+				local r,g,b = unpack(path[i].color)
+				if GetLocalPlayer() == id then
+					r, g, b = r-0.3, g-0.5, b
+				end 
+				count = count + 1
+				local alpha =  math.max(1 - (count / 2000)*1.3, 0)
+
+				drawEventMarker({r, g, b}, alpha, path[i].pos, path[i].event)
+				if path[i].event ~= 5 then
+					DebugLine(path[i].pos, path[i-1].pos, r, g, b, alpha)
+				elseif count > 2000 then
+					break
+				end
+
+				if i == #path and path[i].event ~= 4 then
+					drawPlayerMarker(id, path[i].pos, {r, g, b})
+				end
+			end
+		end
+		if count == 0 and #path ~= 0 then 
+			points[#points+1] = {}
+			points[#points].pos = path[1].pos
+			points[#points].id = id
+		end
+	end
+
+	client.middlePoint = GetCenterOfVectors(points)
+	client.playerPoints = points
+end
+
+function client.recieveLogs(playerData, id, amount)
+	local path = {}
+	if #playerData > 4 then
+		table.insert(playerData,1,playerData[1])
+		table.insert(playerData,#playerData,playerData[#playerData])
+		path = client.buildCardinalSpline(playerData)
+	end
+
+	if not client.ui.paths then client.ui.paths = {} end
+	client.ui.paths[#client.ui.paths+1] = {}
+	client.ui.paths[#client.ui.paths].id = id
+	client.ui.paths[#client.ui.paths].path = path
+
+	DebugPrint("Path Recieved: " ..  #client.ui.paths .. " / " .. amount)
+	if amount == #client.ui.paths then
+		client.ui.calculatedPaths = true
+		DebugPrint("Recieved all data")
+	end
+end
+
+function client.playerHurt(id)
+	client.ui.damageScreen = GetTime() + 1
 end

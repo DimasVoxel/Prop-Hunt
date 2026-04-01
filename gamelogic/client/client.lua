@@ -1,6 +1,7 @@
 --[[
 #include clientOnlyHelpers.lua
 #include clientHider.lua
+#include clientHunter.lua
 #include clientHUD.lua
 ]]
 
@@ -17,7 +18,19 @@ client.gameConfig = {
 client.ui = {
 	finalHiderRevealDelay = 0, -- Used for the white beams at the end
 	finalRevealRectSize = 0,
-	switchingMap = false
+	switchingMap = false,
+	calculatedPaths = false,
+
+	paths = {},
+	hideUi = false,
+	uiPathStartTime = 0,
+    uiPathEndTime = 0,
+	uiPathProgress = 0,
+
+	lockCamera = false,
+	dragging = false,
+
+	damageScreen = 0
 }
 
 client.hint = {
@@ -38,7 +51,8 @@ client.player = {
 		grabBody = 0,
 		dist = 0,
 		localPos = 0
-	}
+	},
+	jumpTimer = 0
 }
 
 client.assets = {
@@ -53,6 +67,8 @@ client.assets = {
 client.camera = {}
 client.camera.Rotation = Vec() -- Using a Vec instead of a quat so it doesn't cause any roll by mistake.
 client.camera.dist = 8
+client.camera.transition = 1
+client.camera.previousT = Transform()
 client.camera.SM = {
         pos = AutoSM_Define(Vec(), 2, 0.8, 1),      -- Inital Value, Frequency, Dampening, Response
         rot = AutoSM_DefineQuat(Quat(), 2, 0.8, 1), -- Inital Value, Frequency, Dampening, Response
@@ -70,8 +86,24 @@ client.hint = {
 function client.init()
 	client.assets.rect = LoadSprite("gfx/white.png")
 	client.assets.circle = LoadSprite("gfx/ring.png")
-	client.assets.taunt = LoadSound('MOD/assets/taunt0.ogg')
-	client.assets.propGuy = LoadSound('MOD/assets/propguy0.ogg')
+
+	client.assets.taunt = {}
+	client.assets.taunt[1] = LoadSound('MOD/assets/taunt1.ogg', 3)
+	client.assets.taunt[2] = LoadSound('MOD/assets/taunt2.ogg', 3)
+	client.assets.taunt[3] = LoadSound('MOD/assets/taunt3.ogg', 3)
+	client.assets.taunt[4] = LoadSound('MOD/assets/taunt4.ogg', 3)
+
+	client.assets.propGuy = {}
+	client.assets.propGuy[1] = LoadSound('MOD/assets/propguy1.ogg', 3)
+	client.assets.propGuy[2] = LoadSound('MOD/assets/propguy2.ogg', 3)
+	client.assets.propGuy[3] = LoadSound('MOD/assets/propguy3.ogg', 3)
+	client.assets.propGuy[4] = LoadSound('MOD/assets/propguy4.ogg', 3)
+
+	client.assets.jumpSound = {}
+	client.assets.jumpSound[1] = LoadSound('MOD/assets/jump1.ogg', 3)
+	client.assets.jumpSound[2] = LoadSound('MOD/assets/jump2.ogg', 3)
+	client.assets.jumpSound[3] = LoadSound('MOD/assets/jump3.ogg', 3)
+
 	client.assets.grabHand = LoadSprite("MOD/assets/grab.png")
 end
 
@@ -83,6 +115,8 @@ function client.tick()
 
 	if helperIsPlayerHider() and teamsIsSetup() then
 		client.hiderTick()
+	elseif helperIsPlayerHunter() and teamsIsSetup() then
+		client.hunterTick()
 	end
 	local spectateList = {}
 	for _,i in pairs(teamsGetTeamPlayers(2)) do
@@ -101,7 +135,7 @@ function client.tick()
 end
 
 function client.update()
-	client.hiderUpdate()
+
 end
 
 function client.render(dt)
@@ -156,15 +190,11 @@ function client.notify(text)
 	hudShowBanner(text, {0,0,0}) 
 end
 
-function client.tauntBroadcast(pos, id)
-	if GetPlayerName(id) == "The Mafia" and math.random(1,5) ~= 1 then 
-		PlaySound(client.assets.propGuy,pos,2,true,1)
-	end
-
-	if math.random(1, 100) == 50 then 
-		PlaySound(client.assets.propGuy,pos,2,true,1)
+function client.tauntBroadcast(pos, soundID, propguy)
+	if propguy then 
+		PlaySound(client.assets.propGuy[soundID],pos,2,true,1)
 	else
-		PlaySound(client.assets.taunt,pos,2,true,1)
+		PlaySound(client.assets.taunt[soundID],pos,2,true,1)
 	end
 end
 
@@ -188,4 +218,13 @@ function client.kick()
 	Menu()
 end
 
-
+function client.jumpCloud(id, pos, soundID)
+	if GetLocalPlayer() == id then return end
+	DebugPrint("fart")
+	ParticleReset()
+	ParticleType("smoke")
+	ParticleColor(0.8, 1, 0.8)
+	--Spawn particle at world origo with upwards velocity and a lifetime of ten seconds
+	SpawnParticle(pos, Vec(0, -0.5, 0), 2)
+	PlaySound(client.assets.jumpSound[soundID], pos, 1, true, 1)
+end

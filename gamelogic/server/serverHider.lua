@@ -1,13 +1,65 @@
 function server.clientHideRequest(playerid)
-    if not shared.players.hiders[playerid].isPropClipping then
-        shared.players.hiders[playerid].isPropPlaced = true
+	local body = helperGetPlayerPropBody(playerid)
+	local playerTransform = GetPlayerTransform(playerid)
+	local pos = TransformToParentPoint(playerTransform, VecScale(shared.players.hiders[playerid].offset,-1))
+	pos = VecAdd(pos,  Vec(0, 0.05, 0))
+
+	local function enableHideMode()
+		shared.players.hiders[playerid].isPropPlaced = true
 		server.players.hiders[playerid].unhideCooldown = GetTime() + server.gameConfig.unhideCooldown
 
-		local body = helperGetPlayerPropBody(playerid)
+		local beforeTransform = GetBodyTransform(body)
+
+		body = server.propRegenerate(playerid)
+	
 		server.disableBodyCollission(body, false)
+
+		SetBodyTransform(body, beforeTransform)
+		SetBodyDynamic(body, true)
+		SetBodyActive(body, true)
+
 		SetBodyVelocity(body, GetPlayerVelocity(playerid))
-    end
+	end
+
+	local function checkLineOfSight(pos1,pos2)
+
+		local _,_,_, shape = QueryRaycast(pos1, Vec(0,-1,0), 1, 0.3, false)
+		QueryRejectShape(shape)
+		local dir = VecNormalize(VecSub(pos2, pos1))
+		QueryRejectBody(body)
+		local hit = QueryRaycast(pos1, dir, 2, 0, false)
+		if hit then return false else return true end
+	end
+
+	local clippingProps = checkPropClipping(playerid)
+	if #clippingProps == 0 then 
+		enableHideMode()
+		return
+	else
+		for i = 1, 10 do
+			local newPos = VecAdd(pos, Vec(0, (i / 10)  - 0.1, 0))
+			SetBodyTransform(body, Transform(newPos, playerTransform.rot))
+			local tempClipping = checkPropClipping(playerid)
+			local bool = checkLineOfSight(pos, newPos)
+			if bool == false then break end
+			if #tempClipping == 0 then
+				enableHideMode()
+				return
+			end
+		end
+	end
+
+	shared.players.hiders[playerid].clippingProps = clippingProps
+	-- If the server was unable to find a place to hide reset back to original pos
+	local offset
+	
+	pos = VecAdd(pos, Vec(0,0.05,0))
+
+	-- We move the prop body to player on the server. Player Camera is in handeled in client.hiderTick()
+	SetBodyVelocity(body, Vec(0, 0, 0))
+	SetBodyTransform(body, Transform(pos, playerTransform.rot))
 end
+
 
 function server.hiderTick(dt)
     local hiders = teamsGetTeamPlayers(1)
@@ -24,13 +76,6 @@ function server.hiderTick(dt)
 
         local propBody = helperGetPlayerPropBody(id)
         if propBody then
-            for _, playerId in ipairs(teamsGetTeamPlayers(1)) do
-                -- You cant grab other hiders props and throw them into the ocean for example
-                if GetPlayerGrabBody() == helperGetPlayerPropBody(playerId) then
-                    ReleasePlayerGrab()
-                end
-            end
-
              -- Placing this here means that if the game ends all players become visible since hiderTick wont get called in the endscreen
              -- May need to be rethought
             SetPlayerHidden(id)
@@ -41,9 +86,18 @@ function server.hiderTick(dt)
                 -- If player is placed / hidden then prop gets collission with world but not with player
                 SetPlayerParam("collisionMask", 1 , id)
                 SetPlayerParam("walkingSpeed", 0, id)
+				ReleasePlayerGrab(id)
+				SetPlayerTransform(Transform(Vec(0,10000,0), GetPlayerTransform(id).rot), id)
             end
 		elseif not propBody and helperIsHuntersReleased() then
 			SetPlayerParam("godmode", false, id)
+		end
+
+		local velocity = GetPlayerVelocity(id)
+		local speed = VecLength(velocity)
+		if speed > 1 and IsPlayerGrounded(id) then
+			PlayLoop(server.assets.walkingSound, GetPlayerTransform(id).pos, math.max(0, speed / 6), true, math.max(0, speed / 7))
+			PlayLoop(server.assets.runningSound, GetPlayerTransform(id).pos, math.max(0, speed / 10), true, math.max(0, speed / 7))
 		end
 
 		server.handleHiderPlayerDamage(id)
@@ -56,6 +110,7 @@ function server.hiderTick(dt)
 			helperDecreasePlayerShots(playerID)
 			helperSetPlayerHealth(playerID, shared.players.hiders[playerID].health - shared.players.hiders[playerID].damageValue)
 			SetPlayerHealth(1, playerID)
+			server.createLog(playerID, 1)
 		end
 	end
 end
@@ -73,7 +128,7 @@ function server.hiderUpdate()
 
 					if (IsPointInWater(center) or (input and timer)) and shared.players.hiders[id].isPropPlaced == true then
 						shared.players.hiders[id].isPropPlaced = false
-						SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.2, 0)),GetPlayerCameraTransform(id).rot), id)
+						server.resetPlayerToProp(id)
 						-- You shouldnt spam this function because every call will put the message in a queue
 						if IsPointInWater(center) then
 							ClientCall(id, "client.notify", "Water will damage you, get out as soon as you can." )
@@ -84,14 +139,16 @@ function server.hiderUpdate()
 				local speed = VecLength(GetPlayerVelocity(id))
 
 				if InputDown("shift", id) and not helperIsPlayerHidden(id) and shared.players.hiders[id].staminaCoolDown < GetTime() and speed > 0.1 then 
-					SetPlayerParam("walkingSpeed", 9, id)
+					SetPlayerParam("walkingSpeed", 11, id)
 					shared.players.hiders[id].stamina = math.max(shared.players.hiders[id].stamina - GetTimeStep(), 0)
 
 					if shared.players.hiders[id].stamina == 0 then 
 						shared.players.hiders[id].staminaCoolDown = GetTime() + 10
 					end
+
+					PlayLoop(server.assets.runningSound, GetPlayerTransform(id).pos, math.max(0, speed / 3.5), true, math.max(0, speed / 7))
 				else
-					shared.players.hiders[id].stamina = math.min(shared.players.hiders[id].stamina + GetTimeStep()/8, 3)
+					shared.players.hiders[id].stamina = math.min(shared.players.hiders[id].stamina + GetTimeStep()/8, shared.gameConfig.staminaSeconds)
 				end
 
 				server.handlePlayerProp(id)
@@ -102,7 +159,7 @@ function server.hiderUpdate()
 
 		--AutoInspectWatch(server.players.hiders,"1", 2," ", 0)
 
-			if shared.players.hiders[id] and shared.players.hiders[id].grabbing and not helperIsPlayerHidden(id) then 
+			if shared.players.hiders[id] and shared.players.hiders[id].grabbing and not helperIsPlayerHidden(id) and helperGetPlayerPropBody(id) then 
 				if InputDown("grab", id) then
 					local body = server.players.hiders[id].grabbing.body
 					local dir = server.players.hiders[id].grabbing.dir
@@ -110,14 +167,14 @@ function server.hiderUpdate()
 
 					local localPos = server.players.hiders[id].grabbing.localPos
 					local playerT = GetPlayerCameraTransform(id)
-					local targetPoint = VecAdd(playerT.pos, VecScale(dir, dist - 0.2)) -- I do - 0.2 to make a slight natural pulling force
+					local targetPoint = VecAdd(playerT.pos, VecScale(dir, dist + 0.2)) 
 					local worldPoint = TransformToParentPoint(GetBodyTransform(body), localPos)
 
 					local dist = VecLength(VecSub(worldPoint, targetPoint))
 
 					if dist < 4 then 
 						local velocity = AutoClamp(math.pow(dist,3), -6, 6)
-						local strength = AutoClamp(dist*40, -150, 150)
+						local strength = AutoClamp(dist*60, -150, 150)
 
 						ConstrainPosition(body, 0, worldPoint, targetPoint, velocity, strength)
 					else
@@ -135,18 +192,9 @@ function server.hiderUpdate()
 end
 
 function server.handlePlayerProp(id) -- In Update
-	local clippingProps = checkPropClipping(id)
-    -- The server only needs to know if props are clipping or not. It doesnt matter which shapes in particular
-    -- On client we use the output to highlight shapes that are being clipped into
-	if #clippingProps == 0 then 
-		shared.players.hiders[id].isPropClipping = false
-	else
-		shared.players.hiders[id].isPropClipping = true
-	end
-
 	local propBody = helperGetPlayerPropBody(id)
 
-	if propBody ~= -1 then
+	if propBody ~= false then
 		if not shared.players.hiders[id].isPropPlaced then
 			server.disableBodyCollission(propBody, true)
 
@@ -157,12 +205,17 @@ function server.handlePlayerProp(id) -- In Update
 			if InputDown("crouch", id) then
 				offset = Vec()
 			else
-				offset = Vec(0, 0.3, 0)
+				offset = Vec(0, 0.05, 0)
 			end
 			pos = VecAdd(pos, offset)
 
 			-- We move the prop body to player on the server. Player Camera is in handeled in client.hiderTick()
 			SetBodyVelocity(propBody, Vec(0, 0, 0))
+			SetBodyAngularVelocity(propBody, Vec(0, 0, 0))
+
+			SetBodyDynamic(propBody, false)
+			SetBodyActive(propBody, false)
+
 			SetBodyTransform(propBody, Transform(pos, playerTransform.rot))
 
 			local dist = VecLength(VecSub(playerTransform.pos, server.players.hiders[id].standStillPosition))
@@ -174,7 +227,7 @@ function server.handlePlayerProp(id) -- In Update
 	end
 end
 
-function server.handleHiderPlayerDamage(id) -- In Tick
+function server.handleHiderPlayerDamage(id) -- In Tic
 	local propBody = helperGetPlayerPropBody(id)
 	if propBody then
 		local aa,bb = GetBodyBounds(propBody)
@@ -190,31 +243,36 @@ function server.handleHiderPlayerDamage(id) -- In Tick
 		end
 
 		if server.players.hiders[id].outOfBoundsTimer < GetTime() then
+
+			-- just doing this twice to make more punishing
 			helperDecreasePlayerShots(id)
 			helperDecreasePlayerShots(id)
 			helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
 			helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
 			server.propRegenerate(id)
+			server.resetPlayerToProp(id)
 			shared.players.hiders[id].isPropPlaced = false
 			ClientCall(id, "client.notify", "Hiding out of bounds is not allowed." )
 
 			if helperGetPlayerShotsLeft(id) == 0 then 
 				eventlogPostMessage({id, "Tried hiding out of bounds"  })
 			end
+
+			server.createLog(id, 1)
 		end
 
 		if IsBodyBroken(propBody) then
 			helperDecreasePlayerShots(id)
 			helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
+			if helperIsPlayerHidden(id) then
+				server.resetPlayerToProp(id)
+			end
+			server.createLog(id, 1)
 
 			-- We move the player to the shape if player was too far from the prop when found
 			-- If we dont there are situations when the prop falls down a cliff or building and the player stays on top of the cliff.
 			-- Once found the prop gets teleported back to the player. This makes it look like as if the prop dissapeared for the hunter
 			-- Therefor we move the player to the prop. One issue is that players can get stun locked sometimes
-
-			if VecLength(VecSub(GetPlayerTransform(id).pos, center)) > 3 and GetShapeVoxelCount(helperGetPlayerPropShape(id)) ~= 0 then
-				SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
-			end
 
 			propBody = server.propRegenerate(id)
 			shared.players.hiders[id].isPropPlaced = false
@@ -236,7 +294,7 @@ function server.handleHiderPlayerDamage(id) -- In Tick
 		end
 	else
 		local playerTransform = GetPlayerTransform(id)
-		if not IsPointInWater(VecAdd(playerTransform.pos),Vec(0,0.5,0)) or not helperIsHuntersReleased() then 
+		if not IsPointInWater(VecAdd(playerTransform.pos,Vec(0,0.5,0))) or not helperIsHuntersReleased() then 
 			shared.players.hiders[id].damageTick = GetTime()
 			shared.players.hiders[id].environmentalDamageTrigger = false
 		else
@@ -251,14 +309,13 @@ function server.handleHiderPlayerDamage(id) -- In Tick
 		helperDecreasePlayerShots(id)
 		helperSetPlayerHealth(id, shared.players.hiders[id].health - shared.players.hiders[id].damageValue)
 		shared.players.hiders[id].damageTick = GetTime()
+
+		server.createLog(id, 1)
 	end
 
 	if IsPointInBoundaries(center) == false and helperIsPlayerHidden(id) then
 		shared.players.hiders[id].isPropPlaced = false
-
-		if VecLength(VecSub(GetPlayerTransform(id).pos, center)) > 2 then
-			SetPlayerTransform(Transform(VecAdd(center, Vec(0, 0.0, 0)),GetPlayerCameraTransform(id).rot), id)
-		end
+		server.resetPlayerToProp(id)
 	end
 end
 
@@ -266,12 +323,23 @@ end
 -- #TODO: Some say that the server sound sync sucks and its recommended to use ClientCall to execute a playsound locally
 function server.tauntBroadcast(pos, id)
 	shared.players.hiders[id].taunts = math.max(helperGetHiderTauntsAmount(id) - 2, 1)
-	ClientCall(0, "client.tauntBroadcast", pos, id)
+	local soundID = math.random(1, 4)
+	local propguy = false
+
+	if GetPlayerName(id) == "The Mafia" and math.random(1,5) ~= 1 then 
+		propguy = true
+	end
+
+	if math.random(1, 100) == 50 then 
+		propguy = true
+	end
+
+	server.createLog(id, 3)
+
+	ClientCall(0, "client.tauntBroadcast", pos, soundID, propguy)
 end
 
 function server.handleHiderTaunts(hiderIds)
-
-	
     if server.timers.hiderTauntReloadTimer <= GetTime() then
         server.timers.hiderTauntReloadTimer = GetTime() + server.gameConfig.hiderTauntReloadTimer
 
@@ -296,6 +364,8 @@ function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 
 	if shape == propid and shapeBody ~= shared.players.hiders[playerid].propBody then
 
+		server.createLog(playerid, 2)
+
 		-- Delete Old Prop and Backup shapes if transforming into a new shape
 		if shared.players.hiders[playerid].propBody ~= -1 then
 			Delete(shared.players.hiders[playerid].propBody)
@@ -307,7 +377,14 @@ function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 
 		-- Create new Clone Shape and keep a backup copy to regenerate if damaged
 		local newBody, newShape = server.cloneShape(propid)
+		local t = GetShapeLocalTransform(shape)
+		SetShapeLocalTransform(newShape, Transform(Vec(0,0,0), t.rot))
+		SetTag(newBody,"bounded")
+		
 		local backUpBody, backUpShape = server.cloneShape(propid) -- We clone twice if the prop gets damaged we regenerate using the backup
+		local t = GetShapeLocalTransform(shape)
+		SetShapeLocalTransform(backUpShape, Transform(Vec(0,0,0), t.rot))
+
 		local emissiveScale = GetProperty(shape, "emissiveScale")
 		SetProperty(backUpShape, "emissiveScale", emissiveScale * 2)
 		SetProperty(newShape, "emissiveScale", emissiveScale * 2)
@@ -315,7 +392,7 @@ function server.PropSpawnRequest(playerid, propid, damageValue, cameraTransform)
 		-- Move the prop to the player
 		local bodyTransform = GetBodyTransform(newBody)
 		SetBodyTransform(newBody, Transform(VecAdd(GetPlayerTransform(playerid).pos, Vec(0, 0, 2)), bodyTransform.rot))
-		SetBodyDynamic(newBody, true)
+		SetBodyDynamic(newBody, false)
 		server.disableBodyCollission(newBody, true)
 		server.makePropBreakable(newBody)
 
@@ -361,9 +438,9 @@ function server.propRegenerate(playerid)
 		-- Therefor I will keep it like this for now 
 		-- #Todo: could perhaps use voxel count instead of is broken?
 		local newBody, newShape = server.cloneShape(backupShape) 
+		SetTag(newBody,"bounded")
 
 		SetBodyTransform(newBody, GetPlayerTransform(playerid))
-		SetBodyDynamic(newBody, true)
 		server.disableBodyCollission(newBody, true)
 
 		shared.players.hiders[playerid].propBody = newBody
@@ -421,26 +498,18 @@ function server.disableBodyCollission(body, bool)
 		if bool then
 			SetShapeCollisionFilter(shapes[i], 4, 4)
 		else
-			SetShapeCollisionFilter(shapes[i], 128, 1)
+			SetShapeCollisionFilter(shapes[i], 1, 255)
 		end
 	end
 end
 
 function server.makePropBreakable( body )
-	local lookUpTable = {}
-	lookUpTable["hardmetal"] = "weakmetal"
-	lookUpTable["heavymetal"] = "weakmetal"
-	lookUpTable["hardmasonry"] = "masonry"
-	lookUpTable["rock"] = "plastic"
-
 	local shape = GetBodyShapes(body)[1]
 	local palette = GetShapePaletteContent(shape)
 
 	for i = 1, #palette do
 		local mat = palette[i].material
-		if lookUpTable[mat] then
-			palette[i].material = lookUpTable[mat]
-		end
+		palette[i].material = "wood" -- We make this so that props can burn
 	end
 
 	SetShapePaletteContent(shape, palette)
@@ -456,4 +525,18 @@ end
 
 function server.updateClientGrab(playerid, dir)
 	server.players.hiders[playerid].grabbing.dir = dir
+end
+
+function server.resetPlayerToProp(id)
+	if helperGetPlayerPropBody(id) then
+		local vel = GetPlayerVelocity(id)
+		local bodyT = GetBodyTransform(helperGetPlayerPropBody(id))
+		local pos = TransformToParentPoint(bodyT, VecScale(shared.players.hiders[id].offset,1))
+		SetPlayerTransform(Transform(pos, server.players.hiders[id].currentCameraRot), id)
+		SetPlayerVelocity(vel, id)
+	end
+end
+
+function server.updateCameraRot(id, quat)
+	server.players.hiders[id].currentCameraRot = quat
 end

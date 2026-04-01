@@ -6,3 +6,4 @@
 # *.bat
 # *.jar
 # .git/*
+.luarc.json

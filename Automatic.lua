@@ -2730,8 +2730,8 @@ function AutoInspect(value, singleline_at, indent_str, round_numbers)
 	local split = AutoSplit(text, '\n')
 	for i=1, #split do
 		local t = split[i]
-		if i > 20 and i == #split then
-			t = t .. ' - Some of AutoInspect has been cut off (' .. #split - 20 .. ' Lines Cut), lowering `singleline_at` may give more room'
+		if i > 50 and i == #split then
+			t = t .. ' - Some of AutoInspect has been cut off (' .. #split - 50 .. ' Lines Cut), lowering `singleline_at` may give more room'
 		end
 		DebugPrint(t)
 	end

@@ -1,19 +1,56 @@
 function server.playersTick(dt)
 	server.noHunterSituation(dt)
 	server.handleHints(dt)
+	if teamsIsSetup() then
+		server.recordPoint(dt)
+	end
 end
 
-function server.handleHints(dt)
-	if helperIsHuntersReleased() and server.gameConfig.enableHunterHints then
+function server.recordPoint(dt)
+	if server.timers.playerPosRecordInterval <= GetTime() then
+		server.timers.playerPosRecordInterval = GetTime() + server.gameConfig.playerPosRecordInterval
 
-		-- We trigger a hint if hint timer gets to 0, and during the last 30 seconds we force one last hint.
-		if server.timers.hunterHintTimer <= GetTime() or server.state.time < 30 and server.state.triggerLastHint == false then
-			if server.state.time < 30 then
-				-- We make sure that the last hint wont get spammed
-				server.state.triggerLastHint = true
+		for id in Players() do
+			local data = server.players.log[id]
+			local playerPos = GetPlayerTransform(id).pos
+
+			local shouldLog = false
+
+			if not data or #data == 0 then
+				shouldLog = true
+			else
+				local last = data[#data]
+				if last and VecLength(VecSub(last.pos, playerPos)) > 2
+				and spawnGetPlayerRespawnTimeLeft(id) == 0 then
+					shouldLog = true
+				end
 			end
 
-			server.timers.hunterHintTimer = GetTime() + server.gameConfig.hunterHintTimer
+			if shouldLog then
+				if helperIsPlayerHider(id) then
+					server.createLog(id, 0)
+				elseif helperIsPlayerHunter(id) and helperIsHuntersReleased() then
+					server.createLog(id, 0)
+				end
+			end
+		end
+	end
+end
+
+
+function server.handleHints(dt)
+
+	local function lastHint()
+		if server.state.time < 30 then
+			-- We make sure that the last hint wont get spammed
+			server.state.triggerLastHint = true
+		end
+	end
+
+	if helperIsHuntersReleased() and server.gameConfig.distanceHintTimer ~= false then
+		-- We trigger a hint if hint timer gets to 0, and during the last 30 seconds we force one last hint.
+		if server.timers.distanceHintTimer <= GetTime() or server.state.time < 30 and server.state.triggerLastHint == false then
+			server.timers.distanceHintTimer = GetTime() + server.gameConfig.distanceHintTimer
 			for id in Players() do 
 				if helperIsPlayerHunter(id) then 
 					server.TriggerHint(id, 1)
@@ -21,20 +58,39 @@ function server.handleHints(dt)
 					server.TriggerHint(id, 2)
 				end
 			end
-
-            server.circleHint()
 		end
+		lastHint()
+	end
 
-		local hints = shared.hint.circleHint
-		for i = #hints, 1, -1 do
-			local hint = hints[i]
-			if hint and hint.timer then
-				local t = hint.timer - dt
-				if t <= 0 then
-					table.remove(hints, i)
-				else
-					hint.timer = t
-				end
+	if helperIsHuntersReleased() and server.gameConfig.ringHintTimer ~= false then
+		-- We trigger a hint if hint timer gets to 0, and during the last 30 seconds we force one last hint.
+		if server.timers.ringHintTimer <= GetTime() or server.state.time < 30 and server.state.triggerLastHint == false then
+			server.timers.ringHintTimer = GetTime() + server.gameConfig.ringHintTimer
+			server.circleHint()
+
+	
+		end
+		if server.state.time < 180 then
+			shared.hint.enableCircleHint = true
+		end
+		lastHint()
+	end
+
+	
+	local hints = shared.hint.circleHint
+	for i = #hints, 1, -1 do
+		local hint = hints[i]
+		if hint and hint.timer then
+			local t
+			if helperIsPlayerHunter(hint.playerid) then
+				t = hint.timer - dt * 5
+			else
+				t = hint.timer - dt
+			end
+			if t <= 0 then
+				table.remove(hints, i)
+			else
+				hint.timer = t
 			end
 		end
 	end
@@ -42,7 +98,7 @@ end
 
 function server.noHunterSituation()
 	if #teamsGetTeamPlayers(2) == 0 and teamsIsSetup() then
-		local id = teamsGetTeamPlayers(1)[#teamsGetTeamPlayers(1)] -- TODO: Change this to chose a random hider instead
+		local id = teamsGetTeamPlayers(1)[math.random(1, #teamsGetTeamPlayers(1))]
 
 		eventlogPostMessage({id, "Was moved to Hunter because all hunters left"  })
 		Delete(shared.players.hiders[id].propBody)
@@ -91,6 +147,7 @@ function server.circleHint()
 
     -- Reset the circle hint table
     shared.hint.circleHint = {}
+	
 
     -- Add a transform for each hider
     for _, hiderId in ipairs(hiders) do
@@ -125,7 +182,7 @@ function server.circleHint()
 			shared.hint.circleHint[#shared.hint.circleHint].transform = hintTransform
 			shared.hint.circleHint[#shared.hint.circleHint].diameter = diameter
 			shared.hint.circleHint[#shared.hint.circleHint].playerid = hiderId
-			shared.hint.circleHint[#shared.hint.circleHint].timer = shared.serverTime + server.gameConfig.hunterHintTimer / 1.5
+			shared.hint.circleHint[#shared.hint.circleHint].timer = shared.serverTime + server.gameConfig.ringHintTimer / 1.5
 		end
     end
 end
@@ -277,4 +334,30 @@ function server.GetClosestPlayer(id, teamId)
 	end
 
 	return closestPlayer, closestDist, closestTransform
+end
+
+function server.broadCastJump(id, pos, soundID)
+	DebugPrint("farts")
+	ClientCall(0, "client.jumpCloud", id, pos, soundID)
+end
+
+function server.doubleJump(id)
+	if helperIsPlayerHider(id) then
+		if shared.players.hiders[id].stamina > 1.5 then
+			local vel = GetPlayerVelocity(id)
+			vel[2] = math.max(vel[2], 0)
+			SetPlayerVelocity(VecAdd(Vec(0, 4 ,0 ), vel), id)
+			shared.players.hiders[id].stamina = math.max(shared.players.hiders[id].stamina - 1, 0) -- Players have an arbirary amount of "3" stamina. 
+			if shared.players.hiders[id].stamina < 0.3 then 
+				shared.players.hiders[id].staminaCoolDown = GetTime() + 10
+			end
+		end
+	elseif helperIsPlayerHunter(id) then
+		if GetToolAmmo("doublejump", id) ~= 0 then
+			local vel = GetPlayerVelocity(id)
+			vel[2] = math.max(vel[2], 0)
+			SetPlayerVelocity(VecAdd(Vec(0, 5 ,0 ), vel), id) -- Hunters can jump a little higher. Seeking shouldnt be cumbersome
+			SetToolAmmo("doublejump", math.max(GetToolAmmo("doublejump", id) - 1,0), id)
+		end
+	end
 end

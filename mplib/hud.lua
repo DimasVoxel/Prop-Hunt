@@ -33,7 +33,8 @@ _hud = {
 	healthBarData = {}, 
 	endSoundStarted = false, 
 	bannerQueue = {}, 
-	fade = { active = false, t = 0.0, fadeIn = 0.0, hold = 0.0, fadeOut = 0.0, alpha = 1.0} 
+	fade = { active = false, t = 0.0, fadeIn = 0.0, hold = 0.0, fadeOut = 0.0, alpha = 1.0},
+	randomOffset = math.random(1, 1000)
 }
 
 
@@ -303,7 +304,7 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 	
 	local dt = GetTimeStep()
 	_scoreresults_anim.time = _scoreresults_anim.time + dt
-
+	
 	UiPush()
 	if not hudDrawResultsAnimation(_scoreresults_anim.time, bannerLabel, bannerColor) then
 		return 0, 0, 0
@@ -315,6 +316,8 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 	for i = 1, #groups do
 		groups[i].dim = i > 1
 	end
+
+	
 	-- apply animation
 	UiTranslate(0, UiMiddle())
 	UiColorFilter(1,1,1, math.sqrt(_scoreresults_anim.param))
@@ -322,60 +325,216 @@ function hudDrawResults(bannerLabel, bannerColor, title, columns, groups, contin
 	UiTranslate(0, -UiMiddle())
 
 	UiPush()
-		UiTranslate(UiCenter(), UiMiddle())
-		local boardWith, boardHeight = _drawBoard(title, columns, groups, true, false, #groups == 1)
-	UiPop()
+	if client.ui.hideUi == false then
+		UiTranslate(0, -200)
+		UiPush()
+			UiTranslate(UiCenter(), UiMiddle())
+			local boardWith, boardHeight = _drawBoard(title, columns, groups, true, false, #groups == 1)
+		UiPop()
 
-	UiPush()
-		local y = UiMiddle() + boardHeight/2 + 20
-		UiAlign("center top")
-		UiTranslate(UiCenter(), y)
+		UiPush()
+			local y = UiMiddle() + boardHeight/2 + 20
+			UiAlign("center top")
+			UiTranslate(UiCenter(), y)
 
-		if IsPlayerHost() then
-			UiTranslate(0, 40)
 			UiMakeInteractive()
+			if IsPlayerHost() then
+				UiTranslate(0, 40)
+
+
+				local buttonHeight = 40
+				local buttonWidth = 290
+
+				local gap = 10
+				local padding = 20
+
+				uiDrawPanel(buttonWidth + 2*padding, buttonHeight + gap + padding + buttonHeight + gap + buttonHeight + padding, 16)
+
+				UiPush()
+					UiTranslate(0, 20)
+					if uiDrawSecondaryButton("Game Modes", buttonWidth) then
+						SetBool("game.pausemenu.gamemodes", true)
+					end
+
+					UiTranslate(0, buttonHeight + gap)
+
+					if uiDrawSecondaryButton("Play new Random Map", buttonWidth) then
+						ServerCall("server.loadRandomMap")
+					end
+
+					UiTranslate(0, buttonHeight + gap)
+
+					if shared.state.loadNextMap == true then
+						if uiDrawPrimaryButton("Cancel", buttonWidth) then
+							ServerCall("server.cancelNextMap")
+						end
+					else
+						if uiDrawPrimaryButton(continueLabel, buttonWidth) then
+							if continueFunction ~= nil then
+								continueFunction()
+							else
+								SetString("game.gamemode.next", GetString("game.gamemode"))
+							end
+						end
+					end
+
+					UiTranslate(0, 90)
+					uiDrawPanel(buttonWidth - 20 + padding,  padding + buttonHeight + padding, 16)
+					UiTranslate(0, 20)
+
+					if uiDrawSecondaryButton("Hide Ui", buttonWidth - 20) then
+						client.ui.hideUi = not client.ui.hideUi
+					end
+
+				UiPop()
+			else
+				UiPush()
+
+					UiMakeInteractive()
+
+					local buttonHeight = 40
+					local buttonWidth = 290
+					local gap = 10
+					local padding = 20
+
+					uiDrawPanel(buttonWidth + padding, buttonHeight + gap + buttonHeight + padding + 20, 16)
+					UiTranslate(0, 20)
+
+
+					if uiDrawPrimaryButton("Hide UI", buttonWidth) then
+						client.ui.hideUi = not client.ui.hideUi
+					end
 			
+					UiTranslate(0, buttonHeight + gap)
+					uiDrawTextPanel("loc@UI_TEXT_WAITING_FOR_HOST", 1)
+				UiPop()
+			end
+		UiPop()
+	else
+		UiPush()
+			local y = UiMiddle() + 300
+			UiAlign("center top")
+			UiTranslate(UiCenter(), y)
+
+			UiMakeInteractive()
+
 			local buttonHeight = 40
 			local buttonWidth = 290
-
 			local gap = 10
 			local padding = 20
 
-			uiDrawPanel(buttonWidth + 2*padding, buttonHeight + gap + padding + buttonHeight + gap + buttonHeight + padding, 16)
+
+		
+			UiPush()
+			UiTranslate(0, 100)
+
+			if not IsPlayerHost() then
+				uiDrawPanel(buttonWidth + padding, buttonHeight + gap + buttonHeight + gap + buttonHeight + padding + 20, 16)
+			else
+				uiDrawPanel(buttonWidth + padding, buttonHeight + gap + buttonHeight + padding + 20, 16)
+			end
+				UiTranslate(0, 20)
+				if uiDrawPrimaryButton("Show UI", buttonWidth) then
+					client.ui.hideUi = not client.ui.hideUi
+				end
+
+				UiTranslate(0, buttonHeight + gap)
+
+				if uiDrawSecondaryButton("Restart Animation", buttonWidth) then
+					client.restartAnimation()
+				end
+
+				UiTranslate(0, buttonHeight + gap)
+				if not IsPlayerHost() then
+					uiDrawTextPanel("loc@UI_TEXT_WAITING_FOR_HOST", 1)
+				end
+			UiPop()
+
+			if _uiFocusPlayer == nil then 
+				_uiFocusPlayer = 0
+			end
+
+			local name = ""
+			if client.playerPoints and client.playerPoints[_uiFocusPlayer] then
+				name = GetPlayerName(client.playerPoints[_uiFocusPlayer].id)
+			end
+			local nameWidth = 0
 
 			UiPush()
-				UiTranslate(0, 20)
-				if uiDrawSecondaryButton("Game Modes", buttonWidth) then
-					SetBool("game.pausemenu.gamemodes", true)
-				end
+				UiPush()
+					UiTranslate(0, -10)
+					local val, onSlider = optionsSlider(client.ui.uiPathProgress, shared.ui.pathStartTime,shared.ui.pathEndTime)
 
-				UiTranslate(0, buttonHeight + gap)
+					UiTranslate(0, 20)
+					UiAlign("center top")
+					UiFont("bold.ttf", 26)
 
-				if uiDrawSecondaryButton("Play new Random Map", buttonWidth) then
-					ServerCall("server.loadRandomMap")
-				end
+					-- Calculate elapsed time relative to start
+					local startTime = shared.ui.pathStartTime or 0
+					local endTime = shared.ui.pathEndTime or 0
+					local progress = client.ui.uiPathProgress or startTime
 
-				UiTranslate(0, buttonHeight + gap)
+					local elapsed = progress - startTime
+					if elapsed < 0 then elapsed = 0 end  -- safety
+					if elapsed > (endTime - startTime) then elapsed = endTime - startTime end  -- clamp
 
-				if shared.state.loadNextMap == true then
-					if uiDrawPrimaryButton("Cancel", buttonWidth) then
-						ServerCall("server.cancelNextMap")
-					end
+					-- Convert to minutes:seconds
+					local minutes = math.floor(elapsed / 60)
+					local seconds = math.floor(elapsed % 60)
+					local timeStr = string.format("%02d:%02d", minutes, seconds)
+
+					UiText(timeStr, false)
+				UiPop()
+
+				if InputDown("usetool") and onSlider or client.ui.dragging and InputDown("usetool") then
+					client.ui.dragging = true
+					client.ui.uiPathProgress = val
+					client.ui.lockCamera = true
 				else
-					if uiDrawPrimaryButton(continueLabel, buttonWidth) then
-						if continueFunction ~= nil then
-							continueFunction()
-						else
-							SetString("game.gamemode.next", GetString("game.gamemode"))
-						end
-					end
+					client.ui.lockCamera = false
+					client.ui.dragging = false
 				end
 
-			UiPop()
-		else
-			uiDrawTextPanel("loc@UI_TEXT_WAITING_FOR_HOST", 1)
-		end
+				UiPush()
+					UiTranslate(0, -100)
+					UiAlign("center top")
+					UiFont("bold.ttf", 26)
 
+					nameWidth = math.max(UiGetTextSize(name) - 180, 0)
+					uiDrawPanel(buttonWidth-40 +nameWidth, buttonHeight, 10)
+
+					UiTranslate(0, 10)
+					if _uiFocusPlayer == 0 or client.playerPoints == nil then 
+						UiText('All')
+					else
+						UiText(name)
+					end
+				UiPop()
+
+				UiPush()
+					UiTranslate(buttonWidth/2 + nameWidth/2, -100)
+					if uiDrawPrimaryButton(">", 30) then
+						_uiFocusPlayer = _uiFocusPlayer + 1
+					end
+				UiPop()
+
+				UiPush()
+					UiTranslate( buttonWidth/2 *-1 - nameWidth/2 , -100)
+					if uiDrawPrimaryButton("<", 30) then
+						_uiFocusPlayer = _uiFocusPlayer - 1
+					end
+				UiPop()
+			UiPop()
+			if client.playerPoints then
+				if _uiFocusPlayer == -1 then
+					_uiFocusPlayer = #client.playerPoints
+				end
+				if _uiFocusPlayer == #client.playerPoints + 1 then
+					_uiFocusPlayer = 0
+				end
+			end
+		UiPop()
+	end
 	UiPop()
 
 	return boardWith, boardHeight, _scoreresults_anim.param, random_map
@@ -779,11 +938,19 @@ end
 --
 -- @param[type=string] message Text to display.
 -- @param[type=number] alpha Alpha multiplier in range [0..1] for fading.
-function hudDrawInformationMessage(message, alpha)
-	UiPush()
-	UiTranslate(UiCenter(), 190)
-	uiDrawTextPanel(message, alpha)
-	UiPop()
+function hudDrawInformationMessage(message, alpha, corner)
+	if corner == nil then corner = false end
+	if corner == false then
+		UiPush()
+			UiTranslate(UiCenter(), 190)
+			uiDrawTextPanel(message, alpha)
+		UiPop()
+	else
+		UiPush()
+			UiTranslate(200, 100)
+			uiDrawTextPanel(message, alpha)
+		UiPop()
+	end
 end
 
 --- Draw a large numeric countdown in the center of the screen (client).
@@ -791,16 +958,20 @@ end
 -- Shows the remaining time as a big number with a fade effect.
 --
 -- @param[type=number] time Remaining time in seconds. Values <= 0 disable rendering.
-function hudDrawCountDown(time)
+function hudDrawCountDown(time, corner)
 	if time <= 0.0 then return end
 
 	local alpha = clamp(time/0.25, 0.0, 1.0)
 	
 	UiPush()
-	UiFont(FONT_BOLD, 100)
+	UiFont(FONT_BOLD, 50)
 	UiColor(1,1,1, alpha)
 	UiTextShadow(0,0,0,0.5 * alpha,2.0)
-	UiTranslate(UiCenter(), 310)
+	if corner then 
+		UiTranslate(200, 200)
+	else
+		UiTranslate(UiCenter(), 310)
+	end
 	UiAlign("center middle")
 	UiScale(2,2)
 	UiText(tostring(math.ceil(time)))
@@ -1498,13 +1669,48 @@ function hudDrawResultsAnimation(time, text, backgroundColor)
 		return VecScale(sum, 1 / #players)
 	end
 
-	if not _resultsAnimCamPos then
-		local pos = GetCenterOfVectors(teamsGetTeamPlayers(1))
-		if pos ~= nil then
-			_resultsAnimCamPos = VecCopy(pos)
+	if _uiFocusPlayer == nil then 
+		_uiFocusPlayer = 0
+	end
+
+	_mouseDif = _mouseDif or 0
+	_lastMousebutton = _lastMousebutton or GetTime()
+	_camDist = _camDist or 50
+	_camDist = AutoClamp(_camDist + InputValue("mousewheel") *-2, 10, 100)
+
+	local bool = InputDown("usetool") or InputDown("grab")
+	if bool and not client.ui.lockCamera then
+		_mouseDif = _mouseDif + InputValue("camerax")*-1
+		_lastMousebutton = GetTime()
+	end
+
+	if _lastMousebutton + 3 < GetTime() then
+		_mouseDif = _mouseDif + GetTimeStep()*0.025
+	end
+
+	local pos = Vec()
+	if _uiFocusPlayer == 0 or not client.playerPoints or not client.playerPoints[_uiFocusPlayer] then
+		if client.middlePoint ~= nil then 
+			pos = client.middlePoint
 		else
-			_resultsAnimCamPos = GetPlayerCameraTransform().pos
+			pos = GetCenterOfVectors(teamsGetTeamPlayers(1))
 		end
+	else
+		pos = client.playerPoints[_uiFocusPlayer].pos
+	end
+
+	if _resultsAnimCamPos ~= nil then 
+		local d = AutoClamp(1 - _camDist/50, 0, 1) / 10
+		pos = VecLerp(_resultsAnimCamPos, pos,0.01 + d)
+	end
+
+	if pos ~= nil then
+		_resultsAnimCamPos = VecCopy(pos)
+	else
+		_resultsAnimCamPos = GetPlayerCameraTransform().pos
+	end
+
+	if not _resultsAnimCamPos then
 		_resultsAnimCamRot = GetPlayerCameraTransform().rot
 	end
 
@@ -1520,9 +1726,7 @@ function hudDrawResultsAnimation(time, text, backgroundColor)
 		endSoundPlayed = true
 	end
 
-
-
-	local orbitOffset = VecScale(Vec(math.sin(_resultsAnimTime*0.025), 1.0, math.cos(_resultsAnimTime*0.025)), 50.0)
+	local orbitOffset = VecScale(Vec(math.sin(_mouseDif+_hud.randomOffset), 1.0, math.cos(_mouseDif+_hud.randomOffset)), _camDist)
 	local camPos = VecAdd(_resultsAnimCamPos, orbitOffset)
 	local camRot = QuatLookAt(camPos, _resultsAnimCamPos)
 
@@ -2441,4 +2645,159 @@ function _drawGroupRows(columns, group, layout)
 	end
 	
 	UiTranslate(0, -layout.playerRowGap) -- Remove last gap
+end
+
+function optionsSlider(val, min, max, r, g, b)
+
+	local function drawEventMarker(alpha ,eventID)
+		if eventID == 0 or eventID == nil then return end
+		if eventID == 5 then return end
+
+		local image = ""
+		if eventID == 1 then 
+			image = "MOD/assets/hurt.png" 
+			color = {1,0.3,0}
+		end
+		if eventID == 2 then 
+			image = "MOD/assets/transform.png" 
+			color = {0.1,1,0.6} 
+		end
+		if eventID == 4 then 
+			image = "MOD/assets/dead.png" 
+			color = {1,0,0} 
+		end
+		if eventID == 3 then 
+			image = "MOD/assets/taunt.png" 
+			color = {0.4,0.7,1} 
+		end
+
+
+		UiPush()
+			local r,g,b = unpack(color)
+			UiColor(r,g,b,alpha)
+			UiAlign("center middle")
+
+			UiFillImage(image)
+			UiRoundedRect(20, 20 ,2)
+		UiPop()
+	end
+
+    UiPush()
+        UiTranslate(0, -8)
+        local w = 800
+
+        -- Decide tick spacing in seconds (or units of your range)F
+	local tickCount = 30
+	local range = max - min
+	local tickStep = range / (tickCount - 1)
+	local pixelsPerUnit = w / range
+
+
+        -- Draw slider background
+        UiRect(w, 3)
+		UiPush()
+			UiTranslate(0, -5)
+			uiDrawPanel(w+ 30, 15, 2)
+		UiPop()
+
+		UiPush()
+			UiAlign("left middle")
+
+			local events = {}
+
+			local startTime = shared.ui.pathStartTime
+			local endTime   = shared.ui.pathEndTime
+			local timeRange = endTime - startTime
+
+			-- loop through paths until you find client.playerPoints[_uiFocusPlayer].id == client.ui.paths[index].id
+
+			local id = 0
+			for index, data in pairs(client.ui.paths) do
+				if client.playerPoints and _uiFocusPlayer ~= 0 and data.id == client.playerPoints[_uiFocusPlayer].id then
+					id = index
+					break
+				end
+			end
+
+			if _uiFocusPlayer ~= 0 and timeRange > 0 and client.ui.paths and client.ui.paths[id] then
+				local path = client.ui.paths[id].path
+
+				for i = #path, 2, -1 do
+					local node = path[i]
+					if node.event ~= 0 and node.event ~= nil then
+						events[#events + 1] = {}
+						events[#events ].time = (node.time - startTime) / timeRange
+						events[#events ].event = node.event
+					end
+				end
+			end
+
+
+			for i = 0, tickCount - 1 do
+				local t = min + i * tickStep
+				UiPush()
+					UiTranslate(-w/2, 2)
+					UiPush()
+						if events[i] ~= nil then
+							UiTranslate(events[i].time * w, 0)
+							drawEventMarker(1,events[i].event)
+						end
+					UiPop()
+					UiTranslate((t - min) * pixelsPerUnit, 0)
+					UiRect(2, 10)
+				UiPop()
+			end
+
+		UiPop()
+
+		UiPush()
+		UiTranslate(0, -25)
+        local inRect = UiIsMouseInRect(w, 50)
+		UiPop()
+
+        UiAlign("center middle")
+        UiTranslate(-w/2, 1)
+
+        -- Normalize val to 0..1
+        local normalized = (val - min) / (max - min)
+        if normalized < 0 then normalized = 0 end
+        if normalized > 1 then normalized = 1 end
+
+        -- Convert normalized value to pixel space
+        local pixelVal = normalized * w
+
+        -- Slider: returns new pixel position
+        pixelVal, _ = UiSlider("ui/common/dot.png", "x", pixelVal, 0, w)
+
+        -- Convert pixel back to normalized
+        normalized = pixelVal / w
+
+        -- Convert normalized back to actual value
+        val = normalized * (max - min) + min
+
+    UiPop()
+    return val, inRect
+end
+
+
+
+function Round(n, decimal)
+    decimal = decimal or .01
+    point = 1 / decimal
+
+    ceil =  math.ceil(n * point) / point
+    floor = math.floor(n * point) / point
+
+    distceil = dist(n, ceil)
+    distfloor = dist(n, floor)
+
+    if distceil < distfloor then
+        return ceil
+    else
+        return floor
+    end
+end
+
+function dist(a, b)
+    return math.abs(a - b)
 end
